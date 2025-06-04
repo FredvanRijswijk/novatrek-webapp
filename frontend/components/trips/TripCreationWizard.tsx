@@ -112,7 +112,13 @@ export function TripCreationWizard() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return formData.destination && formData.startDate && formData.endDate;
+        // Check if all required fields are filled
+        const hasDestination = formData.destination !== null;
+        const hasStartDate = formData.startDate !== null;
+        const hasEndDate = formData.endDate !== null;
+        const hasTravelers = formData.travelers.length > 0 && formData.travelers[0].name.trim() !== '';
+        
+        return hasDestination && hasStartDate && hasEndDate && hasTravelers;
       case 2:
         return formData.activityTypes.length > 0;
       case 3:
@@ -224,30 +230,45 @@ export function TripCreationWizard() {
         )}
 
         {/* Navigation */}
-        <div className="flex justify-between pt-6 border-t">
-          <Button
-            variant="outline"
-            onClick={previousStep}
-            disabled={currentStep === 1}
-          >
-            Previous
-          </Button>
-          
-          {currentStep < STEPS.length ? (
-            <Button
-              onClick={nextStep}
-              disabled={!canProceed()}
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              onClick={createTrip}
-              disabled={!canProceed() || isCreating}
-            >
-              {isCreating ? 'Creating Trip...' : 'Create Trip'}
-            </Button>
+        <div className="pt-6 border-t">
+          {/* Show validation hints for step 1 */}
+          {currentStep === 1 && !canProceed() && (
+            <div className="mb-4 text-sm text-muted-foreground">
+              <p>To continue, please complete:</p>
+              <ul className="list-disc list-inside mt-1">
+                {!formData.destination && <li>Select a destination</li>}
+                {!formData.startDate && <li>Choose a start date</li>}
+                {!formData.endDate && <li>Choose an end date</li>}
+                {formData.travelers[0]?.name.trim() === '' && <li>Enter traveler name</li>}
+              </ul>
+            </div>
           )}
+          
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={previousStep}
+              disabled={currentStep === 1}
+            >
+              Previous
+            </Button>
+            
+            {currentStep < STEPS.length ? (
+              <Button
+                onClick={nextStep}
+                disabled={!canProceed()}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={createTrip}
+                disabled={!canProceed() || isCreating}
+              >
+                {isCreating ? 'Creating Trip...' : 'Create Trip'}
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

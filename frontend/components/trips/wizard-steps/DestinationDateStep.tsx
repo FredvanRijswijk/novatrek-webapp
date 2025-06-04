@@ -117,7 +117,7 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-blue-500" />
-          <Label className="text-lg font-semibold">Where are you going?</Label>
+          <Label className="text-lg font-semibold">Where are you going? *</Label>
         </div>
         
         <div className="relative">
@@ -181,7 +181,7 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-blue-500" />
-          <Label className="text-lg font-semibold">When are you traveling?</Label>
+          <Label className="text-lg font-semibold">When are you traveling? *</Label>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -202,14 +202,14 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
               type="date"
               value={formatDate(formData.endDate)}
               onChange={(e) => updateFormData({ endDate: parseDate(e.target.value) })}
-              min={formatDate(formData.startDate)}
+              min={formData.startDate ? formatDate(formData.startDate) : new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>
 
         {formData.startDate && formData.endDate && (
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Trip duration: {Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
+            Trip duration: {Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
           </div>
         )}
       </div>
