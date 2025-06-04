@@ -15,6 +15,8 @@ import {
 import { Trip, ItineraryDay, Activity } from '@/types/travel';
 import { format, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ActivitySearchModal } from './ActivitySearchModal';
+import { TripModel } from '@/lib/models/trip';
 
 interface ItineraryBuilderProps {
   trip: Trip;
@@ -74,7 +76,39 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
 
   const handleAddActivity = () => {
     setIsAddingActivity(true);
-    // This will open the activity search modal
+  };
+
+  const handleSelectActivity = async (activity: Activity) => {
+    if (!selectedDay || !selectedDayData) return;
+
+    // Add the activity to the selected day
+    const updatedItinerary = trip.itinerary?.map(day => {
+      if (day.id === selectedDayData.id) {
+        return {
+          ...day,
+          activities: [...(day.activities || []), {
+            ...activity,
+            id: `${activity.id}_${Date.now()}` // Ensure unique ID for multiple instances
+          }],
+        };
+      }
+      return day;
+    });
+
+    const updatedTrip = {
+      ...trip,
+      itinerary: updatedItinerary,
+    };
+
+    // Update local state
+    onUpdate(updatedTrip);
+
+    // Save to database
+    if (trip.id) {
+      await TripModel.update(trip.id, { itinerary: updatedItinerary });
+    }
+
+    setIsAddingActivity(false);
   };
 
   const handleRemoveActivity = (dayId: string, activityId: string) => {
@@ -264,5 +298,17 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
         </CardContent>
       </Card>
     </div>
+
+    {/* Activity Search Modal */}
+    {isAddingActivity && selectedDay && (
+      <ActivitySearchModal
+        isOpen={isAddingActivity}
+        onClose={() => setIsAddingActivity(false)}
+        onSelect={handleSelectActivity}
+        destination={trip.destination.name}
+        date={selectedDay}
+      />
+    )}
+    </>
   );
 }

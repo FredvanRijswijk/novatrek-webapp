@@ -13,8 +13,8 @@ import { format, differenceInDays } from 'date-fns';
 
 // Import planning components
 import { ItineraryBuilder } from '@/components/trips/planning/ItineraryBuilder';
-// import { BudgetTracker } from '@/components/trips/planning/BudgetTracker';
-// import { TripChat } from '@/components/trips/planning/TripChat';
+import { BudgetTracker } from '@/components/trips/planning/BudgetTracker';
+import { TripChat } from '@/components/trips/planning/TripChat';
 
 export default function TripPlanningPage() {
   const params = useParams();
@@ -160,41 +160,11 @@ export default function TripPlanningPage() {
               </TabsContent>
 
               <TabsContent value="budget" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Budget Tracking</CardTitle>
-                    <CardDescription>
-                      Monitor your trip expenses and stay within budget
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12 text-muted-foreground">
-                      <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">Budget tracker coming soon!</p>
-                      <p className="text-sm mt-2">Track your expenses by category</p>
-                    </div>
-                    {/* <BudgetTracker trip={trip} onUpdate={setTrip} /> */}
-                  </CardContent>
-                </Card>
+                <BudgetTracker trip={trip} onUpdate={setTrip} />
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>AI Travel Assistant</CardTitle>
-                    <CardDescription>
-                      Get personalized recommendations for your trip
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">AI Assistant coming soon!</p>
-                      <p className="text-sm mt-2">Chat with AI about your trip plans</p>
-                    </div>
-                    {/* <TripChat trip={trip} /> */}
-                  </CardContent>
-                </Card>
+                <TripChat trip={trip} />
               </TabsContent>
             </Tabs>
           </div>
