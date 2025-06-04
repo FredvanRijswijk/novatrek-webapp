@@ -19,6 +19,21 @@ interface ReviewStepProps {
 }
 
 export function ReviewStep({ formData }: ReviewStepProps) {
+  const getDestinationSummary = () => {
+    if (formData.destinations && formData.destinations.length > 0) {
+      const validDestinations = formData.destinations
+        .filter((d: any) => d.destination)
+        .map((d: any) => d.destination.name);
+      if (validDestinations.length > 0) {
+        return validDestinations.join(' → ');
+      }
+    }
+    if (formData.destination) {
+      return formData.destination.name;
+    }
+    return 'No destination selected';
+  };
+
   const getTravelStyleLabel = (style: string) => {
     switch (style) {
       case 'budget': return 'Budget Traveler';
@@ -65,33 +80,58 @@ export function ReviewStep({ formData }: ReviewStepProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
-            Trip Overview
+            Your Trip Summary
           </CardTitle>
-          <CardDescription>Review your trip details before creating</CardDescription>
+          <CardDescription>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {getDestinationSummary()}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {getTripDuration() + 1} days
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                {formData.travelers?.length || 0} traveler(s)
+              </span>
+              {formData.budgetRange && (
+                <span className="flex items-center gap-1">
+                  <DollarSign className="h-4 w-4" />
+                  {formData.budgetRange.currency} {formData.budgetRange.max.toLocaleString()}
+                </span>
+              )}
+            </div>
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Destination(s) */}
-          {formData.destinations && formData.destinations.length > 0 ? (
+          {formData.destinations && formData.destinations.length > 0 && formData.destinations.some((d: any) => d.destination) ? (
             // Multi-destination display
             <div className="space-y-4">
               <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Multi-Destination Trip</h4>
-              {formData.destinations.map((dest: any, index: number) => (
+              {formData.destinations
+                .filter((dest: any) => dest.destination) // Only show destinations that have been selected
+                .map((dest: any, index: number) => (
                 <div key={index} className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                    <img 
-                      src={dest.destination?.imageUrl} 
-                      alt={dest.destination?.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  {dest.destination.imageUrl && (
+                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                      <img 
+                        src={dest.destination.imageUrl} 
+                        alt={dest.destination.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-500">Stop {index + 1}:</span>
-                      <h3 className="font-semibold">{dest.destination?.name}</h3>
+                      <h3 className="font-semibold">{dest.destination.name}</h3>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <MapPin className="h-3 w-3" />
-                      <span>{dest.destination?.country}</span>
+                      <span>{dest.destination.country}</span>
                       {dest.arrivalDate && dest.departureDate && (
                         <>
                           <span className="text-gray-400">•</span>
@@ -103,7 +143,9 @@ export function ReviewStep({ formData }: ReviewStepProps) {
                         </>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{dest.destination?.description}</p>
+                    {dest.destination.description && (
+                      <p className="text-xs text-gray-500 mt-1">{dest.destination.description}</p>
+                    )}
                   </div>
                 </div>
               ))}
