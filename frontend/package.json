@@ -29,5 +29,8 @@
     "postcss": "^8.5.4",
     "tailwindcss": "^4.0.0-beta.6",
     "typescript": "^5"
+  },
+  "overrides": {
+    "react-is": "^19.0.0-rc-69d4b800-20241021"
   }
 }
