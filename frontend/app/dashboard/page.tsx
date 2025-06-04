@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useFirebase } from '@/lib/firebase'
 import { TripModel, UserModel, type Trip, type User } from '@/lib/models'
-import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Plus, MessageCircle, MapPin, Calendar, Plane } from 'lucide-react'
 
@@ -65,28 +64,24 @@ export default function DashboardPage() {
 
   if (loading || loadingData) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
-            <span className="text-lg">Loading your travel dashboard...</span>
-          </div>
+      <div className="flex items-center justify-center h-96">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+          <span className="text-lg">Loading your travel dashboard...</span>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-96 px-4">
-          <h2 className="text-2xl font-bold mb-4">Welcome to NovaTrek</h2>
-          <p className="text-muted-foreground mb-6 text-center">Please sign in to start planning your adventures</p>
-          <Button onClick={() => window.location.href = '/'}>
+      <div className="flex flex-col items-center justify-center h-96 px-4">
+        <h2 className="text-2xl font-bold mb-4">Welcome to NovaTrek</h2>
+        <p className="text-muted-foreground mb-6 text-center">Please sign in to start planning your adventures</p>
+        <Button onClick={() => window.location.href = '/'}>
             Go to Home
           </Button>
         </div>
-      </DashboardLayout>
     )
   }
 
@@ -94,8 +89,7 @@ export default function DashboardPage() {
   const recentTrips = trips.slice(0, 6)
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -273,7 +267,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+    </div>
   )
 }
