@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +14,11 @@ interface DestinationDateStepProps {
 }
 
 export function DestinationDateStep({ formData, updateFormData }: DestinationDateStepProps) {
-  const [destinationSearch, setDestinationSearch] = useState('');
+  const [destinationSearch, setDestinationSearch] = useState(
+    formData.destination ? `${formData.destination.name}, ${formData.destination.country}` : ''
+  );
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Mock destination suggestions - In production, this would be from Google Places API
   const destinationSuggestions: Destination[] = [
@@ -80,6 +83,20 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
     setShowSuggestions(false);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const updateTraveler = (index: number, field: string, value: any) => {
     const updatedTravelers = [...formData.travelers];
     updatedTravelers[index] = { ...updatedTravelers[index], [field]: value };
@@ -120,7 +137,7 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
           <Label className="text-lg font-semibold">Where are you going? *</Label>
         </div>
         
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <Input
             placeholder="Search for a destination..."
             value={destinationSearch}
@@ -131,7 +148,7 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
             onFocus={() => setShowSuggestions(true)}
           />
           
-          {showSuggestions && destinationSearch && (
+          {showSuggestions && (
             <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
               {filteredSuggestions.map((destination) => (
                 <button

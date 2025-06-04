@@ -77,15 +77,18 @@ export function TripCreationWizard() {
       UserModel.getById(user.uid).then(profile => {
         if (profile) {
           setUserProfile(profile);
-          // Pre-fill from user preferences
+          // Pre-fill from user preferences, but preserve existing form data
           setFormData(prev => ({
             ...prev,
-            travelStyle: profile.preferences?.travelStyle || 'mid-range',
-            accommodationType: profile.preferences?.accommodationType || 'any',
-            activityTypes: profile.preferences?.activityTypes || [],
+            travelers: prev.travelers.length > 0 && prev.travelers[0].name === '' 
+              ? [{ ...prev.travelers[0], name: user.displayName || '' }]
+              : prev.travelers,
+            travelStyle: profile.preferences?.travelStyle || prev.travelStyle,
+            accommodationType: profile.preferences?.accommodationType || prev.accommodationType,
+            activityTypes: profile.preferences?.activityTypes || prev.activityTypes,
             budgetRange: {
               ...prev.budgetRange,
-              currency: profile.preferences?.currency || 'USD'
+              currency: profile.preferences?.currency || prev.budgetRange.currency
             }
           }));
         }
@@ -113,10 +116,10 @@ export function TripCreationWizard() {
     switch (currentStep) {
       case 1:
         // Check if all required fields are filled
-        const hasDestination = formData.destination !== null;
-        const hasStartDate = formData.startDate !== null;
-        const hasEndDate = formData.endDate !== null;
-        const hasTravelers = formData.travelers.length > 0 && formData.travelers[0].name.trim() !== '';
+        const hasDestination = formData.destination !== null && formData.destination !== undefined;
+        const hasStartDate = formData.startDate !== null && formData.startDate !== undefined;
+        const hasEndDate = formData.endDate !== null && formData.endDate !== undefined;
+        const hasTravelers = formData.travelers.length > 0 && formData.travelers[0]?.name?.trim() !== '';
         
         return hasDestination && hasStartDate && hasEndDate && hasTravelers;
       case 2:
@@ -236,10 +239,10 @@ export function TripCreationWizard() {
             <div className="mb-4 text-sm text-muted-foreground">
               <p>To continue, please complete:</p>
               <ul className="list-disc list-inside mt-1">
-                {!formData.destination && <li>Select a destination</li>}
-                {!formData.startDate && <li>Choose a start date</li>}
-                {!formData.endDate && <li>Choose an end date</li>}
-                {formData.travelers[0]?.name.trim() === '' && <li>Enter traveler name</li>}
+                {(!formData.destination || formData.destination === null) && <li>Select a destination</li>}
+                {(!formData.startDate || formData.startDate === null) && <li>Choose a start date</li>}
+                {(!formData.endDate || formData.endDate === null) && <li>Choose an end date</li>}
+                {(!formData.travelers[0]?.name || formData.travelers[0]?.name.trim() === '') && <li>Enter traveler name</li>}
               </ul>
             </div>
           )}
