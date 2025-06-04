@@ -204,10 +204,10 @@ export function TripChat({ trip }: TripChatProps) {
                     {message.role === 'user' ? (
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     ) : (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        className="text-sm prose prose-sm dark:prose-invert max-w-none"
-                        components={{
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                           ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
@@ -233,6 +233,7 @@ export function TripChat({ trip }: TripChatProps) {
                       >
                         {message.content}
                       </ReactMarkdown>
+                      </div>
                     )}
                   </div>
 
