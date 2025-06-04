@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, MapPin, Users, Plus, Minus } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Plus, Minus, Loader2 } from 'lucide-react';
 import { Destination } from '@/types/travel';
+import { useGooglePlaces } from '@/hooks/use-google-places';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface DestinationDateStepProps {
   formData: any;
@@ -19,10 +21,33 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
     formData.destination ? `${formData.destination.name}, ${formData.destination.country}` : ''
   );
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const { searchDestinations } = useGooglePlaces();
+  const debouncedSearch = useDebounce(destinationSearch, 300);
 
-  // Mock destination suggestions - In production, this would be from Google Places API
-  const destinationSuggestions: Destination[] = [
+  // Search for destinations when input changes
+  useEffect(() => {
+    if (debouncedSearch && debouncedSearch.length > 2) {
+      setIsSearching(true);
+      searchDestinations(debouncedSearch)
+        .then(results => {
+          setSuggestions(results);
+          setIsSearching(false);
+        })
+        .catch(err => {
+          console.error('Search error:', err);
+          setIsSearching(false);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedSearch, searchDestinations]);
+
+  // Keep mock data as fallback
+  const mockDestinations: Destination[] = [
     {
       id: 'paris-france',
       name: 'Paris',
@@ -73,10 +98,13 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
     }
   ];
 
-  const filteredSuggestions = destinationSuggestions.filter(dest =>
-    dest.name.toLowerCase().includes(destinationSearch.toLowerCase()) ||
-    dest.country.toLowerCase().includes(destinationSearch.toLowerCase())
-  );
+  // Use API suggestions if available, otherwise fall back to filtered mock data
+  const displaySuggestions = suggestions.length > 0 
+    ? suggestions 
+    : mockDestinations.filter(dest =>
+        dest.name.toLowerCase().includes(destinationSearch.toLowerCase()) ||
+        dest.country.toLowerCase().includes(destinationSearch.toLowerCase())
+      );
 
   const selectDestination = (destination: Destination) => {
     updateFormData({ destination });
@@ -153,7 +181,17 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
           
           {showSuggestions && (
             <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {filteredSuggestions.map((destination) => (
+              {isSearching ? (
+                <div className="p-4 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                  <p className="text-sm text-gray-500 mt-2">Searching destinations...</p>
+                </div>
+              ) : displaySuggestions.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  <p className="text-sm">No destinations found</p>
+                </div>
+              ) : (
+                displaySuggestions.map((destination) => (
                 <button
                   key={destination.id}
                   className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
@@ -172,7 +210,8 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
                     </div>
                   </div>
                 </button>
-              ))}
+                ))
+              )}
             </div>
           )}
           </div>

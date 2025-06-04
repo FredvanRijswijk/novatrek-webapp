@@ -263,6 +263,19 @@ npm run typecheck
 npm run build
 ```
 
+## 🔑 Environment Variables
+
+Add to `.env.local`:
+
+```bash
+# Google Maps API (for Places API)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# Already configured
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+# ... other Firebase config
+```
+
 ---
 
 ## 📚 Related Documentation
