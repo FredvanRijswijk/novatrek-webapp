@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { GooglePlacesClientNew } from '@/lib/google-places/client-new';
 import { Destination } from '@/types/travel';
 
@@ -16,8 +16,10 @@ export function useGooglePlacesNew(): UseGooglePlacesReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Create client instance
-  const client = GOOGLE_MAPS_API_KEY ? new GooglePlacesClientNew(GOOGLE_MAPS_API_KEY) : null;
+  // Create client instance - memoized to prevent recreation
+  const client = useMemo(() => {
+    return GOOGLE_MAPS_API_KEY ? new GooglePlacesClientNew(GOOGLE_MAPS_API_KEY) : null;
+  }, []);
 
   const searchDestinations = useCallback(async (query: string): Promise<Destination[]> => {
     if (!client || !GOOGLE_MAPS_API_KEY) {
