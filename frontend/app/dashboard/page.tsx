@@ -121,7 +121,11 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-semibold mb-2">Current Trip</h3>
                 <h4 className="text-2xl font-bold">{activeTrip.title}</h4>
                 <p className="text-muted-foreground">
-                  {activeTrip.destination.city}, {activeTrip.destination.country}
+                  {activeTrip.destinations && activeTrip.destinations.length > 0
+                    ? activeTrip.destinations.map(d => d.destination.city).join(' → ')
+                    : activeTrip.destination
+                    ? `${activeTrip.destination.city}, ${activeTrip.destination.country}`
+                    : 'No destination'}
                 </p>
                 <div className="flex items-center gap-4 mt-3">
                   <span className="text-sm bg-white/50 dark:bg-black/20 px-3 py-1 rounded-full">
@@ -181,7 +185,11 @@ export default function DashboardPage() {
                     <div>
                       <h3 className="font-semibold">{trip.title}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {trip.destination.city}, {trip.destination.country}
+                        {trip.destinations && trip.destinations.length > 0
+                          ? trip.destinations.map(d => d.destination.city).join(' → ')
+                          : trip.destination
+                          ? `${trip.destination.city}, ${trip.destination.country}`
+                          : 'No destination'}
                       </p>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
@@ -260,7 +268,11 @@ export default function DashboardPage() {
               <MapPin className="w-6 h-6 text-orange-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(trips.map(t => t.destination.country)).size}
+                  {new Set(trips.flatMap(t => 
+                    t.destinations && t.destinations.length > 0
+                      ? t.destinations.map(d => d.destination.country)
+                      : t.destination ? [t.destination.country] : []
+                  )).size}
                 </p>
                 <p className="text-sm text-muted-foreground">Countries</p>
               </div>
