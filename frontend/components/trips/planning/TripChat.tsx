@@ -51,6 +51,10 @@ const getContextualSuggestions = (trip: Trip): string[] => {
 };
 
 export function TripChat({ trip }: TripChatProps) {
+  // Parse dates once at the component level
+  const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
+  const endDate = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -89,7 +93,7 @@ export function TripChat({ trip }: TripChatProps) {
       // Prepare context for the AI
       const context = {
         destination: trip.destination.name,
-        dates: `${format(new Date(trip.startDate), 'MMM d')} - ${format(new Date(trip.endDate), 'MMM d, yyyy')}`,
+        dates: `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`,
         travelers: trip.travelers.length,
         budget: trip.budget ? `${trip.budget.currency} ${trip.budget.total}` : 'Not specified',
         currentActivities: trip.itinerary?.flatMap(day => 
@@ -279,7 +283,7 @@ export function TripChat({ trip }: TripChatProps) {
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {format(new Date(trip.startDate), 'MMM d')} - {format(new Date(trip.endDate), 'MMM d')}
+              {format(startDate, 'MMM d')} - {format(endDate, 'MMM d')}
             </div>
             {trip.budget && (
               <div className="flex items-center gap-1">

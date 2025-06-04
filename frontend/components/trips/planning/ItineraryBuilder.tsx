@@ -131,8 +131,9 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
   const selectedDayData = selectedDay ? getItineraryDay(selectedDay) : null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-      {/* Day Selector */}
+    <>
+      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+        {/* Day Selector */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Trip Days</CardTitle>
