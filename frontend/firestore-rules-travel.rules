@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Trips - users can only access their own trips
+    match /trips/{tripId} {
+      // Allow authenticated users to create trips
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own trips
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own trips
+      allow list: if request.auth != null;
+    }
+    
+    // Chat messages - users can access their own messages
+    match /chat_messages/{messageId} {
+      // Allow authenticated users to create messages
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own messages
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own messages
+      allow list: if request.auth != null;
+    }
+    
+    // Test documents - allow authenticated users to create and access their own documents
+    match /test_documents/{documentId} {
+      // Allow authenticated users to create documents
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own documents
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own documents
+      allow list: if request.auth != null;
+    }
+    
+    // Saved places - users can access their own saved places
+    match /saved_places/{placeId} {
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow list: if request.auth != null;
+    }
+    
+    // Default rule - deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
