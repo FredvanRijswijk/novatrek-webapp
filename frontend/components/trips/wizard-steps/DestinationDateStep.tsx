@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, MapPin, Users, Plus, Minus, Loader2 } from 'lucide-react';
 import { Destination } from '@/types/travel';
-import { useGooglePlaces } from '@/hooks/use-google-places';
+import { useGooglePlacesNew } from '@/hooks/use-google-places-new';
 import { useDebounce } from '@/hooks/use-debounce';
 
 interface DestinationDateStepProps {
@@ -25,7 +25,7 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const { searchDestinations } = useGooglePlaces();
+  const { searchDestinations } = useGooglePlacesNew();
   const debouncedSearch = useDebounce(destinationSearch, 300);
 
   // Search for destinations when input changes

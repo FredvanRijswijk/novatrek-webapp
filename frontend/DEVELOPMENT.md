@@ -56,11 +56,11 @@ The UI layer is complete, but to make the app fully functional, the following AP
 - [x] Create activity search and discovery system (UI complete, needs API integration)
 - [x] Implement simple budget tracking interface
 - [x] Enhance AI planning assistant integration (Trip-aware chat interface)
+- [x] Add form validation and error handling
+- [x] Integrate Google Places API for destination search (upgraded to new Places API)
 
 ### Pending
-- [ ] Integrate Google Places API for destination search
-- [ ] Integrate OpenAI API for AI suggestions
-- [ ] Add form validation and error handling
+- [ ] Enhance OpenAI API for AI suggestions
 - [ ] Implement activity drag-and-drop functionality
 
 ---
@@ -165,11 +165,15 @@ The UI layer is complete, but to make the app fully functional, the following AP
 - Create budget tracking within existing models
 - Enhanced AI context for trip-specific assistance
 
-### API Integrations Needed
+### API Integrations
 
-- Google Places API for destination/activity search
-- Enhanced OpenAI prompts for trip planning
-- Weather API for basic weather information
+- ✅ Google Places API (New) for destination/activity search - COMPLETED
+  - Upgraded to new REST API (2023 version)
+  - Supports Text Search and Nearby Search
+  - Includes photo URLs
+  - See [GOOGLE_PLACES_API_SECURITY.md](./GOOGLE_PLACES_API_SECURITY.md) for setup
+- 🔄 Enhanced OpenAI prompts for trip planning - IN PROGRESS
+- 🔮 Weather API for basic weather information - FUTURE
 
 ---
 
