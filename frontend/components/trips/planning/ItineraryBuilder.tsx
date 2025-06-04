@@ -47,53 +47,75 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
     if (trip.destinations && trip.destinations.length > 0) {
       // Multi-destination trip with travel days
       trip.destinations.forEach((dest, index) => {
+        // Skip if no destination or invalid dates
+        if (!dest.destination || !dest.arrivalDate || !dest.departureDate) return;
+        
         const arrivalDate = new Date(dest.arrivalDate);
         const departureDate = new Date(dest.departureDate);
+        
+        // Check if dates are valid
+        if (isNaN(arrivalDate.getTime()) || isNaN(departureDate.getTime())) return;
         
         // Add travel day if not the first destination
         if (index > 0) {
           const prevDest = trip.destinations![index - 1];
-          days.push({
-            date: arrivalDate,
-            dayNumber: dayNumber++,
-            type: 'travel',
-            fromDestination: prevDest.destination.name,
-            toDestination: dest.destination.name,
-          });
+          if (prevDest?.destination) {
+            days.push({
+              date: arrivalDate,
+              dayNumber: dayNumber++,
+              type: 'travel',
+              fromDestination: prevDest.destination.name,
+              toDestination: dest.destination.name,
+            });
+          }
         }
         
         // Add destination days
-        const destDays = eachDayOfInterval({
-          start: index === 0 ? arrivalDate : new Date(arrivalDate.getTime() + 24 * 60 * 60 * 1000),
-          end: departureDate,
-        });
-        
-        destDays.forEach(date => {
-          days.push({
-            date,
-            dayNumber: dayNumber++,
-            type: 'destination',
-            destinationId: dest.destination.id,
-            destinationName: dest.destination.name,
+        try {
+          const destDays = eachDayOfInterval({
+            start: index === 0 ? arrivalDate : new Date(arrivalDate.getTime() + 24 * 60 * 60 * 1000),
+            end: departureDate,
           });
-        });
+          
+          destDays.forEach(date => {
+            days.push({
+              date,
+              dayNumber: dayNumber++,
+              type: 'destination',
+              destinationId: dest.destination.id,
+              destinationName: dest.destination.name,
+            });
+          });
+        } catch (e) {
+          console.error('Error creating day interval:', e);
+        }
       });
-    } else if (trip.destination) {
+    } else if (trip.destination && trip.startDate && trip.endDate) {
       // Single destination trip
-      const tripDays = eachDayOfInterval({
-        start: new Date(trip.startDate),
-        end: new Date(trip.endDate),
-      });
-      
-      tripDays.forEach((date, index) => {
-        days.push({
-          date,
-          dayNumber: index + 1,
-          type: 'destination',
-          destinationId: trip.destination!.id,
-          destinationName: trip.destination!.name,
-        });
-      });
+      try {
+        const startDate = new Date(trip.startDate);
+        const endDate = new Date(trip.endDate);
+        
+        // Check if dates are valid
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+          const tripDays = eachDayOfInterval({
+            start: startDate,
+            end: endDate,
+          });
+          
+          tripDays.forEach((date, index) => {
+            days.push({
+              date,
+              dayNumber: index + 1,
+              type: 'destination',
+              destinationId: trip.destination!.id,
+              destinationName: trip.destination!.name,
+            });
+          });
+        }
+      } catch (e) {
+        console.error('Error creating trip days:', e);
+      }
     }
     
     return days;
