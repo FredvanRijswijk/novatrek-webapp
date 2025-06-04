@@ -145,8 +145,8 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
     }
 
     // Select first day by default
-    if (!selectedDay && tripDays.length > 0) {
-      setSelectedDay(tripDays[0]);
+    if (!selectedDay && tripDays.length > 0 && tripDays[0].date) {
+      setSelectedDay(tripDays[0].date);
     }
   }, [trip, tripDays, selectedDay, onUpdate]);
 
@@ -256,7 +256,7 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
                 return (
                   <button
                     key={index}
-                    onClick={() => setSelectedDay(dayInfo.date)}
+                    onClick={() => dayInfo.date && setSelectedDay(dayInfo.date)}
                     className={cn(
                       'w-full text-left p-3 rounded-lg transition-colors',
                       isSelected
@@ -275,7 +275,10 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
                           'text-sm',
                           isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
                         )}>
-                          {format(dayInfo.date, 'EEE, MMM d')}
+                          {dayInfo.date && !isNaN(dayInfo.date.getTime()) 
+                            ? format(dayInfo.date, 'EEE, MMM d')
+                            : 'Invalid date'
+                          }
                         </p>
                         {isTravel ? (
                           <p className={cn(
@@ -316,7 +319,12 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle>
-                {selectedDay && `Day ${selectedDayData?.dayNumber} - ${format(selectedDay, 'EEEE, MMMM d')}`}
+                {selectedDay && !isNaN(selectedDay.getTime()) 
+                  ? `Day ${selectedDayData?.dayNumber} - ${format(selectedDay, 'EEEE, MMMM d')}`
+                  : selectedDay 
+                  ? `Day ${selectedDayData?.dayNumber}`
+                  : 'Select a day'
+                }
               </CardTitle>
               <CardDescription>
                 Plan your activities for this day
