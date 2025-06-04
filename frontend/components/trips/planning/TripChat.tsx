@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trip } from '@/types/travel';
@@ -67,13 +66,11 @@ export function TripChat({ trip }: TripChatProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    // Scroll to the bottom of the page
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
@@ -178,7 +175,7 @@ export function TripChat({ trip }: TripChatProps) {
   };
 
   return (
-    <div className="h-[600px] flex flex-col bg-card rounded-lg">
+    <div className="flex flex-col bg-card rounded-lg">
       <div className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -199,9 +196,9 @@ export function TripChat({ trip }: TripChatProps) {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col p-0 overflow-hidden">
-        <ScrollArea className="flex-1 px-6 overflow-y-auto" ref={scrollAreaRef}>
-          <div className="space-y-4 py-4">
+      <div className="flex-1 flex flex-col">
+        <div className="px-6 pb-4">
+          <div className="space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -307,11 +304,10 @@ export function TripChat({ trip }: TripChatProps) {
                 )}
               </div>
             ))}
-
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="p-4 border-t">
+        <div className="sticky bottom-0 p-4 border-t bg-card">
           <form
             onSubmit={(e) => {
               e.preventDefault();
