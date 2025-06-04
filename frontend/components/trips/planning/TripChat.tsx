@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -179,18 +178,18 @@ export function TripChat({ trip }: TripChatProps) {
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="pb-4">
+    <div className="h-[600px] flex flex-col bg-card rounded-lg">
+      <div className="p-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle>AI Travel Assistant</CardTitle>
-              <CardDescription>
+              <h3 className="text-lg font-semibold">AI Travel Assistant</h3>
+              <p className="text-sm text-muted-foreground">
                 Get personalized recommendations for {trip.destination.name}
-              </CardDescription>
+              </p>
             </div>
           </div>
           <Badge variant="secondary">
@@ -198,10 +197,10 @@ export function TripChat({ trip }: TripChatProps) {
             Online
           </Badge>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea className="flex-1 px-6" ref={scrollAreaRef}>
+      <div className="flex-1 flex flex-col p-0 overflow-hidden">
+        <ScrollArea className="flex-1 px-6 overflow-y-auto" ref={scrollAreaRef}>
           <div className="space-y-4 py-4">
             {messages.map((message) => (
               <div
@@ -350,7 +349,7 @@ export function TripChat({ trip }: TripChatProps) {
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
