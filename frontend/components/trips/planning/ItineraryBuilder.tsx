@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Calendar, Clock, MapPin, MoreVertical, GripVertical } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Trip, ItineraryDay, Activity } from '@/types/travel';
+import { Trip, DayItinerary, Activity } from '@/types/travel';
 import { format, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActivitySearchModal } from './ActivitySearchModal';
@@ -23,26 +24,96 @@ interface ItineraryBuilderProps {
   onUpdate: (trip: Trip) => void;
 }
 
+interface DayInfo {
+  date: Date;
+  dayNumber: number;
+  type: 'travel' | 'destination';
+  fromDestination?: string;
+  toDestination?: string;
+  destinationId?: string;
+  destinationName?: string;
+}
+
 export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate all days in the trip
-  const tripDays = eachDayOfInterval({
-    start: new Date(trip.startDate),
-    end: new Date(trip.endDate),
-  });
+  // Generate all days in the trip with travel days
+  const generateTripDaysWithTravel = (): DayInfo[] => {
+    const days: DayInfo[] = [];
+    let dayNumber = 1;
+    
+    if (trip.destinations && trip.destinations.length > 0) {
+      // Multi-destination trip with travel days
+      trip.destinations.forEach((dest, index) => {
+        const arrivalDate = new Date(dest.arrivalDate);
+        const departureDate = new Date(dest.departureDate);
+        
+        // Add travel day if not the first destination
+        if (index > 0) {
+          const prevDest = trip.destinations![index - 1];
+          days.push({
+            date: arrivalDate,
+            dayNumber: dayNumber++,
+            type: 'travel',
+            fromDestination: prevDest.destination.name,
+            toDestination: dest.destination.name,
+          });
+        }
+        
+        // Add destination days
+        const destDays = eachDayOfInterval({
+          start: index === 0 ? arrivalDate : new Date(arrivalDate.getTime() + 24 * 60 * 60 * 1000),
+          end: departureDate,
+        });
+        
+        destDays.forEach(date => {
+          days.push({
+            date,
+            dayNumber: dayNumber++,
+            type: 'destination',
+            destinationId: dest.destination.id,
+            destinationName: dest.destination.name,
+          });
+        });
+      });
+    } else if (trip.destination) {
+      // Single destination trip
+      const tripDays = eachDayOfInterval({
+        start: new Date(trip.startDate),
+        end: new Date(trip.endDate),
+      });
+      
+      tripDays.forEach((date, index) => {
+        days.push({
+          date,
+          dayNumber: index + 1,
+          type: 'destination',
+          destinationId: trip.destination!.id,
+          destinationName: trip.destination!.name,
+        });
+      });
+    }
+    
+    return days;
+  };
+  
+  const tripDays = generateTripDaysWithTravel();
 
   // Initialize itinerary days if not present
   useEffect(() => {
     if (!trip.itinerary || trip.itinerary.length === 0) {
-      const initialItinerary: ItineraryDay[] = tripDays.map((date, index) => ({
-        id: `day_${index + 1}`,
-        dayNumber: index + 1,
-        date: date,
+      const initialItinerary: DayItinerary[] = tripDays.map((dayInfo) => ({
+        id: `day_${dayInfo.dayNumber}`,
+        tripId: trip.id || '',
+        dayNumber: dayInfo.dayNumber,
+        date: dayInfo.date,
+        destinationId: dayInfo.destinationId,
         activities: [],
-        notes: '',
+        notes: dayInfo.type === 'travel' 
+          ? `Travel from ${dayInfo.fromDestination} to ${dayInfo.toDestination}`
+          : '',
       }));
 
       onUpdate({
@@ -57,10 +128,14 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
     }
   }, [trip, tripDays, selectedDay, onUpdate]);
 
-  const getItineraryDay = (date: Date): ItineraryDay | undefined => {
+  const getItineraryDay = (date: Date): DayItinerary | undefined => {
     return trip.itinerary?.find(day => 
       isSameDay(new Date(day.date), date)
     );
+  };
+  
+  const getDayInfo = (date: Date): DayInfo | undefined => {
+    return tripDays.find(day => isSameDay(day.date, date));
   };
 
   const getActivityTypeColor = (type: string) => {
@@ -150,31 +225,51 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
         <CardContent className="p-0">
           <ScrollArea className="h-[400px]">
             <div className="p-4 space-y-2">
-              {tripDays.map((date, index) => {
-                const dayData = getItineraryDay(date);
-                const isSelected = selectedDay && isSameDay(date, selectedDay);
+              {tripDays.map((dayInfo, index) => {
+                const dayData = getItineraryDay(dayInfo.date);
+                const isSelected = selectedDay && isSameDay(dayInfo.date, selectedDay);
                 const activityCount = dayData?.activities?.length || 0;
+                const isTravel = dayInfo.type === 'travel';
 
                 return (
                   <button
                     key={index}
-                    onClick={() => setSelectedDay(date)}
+                    onClick={() => setSelectedDay(dayInfo.date)}
                     className={cn(
                       'w-full text-left p-3 rounded-lg transition-colors',
                       isSelected
                         ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
+                        : 'hover:bg-muted',
+                      isTravel && 'border-l-4 border-orange-500'
                     )}
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium">Day {index + 1}</p>
+                        <p className="font-medium">
+                          Day {dayInfo.dayNumber}
+                          {isTravel && ' - Travel'}
+                        </p>
                         <p className={cn(
                           'text-sm',
                           isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
                         )}>
-                          {format(date, 'EEE, MMM d')}
+                          {format(dayInfo.date, 'EEE, MMM d')}
                         </p>
+                        {isTravel ? (
+                          <p className={cn(
+                            'text-xs mt-1',
+                            isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                          )}>
+                            {dayInfo.fromDestination} → {dayInfo.toDestination}
+                          </p>
+                        ) : (
+                          <p className={cn(
+                            'text-xs mt-1',
+                            isSelected ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                          )}>
+                            {dayInfo.destinationName}
+                          </p>
+                        )}
                       </div>
                       {activityCount > 0 && (
                         <Badge 
