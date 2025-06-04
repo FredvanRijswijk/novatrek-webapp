@@ -1,6 +1,6 @@
 import { openai } from '@ai-sdk/openai'
-import { generateText } from 'ai'
-import { NextRequest, NextResponse } from 'next/server'
+import { streamText } from 'ai'
+import { NextRequest } from 'next/server'
 
 export const runtime = 'edge'
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 - Preferences: ${tripContext.preferences?.join(', ') || 'None specified'}`
     }
 
-    const result = await generateText({
+    const result = await streamText({
       model: openai('gpt-4o-mini'),
       system: systemPrompt,
       messages,
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.7,
     })
 
-    return NextResponse.json({ content: result.text })
+    return result.toTextStreamResponse()
   } catch (error) {
     console.error('Chat API error:', error)
     return NextResponse.json(

@@ -103,6 +103,16 @@ export function TripChat({ trip }: TripChatProps) {
         ) || []
       };
 
+      // Create a placeholder message for streaming
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,25 +130,42 @@ export function TripChat({ trip }: TripChatProps) {
 
       if (!response.ok) throw new Error('Failed to get response');
 
-      const data = await response.json();
-      
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: data.content,
-        timestamp: new Date()
-      };
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let streamedContent = '';
 
-      setMessages(prev => [...prev, assistantMessage]);
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          streamedContent += chunk;
+          
+          // Update the message with streamed content
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessage.id 
+                ? { ...msg, content: streamedContent }
+                : msg
+            )
+          );
+        }
+      }
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error. Please try again later.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Update the last message with error content
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content === '') {
+          return prev.slice(0, -1).concat({
+            ...lastMessage,
+            content: 'I apologize, but I encountered an error. Please try again later.'
+          });
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -205,9 +232,10 @@ export function TripChat({ trip }: TripChatProps) {
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     ) : (
                       <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
+                        {message.content ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                           ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
@@ -233,6 +261,13 @@ export function TripChat({ trip }: TripChatProps) {
                       >
                         {message.content}
                       </ReactMarkdown>
+                        ) : (
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -271,22 +306,6 @@ export function TripChat({ trip }: TripChatProps) {
               </div>
             ))}
 
-            {isLoading && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary/10">
-                    <Bot className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-muted rounded-lg px-4 py-2">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </ScrollArea>
 
