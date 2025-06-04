@@ -16,6 +16,14 @@ interface TripChatProps {
   trip: Trip;
 }
 
+// Helper function to get destination names for both single and multi-destination trips
+const getDestinationName = (trip: Trip): string => {
+  if (trip.destinations && trip.destinations.length > 0) {
+    return trip.destinations.map(d => d.destination?.name).filter(Boolean).join(', ');
+  }
+  return trip.destination?.name || 'your destination';
+};
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -31,21 +39,21 @@ const getContextualSuggestions = (trip: Trip): string[] => {
   // Check if trip has few activities
   const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
   if (totalActivities < 3) {
-    suggestions.push(`What are the must-see attractions in ${trip.destination.name}?`);
+    suggestions.push(`What are the must-see attractions in ${getDestinationName(trip)}?`);
     suggestions.push(`Suggest activities for a ${trip.travelers.length} person trip`);
   }
 
   // Budget-related suggestions
   if (trip.budget) {
-    suggestions.push(`Find budget-friendly restaurants in ${trip.destination.name}`);
+    suggestions.push(`Find budget-friendly restaurants in ${getDestinationName(trip)}`);
     suggestions.push('How can I save money on this trip?');
   }
 
   // Date-specific suggestions
   const startDate = new Date(trip.startDate);
   const month = format(startDate, 'MMMM');
-  suggestions.push(`What's the weather like in ${trip.destination.name} in ${month}?`);
-  suggestions.push(`Special events in ${trip.destination.name} during my dates`);
+  suggestions.push(`What's the weather like in ${getDestinationName(trip)} in ${month}?`);
+  suggestions.push(`Special events in ${getDestinationName(trip)} during my dates`);
 
   return suggestions;
 };
@@ -59,7 +67,7 @@ export function TripChat({ trip }: TripChatProps) {
     {
       id: '1',
       role: 'assistant',
-      content: `Hi! I'm your AI travel assistant for your trip to ${trip.destination.name}. I can help you plan activities, find restaurants, suggest itineraries, and answer any questions about your destination. What would you like to know?`,
+      content: `Hi! I'm your AI travel assistant for your trip to ${getDestinationName(trip)}. I can help you plan activities, find restaurants, suggest itineraries, and answer any questions about your destination${trip.destinations && trip.destinations.length > 1 ? 's' : ''}. What would you like to know?`,
       timestamp: new Date(),
       suggestions: getContextualSuggestions(trip)
     }
@@ -93,7 +101,7 @@ export function TripChat({ trip }: TripChatProps) {
     try {
       // Prepare context for the AI
       const context = {
-        destination: trip.destination.name,
+        destination: getDestinationName(trip),
         dates: `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`,
         travelers: trip.travelers.length,
         budget: trip.budget ? `${trip.budget.currency} ${trip.budget.total}` : 'Not specified',
@@ -185,7 +193,7 @@ export function TripChat({ trip }: TripChatProps) {
             <div>
               <h3 className="text-lg font-semibold">AI Travel Assistant</h3>
               <p className="text-sm text-muted-foreground">
-                Get personalized recommendations for {trip.destination.name}
+                Get personalized recommendations for {getDestinationName(trip)}
               </p>
             </div>
           </div>
@@ -331,7 +339,7 @@ export function TripChat({ trip }: TripChatProps) {
           <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {trip.destination.name}
+              {getDestinationName(trip)}
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />

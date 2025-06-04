@@ -320,7 +320,11 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
         isOpen={isAddingActivity}
         onClose={() => setIsAddingActivity(false)}
         onSelect={handleSelectActivity}
-        destination={trip.destination.name}
+        destination={
+          trip.destinations && trip.destinations.length > 0
+            ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(', ')
+            : trip.destination?.name || 'Unknown location'
+        }
         date={selectedDay}
       />
     )}

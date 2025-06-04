@@ -126,7 +126,10 @@ export default function TripsPage() {
                       </CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         <MapPin className="h-3 w-3" />
-                        {trip.destination.name}
+                        {trip.destinations && trip.destinations.length > 0
+                          ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                          : trip.destination?.name || 'Unknown location'
+                        }
                       </CardDescription>
                     </div>
                     <Badge variant={status.variant}>

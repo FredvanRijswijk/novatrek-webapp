@@ -438,6 +438,10 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
               <Plus className="h-4 w-4 mr-2" />
               Add Another Destination
             </Button>
+            
+            {(errors.destination || errors.destinations) && (
+              <p className="text-sm text-red-500">{errors.destination || errors.destinations}</p>
+            )}
           </div>
         )}
 

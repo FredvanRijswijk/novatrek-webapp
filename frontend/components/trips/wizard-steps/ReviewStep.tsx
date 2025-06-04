@@ -70,24 +70,66 @@ export function ReviewStep({ formData }: ReviewStepProps) {
           <CardDescription>Review your trip details before creating</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Destination */}
-          <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-              <img 
-                src={formData.destination?.imageUrl} 
-                alt={formData.destination?.name}
-                className="w-full h-full object-cover"
-              />
+          {/* Destination(s) */}
+          {formData.destinations && formData.destinations.length > 0 ? (
+            // Multi-destination display
+            <div className="space-y-4">
+              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Multi-Destination Trip</h4>
+              {formData.destinations.map((dest: any, index: number) => (
+                <div key={index} className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                    <img 
+                      src={dest.destination?.imageUrl} 
+                      alt={dest.destination?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-500">Stop {index + 1}:</span>
+                      <h3 className="font-semibold">{dest.destination?.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <MapPin className="h-3 w-3" />
+                      <span>{dest.destination?.country}</span>
+                      {dest.arrivalDate && dest.departureDate && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <Calendar className="h-3 w-3" />
+                          <span>
+                            {new Date(dest.arrivalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - 
+                            {new Date(dest.departureDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{dest.destination?.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">{formData.destination?.name}</h3>
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                <MapPin className="h-4 w-4" />
-                <span>{formData.destination?.country}</span>
+          ) : formData.destination ? (
+            // Single destination display
+            <div className="flex items-start gap-4">
+              <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                <img 
+                  src={formData.destination.imageUrl} 
+                  alt={formData.destination.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <p className="text-sm text-gray-500 mt-1">{formData.destination?.description}</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">{formData.destination.name}</h3>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <MapPin className="h-4 w-4" />
+                  <span>{formData.destination.country}</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">{formData.destination.description}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-gray-500">No destination selected</div>
+          )}
 
           {/* Trip Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">

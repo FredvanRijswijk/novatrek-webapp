@@ -115,9 +115,21 @@ export function TripCreationWizard() {
     switch (step) {
       case 1:
         // Validate destination
-        const hasDestinations = formData.destinations.length > 0 || formData.destination;
-        if (!hasDestinations) {
+        const hasValidDestinations = formData.destinations.length > 0 
+          ? formData.destinations.some((d: any) => d.destination)
+          : !!formData.destination;
+        if (!hasValidDestinations) {
           newErrors.destination = 'Please select at least one destination';
+        }
+        
+        // Validate multi-destination dates
+        if (formData.destinations.length > 0) {
+          const missingDates = formData.destinations.some((d: any) => 
+            d.destination && (!d.arrivalDate || !d.departureDate)
+          );
+          if (missingDates) {
+            newErrors.destinations = 'Please set arrival and departure dates for all destinations';
+          }
         }
 
         // Validate dates
@@ -180,12 +192,22 @@ export function TripCreationWizard() {
     switch (currentStep) {
       case 1:
         // Check if all required fields are filled
-        const hasDestination = (formData.destinations.length > 0) || (formData.destination !== null && formData.destination !== undefined);
+        const hasValidDestination = formData.destinations.length > 0 
+          ? formData.destinations.some((d: any) => d.destination)
+          : !!formData.destination;
         const hasStartDate = formData.startDate !== null && formData.startDate !== undefined;
         const hasEndDate = formData.endDate !== null && formData.endDate !== undefined;
         const hasTravelers = formData.travelers.length > 0 && formData.travelers[0]?.name?.trim() !== '';
         
-        return hasDestination && hasStartDate && hasEndDate && hasTravelers;
+        // For multi-destination, also check if all destinations have dates
+        let hasCompleteDates = true;
+        if (formData.destinations.length > 0) {
+          hasCompleteDates = formData.destinations.every((d: any) => 
+            !d.destination || (d.arrivalDate && d.departureDate)
+          );
+        }
+        
+        return hasValidDestination && hasStartDate && hasEndDate && hasTravelers && hasCompleteDates;
       case 2:
         return formData.activityTypes.length > 0;
       case 3:
@@ -198,34 +220,57 @@ export function TripCreationWizard() {
   };
 
   const createTrip = async () => {
-    const hasDestinations = formData.destinations.length > 0 || formData.destination;
-    if (!user || !hasDestinations || !formData.startDate || !formData.endDate) {
+    const hasValidDestinations = formData.destinations.length > 0 
+      ? formData.destinations.some((d: any) => d.destination)
+      : !!formData.destination;
+    if (!user || !hasValidDestinations || !formData.startDate || !formData.endDate) {
       return;
     }
 
     setIsCreating(true);
 
     try {
-      const hasMultipleDestinations = formData.destinations.length > 0;
-      const tripTitle = hasMultipleDestinations
-        ? `Trip to ${formData.destinations.map(d => d.destination.name).join(', ')}`
-        : formData.destination
-        ? `Trip to ${formData.destination.name}`
-        : 'New Trip';
+      const hasMultipleDestinations = formData.destinations.length > 0 && formData.destinations.some((d: any) => d.destination);
       
-      const tripDescription = formData.customRequests || 
-        (hasMultipleDestinations 
-          ? `Exploring ${formData.destinations.map(d => d.destination.name).join(', ')}`
-          : formData.destination
-          ? `Exploring ${formData.destination.name}`
-          : 'New adventure');
+      // Create trip title safely
+      let tripTitle = 'New Trip';
+      if (hasMultipleDestinations) {
+        const destinationNames = formData.destinations
+          .filter((d: any) => d.destination)
+          .map((d: any) => d.destination.name);
+        if (destinationNames.length > 0) {
+          tripTitle = `Trip to ${destinationNames.join(', ')}`;
+        }
+      } else if (formData.destination) {
+        tripTitle = `Trip to ${formData.destination.name}`;
+      }
+      
+      // Create trip description safely
+      let tripDescription = formData.customRequests || 'New adventure';
+      if (!formData.customRequests) {
+        if (hasMultipleDestinations) {
+          const destinationNames = formData.destinations
+            .filter((d: any) => d.destination)
+            .map((d: any) => d.destination.name);
+          if (destinationNames.length > 0) {
+            tripDescription = `Exploring ${destinationNames.join(', ')}`;
+          }
+        } else if (formData.destination) {
+          tripDescription = `Exploring ${formData.destination.name}`;
+        }
+      }
 
       const tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
         title: tripTitle,
         description: tripDescription,
-        destination: hasMultipleDestinations ? undefined : formData.destination!,
-        destinations: hasMultipleDestinations ? formData.destinations : undefined,
+        destination: hasMultipleDestinations ? undefined : formData.destination || undefined,
+        destinations: hasMultipleDestinations ? formData.destinations.map((d: any) => ({
+          destination: d.destination,
+          arrivalDate: d.arrivalDate,
+          departureDate: d.departureDate,
+          order: d.order
+        })) : undefined,
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: {
@@ -336,7 +381,9 @@ export function TripCreationWizard() {
             <div className="mb-4 text-sm text-muted-foreground">
               <p>To continue, please complete:</p>
               <ul className="list-disc list-inside mt-1">
-                {(!formData.destination || formData.destination === null) && <li>Select a destination</li>}
+                {(formData.destinations.length === 0 && (!formData.destination || formData.destination === null)) && <li>Select a destination</li>}
+                {(formData.destinations.length > 0 && !formData.destinations.some((d: any) => d.destination)) && <li>Select at least one destination</li>}
+                {(formData.destinations.length > 0 && formData.destinations.some((d: any) => d.destination && (!d.arrivalDate || !d.departureDate))) && <li>Set dates for all destinations</li>}
                 {(!formData.startDate || formData.startDate === null) && <li>Choose a start date</li>}
                 {(!formData.endDate || formData.endDate === null) && <li>Choose an end date</li>}
                 {(!formData.travelers[0]?.name || formData.travelers[0]?.name.trim() === '') && <li>Enter traveler name</li>}
