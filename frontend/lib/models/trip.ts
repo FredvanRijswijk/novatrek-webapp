@@ -11,18 +11,21 @@ import {
   limit
 } from '@/lib/firebase'
 import { Trip, DayItinerary, Activity } from '@/types/travel'
+import { cleanFirestoreData } from '@/lib/utils/firebase-helpers'
 
 export class TripModel {
   static readonly COLLECTION = 'trips'
 
   // Create a new trip
   static async create(tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const docRef = await createDocument(this.COLLECTION, {
+    // Clean the data to remove undefined values
+    const cleanedData = cleanFirestoreData({
       ...tripData,
       status: 'planning',
       itinerary: [],
       aiRecommendations: [],
     })
+    const docRef = await createDocument(this.COLLECTION, cleanedData)
     return docRef.id
   }
 
@@ -42,7 +45,8 @@ export class TripModel {
 
   // Update trip
   static async update(tripId: string, updates: Partial<Trip>): Promise<void> {
-    await updateDocument(this.COLLECTION, tripId, updates)
+    const cleanedUpdates = cleanFirestoreData(updates)
+    await updateDocument(this.COLLECTION, tripId, cleanedUpdates)
   }
 
   // Delete trip

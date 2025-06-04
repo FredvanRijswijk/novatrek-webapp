@@ -159,12 +159,18 @@ export function TripCreationWizard() {
             miscellaneous: Math.round(formData.budgetRange.max * 0.05)
           }
         },
-        travelers: formData.travelers.map((traveler, index) => ({
-          id: `traveler_${index}`,
-          name: traveler.name,
-          relationship: traveler.relationship,
-          age: traveler.age
-        })),
+        travelers: formData.travelers.map((traveler, index) => {
+          const travelerData: any = {
+            id: `traveler_${index}`,
+            name: traveler.name,
+            relationship: traveler.relationship
+          };
+          // Only include age if it's defined
+          if (traveler.age !== undefined && traveler.age !== null) {
+            travelerData.age = traveler.age;
+          }
+          return travelerData;
+        }),
         itinerary: [],
         status: 'planning'
       };
