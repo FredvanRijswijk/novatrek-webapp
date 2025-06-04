@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { TripModel } from '@/lib/models/trip';
 import { UserModel } from '@/lib/models/user';
 import { User, Trip, Destination, Budget, ActivityType } from '@/types/travel';
+import { dateValidation } from '@/lib/utils/validation';
 
 // Step Components
 import { DestinationDateStep } from './wizard-steps/DestinationDateStep';
@@ -56,6 +57,7 @@ export function TripCreationWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<TripFormData>({
     destination: null,
@@ -100,9 +102,63 @@ export function TripCreationWizard() {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
+  const validateStep = (step: number): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    switch (step) {
+      case 1:
+        // Validate destination
+        if (!formData.destination) {
+          newErrors.destination = 'Please select a destination';
+        }
+
+        // Validate dates
+        if (!formData.startDate) {
+          newErrors.startDate = 'Please select a start date';
+        } else if (!dateValidation.isFutureDate(formData.startDate)) {
+          newErrors.startDate = 'Start date must be in the future';
+        }
+
+        if (!formData.endDate) {
+          newErrors.endDate = 'Please select an end date';
+        } else if (formData.startDate && !dateValidation.isValidDateRange(formData.startDate, formData.endDate)) {
+          newErrors.endDate = 'End date must be after start date';
+        } else if (formData.startDate && !dateValidation.maxTripDuration(formData.startDate, formData.endDate, 365)) {
+          newErrors.endDate = 'Trip duration cannot exceed 365 days';
+        }
+
+        // Validate travelers
+        if (formData.travelers.length === 0) {
+          newErrors.travelers = 'At least one traveler is required';
+        } else {
+          const hasEmptyName = formData.travelers.some(t => !t.name || t.name.trim() === '');
+          if (hasEmptyName) {
+            newErrors.travelers = 'All travelers must have a name';
+          }
+        }
+        break;
+
+      case 2:
+        // Validate activity types
+        if (formData.activityTypes.length === 0) {
+          newErrors.activityTypes = 'Please select at least one activity type';
+        }
+
+        // Validate budget
+        if (formData.budgetRange.min >= formData.budgetRange.max) {
+          newErrors.budget = 'Maximum budget must be greater than minimum';
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const nextStep = () => {
-    if (currentStep < STEPS.length) {
+    if (validateStep(currentStep) && currentStep < STEPS.length) {
       setCurrentStep(prev => prev + 1);
+      setErrors({});
     }
   };
 
@@ -181,6 +237,9 @@ export function TripCreationWizard() {
       router.push(`/dashboard/trips/${tripId}/plan`);
     } catch (error) {
       console.error('Error creating trip:', error);
+      setErrors({ 
+        general: error instanceof Error ? error.message : 'Failed to create trip. Please try again.' 
+      });
     } finally {
       setIsCreating(false);
     }
@@ -208,11 +267,19 @@ export function TripCreationWizard() {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* General Error Message */}
+        {errors.general && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded">
+            <p className="text-sm">{errors.general}</p>
+          </div>
+        )}
+
         {/* Step Content */}
         {currentStep === 1 && (
           <DestinationDateStep 
             formData={formData} 
-            updateFormData={updateFormData} 
+            updateFormData={updateFormData}
+            errors={errors}
           />
         )}
         

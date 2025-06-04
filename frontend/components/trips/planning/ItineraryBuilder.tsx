@@ -26,6 +26,7 @@ interface ItineraryBuilderProps {
 export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Generate all days in the trip
   const tripDays = eachDayOfInterval({
@@ -81,34 +82,41 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
   const handleSelectActivity = async (activity: Activity) => {
     if (!selectedDay || !selectedDayData) return;
 
-    // Add the activity to the selected day
-    const updatedItinerary = trip.itinerary?.map(day => {
-      if (day.id === selectedDayData.id) {
-        return {
-          ...day,
-          activities: [...(day.activities || []), {
-            ...activity,
-            id: `${activity.id}_${Date.now()}` // Ensure unique ID for multiple instances
-          }],
-        };
+    try {
+      setError(null);
+      
+      // Add the activity to the selected day
+      const updatedItinerary = trip.itinerary?.map(day => {
+        if (day.id === selectedDayData.id) {
+          return {
+            ...day,
+            activities: [...(day.activities || []), {
+              ...activity,
+              id: `${activity.id}_${Date.now()}` // Ensure unique ID for multiple instances
+            }],
+          };
+        }
+        return day;
+      });
+
+      const updatedTrip = {
+        ...trip,
+        itinerary: updatedItinerary,
+      };
+
+      // Update local state
+      onUpdate(updatedTrip);
+
+      // Save to database
+      if (trip.id) {
+        await TripModel.update(trip.id, { itinerary: updatedItinerary });
       }
-      return day;
-    });
 
-    const updatedTrip = {
-      ...trip,
-      itinerary: updatedItinerary,
-    };
-
-    // Update local state
-    onUpdate(updatedTrip);
-
-    // Save to database
-    if (trip.id) {
-      await TripModel.update(trip.id, { itinerary: updatedItinerary });
+      setIsAddingActivity(false);
+    } catch (err) {
+      console.error('Error adding activity:', err);
+      setError('Failed to add activity. Please try again.');
     }
-
-    setIsAddingActivity(false);
   };
 
   const handleRemoveActivity = (dayId: string, activityId: string) => {
@@ -204,6 +212,12 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
           </div>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded mb-4">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+          
           {selectedDayData?.activities && selectedDayData.activities.length > 0 ? (
             <div className="space-y-3">
               {selectedDayData.activities.map((activity, index) => (

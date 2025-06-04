@@ -11,9 +11,10 @@ import { Destination } from '@/types/travel';
 interface DestinationDateStepProps {
   formData: any;
   updateFormData: (updates: any) => void;
+  errors?: Record<string, string>;
 }
 
-export function DestinationDateStep({ formData, updateFormData }: DestinationDateStepProps) {
+export function DestinationDateStep({ formData, updateFormData, errors = {} }: DestinationDateStepProps) {
   const [destinationSearch, setDestinationSearch] = useState(
     formData.destination ? `${formData.destination.name}, ${formData.destination.country}` : ''
   );
@@ -137,16 +138,18 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
           <Label className="text-lg font-semibold">Where are you going? *</Label>
         </div>
         
-        <div className="relative" ref={dropdownRef}>
-          <Input
-            placeholder="Search for a destination..."
-            value={destinationSearch}
-            onChange={(e) => {
-              setDestinationSearch(e.target.value);
-              setShowSuggestions(true);
-            }}
-            onFocus={() => setShowSuggestions(true)}
-          />
+        <div>
+          <div className="relative" ref={dropdownRef}>
+            <Input
+              placeholder="Search for a destination..."
+              value={destinationSearch}
+              onChange={(e) => {
+                setDestinationSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              className={errors.destination ? 'border-red-500' : ''}
+            />
           
           {showSuggestions && (
             <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -171,6 +174,10 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
                 </button>
               ))}
             </div>
+          )}
+          </div>
+          {errors.destination && (
+            <p className="text-sm text-red-500 mt-1">{errors.destination}</p>
           )}
         </div>
 
@@ -210,7 +217,11 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
               value={formatDate(formData.startDate)}
               onChange={(e) => updateFormData({ startDate: parseDate(e.target.value) })}
               min={new Date().toISOString().split('T')[0]}
+              className={errors.startDate ? 'border-red-500' : ''}
             />
+            {errors.startDate && (
+              <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>
+            )}
           </div>
           <div>
             <Label htmlFor="endDate">End Date</Label>
@@ -220,7 +231,11 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
               value={formatDate(formData.endDate)}
               onChange={(e) => updateFormData({ endDate: parseDate(e.target.value) })}
               min={formData.startDate ? formatDate(formData.startDate) : new Date().toISOString().split('T')[0]}
+              className={errors.endDate ? 'border-red-500' : ''}
             />
+            {errors.endDate && (
+              <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>
+            )}
           </div>
         </div>
 
@@ -236,7 +251,7 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-blue-500" />
-            <Label className="text-lg font-semibold">Who's traveling?</Label>
+            <Label className="text-lg font-semibold">Who's traveling? *</Label>
           </div>
           <Button
             type="button"
@@ -301,6 +316,9 @@ export function DestinationDateStep({ formData, updateFormData }: DestinationDat
             </Card>
           ))}
         </div>
+        {errors.travelers && (
+          <p className="text-sm text-red-500 mt-1">{errors.travelers}</p>
+        )}
       </div>
     </div>
   );
