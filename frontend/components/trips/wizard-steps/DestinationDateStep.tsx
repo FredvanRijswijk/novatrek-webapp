@@ -27,7 +27,9 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
   
   // For multi-destination mode
   const [multiDestinationSearches, setMultiDestinationSearches] = useState<string[]>(
-    formData.destinations.map((d: any) => `${d.destination.name}, ${d.destination.country}`)
+    formData.destinations.map((d: any) => 
+      d.destination ? `${d.destination.name}, ${d.destination.country}` : ''
+    )
   );
   
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -123,7 +125,11 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
           startDate: formData.destinations[0].arrivalDate,
           endDate: formData.destinations[formData.destinations.length - 1]?.departureDate || formData.destinations[0].departureDate
         });
-        setDestinationSearch(`${formData.destinations[0].destination.name}, ${formData.destinations[0].destination.country}`);
+        setDestinationSearch(
+          formData.destinations[0].destination 
+            ? `${formData.destinations[0].destination.name}, ${formData.destinations[0].destination.country}`
+            : ''
+        );
       }
       setMultiDestinationSearches([]);
     }
