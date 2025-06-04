@@ -15,7 +15,6 @@ import {
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -35,13 +34,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       email: user?.email || "",
       avatar: user?.photoURL || "/avatars/default.png",
     },
-    teams: [
-      {
-        name: "NovaTrek",
-        logo: Plane,
-        plan: "Travel Planner",
-      },
-    ],
     navMain: [
       {
         title: "Dashboard",
@@ -159,7 +151,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Plane className="size-4" />
+          </div>
+          <div className="flex flex-col gap-0.5 leading-none">
+            <span className="font-semibold">NovaTrek</span>
+            <span className="text-xs text-muted-foreground">Travel Planner</span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

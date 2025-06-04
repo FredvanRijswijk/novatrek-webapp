@@ -317,31 +317,77 @@ export function TripCreationWizard() {
   const progress = (currentStep / STEPS.length) * 100;
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <CardTitle className="text-2xl">
-              {STEPS[currentStep - 1].title}
-            </CardTitle>
-            <CardDescription>
-              {STEPS[currentStep - 1].description}
-            </CardDescription>
-          </div>
-          <div className="text-sm text-gray-500">
-            Step {currentStep} of {STEPS.length}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold mb-2">Create Your Trip</h1>
+          <p className="text-muted-foreground">Let's plan your perfect journey</p>
+        </div>
+
+        {/* Steps Indicator */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between relative">
+            {STEPS.map((step, index) => (
+              <div key={step.id} className="flex flex-col items-center flex-1">
+                {/* Connector Line - positioned before circle for proper layering */}
+                {index > 0 && (
+                  <div className="absolute top-6 h-0.5 bg-muted" style={{
+                    left: `${(100 / STEPS.length) * index - (50 / STEPS.length)}%`,
+                    width: `${100 / STEPS.length}%`,
+                  }}>
+                    <div 
+                      className={`h-full transition-all duration-300 ${
+                        step.id <= currentStep ? 'bg-primary' : ''
+                      }`}
+                    />
+                  </div>
+                )}
+                
+                {/* Step Circle */}
+                <div className="relative z-10">
+                  <div
+                    className={`
+                      w-12 h-12 rounded-full flex items-center justify-center font-medium text-sm
+                      transition-all duration-200 border-2
+                      ${step.id < currentStep 
+                        ? 'bg-primary text-primary-foreground border-primary' 
+                        : step.id === currentStep
+                        ? 'bg-background text-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-muted'
+                      }
+                    `}
+                  >
+                    {step.id < currentStep ? (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      step.id
+                    )}
+                  </div>
+                </div>
+                
+                {/* Step Label */}
+                <div className="mt-3 text-center">
+                  <p className={`text-sm font-medium ${step.id <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {step.title}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-        <Progress value={progress} className="w-full" />
-      </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* General Error Message */}
-        {errors.general && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 rounded">
-            <p className="text-sm">{errors.general}</p>
-          </div>
-        )}
+        {/* Main Card */}
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-8 space-y-6">
+            {/* General Error Message */}
+            {errors.general && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
+                <p className="text-sm">{errors.general}</p>
+              </div>
+            )}
 
         {/* Step Content */}
         {currentStep === 1 && (
@@ -374,50 +420,112 @@ export function TripCreationWizard() {
           />
         )}
 
-        {/* Navigation */}
-        <div className="pt-6 border-t">
-          {/* Show validation hints for step 1 */}
-          {currentStep === 1 && !canProceed() && (
-            <div className="mb-4 text-sm text-muted-foreground">
-              <p>To continue, please complete:</p>
-              <ul className="list-disc list-inside mt-1">
-                {(formData.destinations.length === 0 && (!formData.destination || formData.destination === null)) && <li>Select a destination</li>}
-                {(formData.destinations.length > 0 && !formData.destinations.some((d: any) => d.destination)) && <li>Select at least one destination</li>}
-                {(formData.destinations.length > 0 && formData.destinations.some((d: any) => d.destination && (!d.arrivalDate || !d.departureDate))) && <li>Set dates for all destinations</li>}
-                {(!formData.startDate || formData.startDate === null) && <li>Choose a start date</li>}
-                {(!formData.endDate || formData.endDate === null) && <li>Choose an end date</li>}
-                {(!formData.travelers[0]?.name || formData.travelers[0]?.name.trim() === '') && <li>Enter traveler name</li>}
-              </ul>
+            {/* Navigation */}
+            <div className="mt-8 pt-8 border-t">
+              {/* Show validation hints */}
+              {currentStep === 1 && !canProceed() && (
+                <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2 text-sm">To continue, please complete:</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {(formData.destinations.length === 0 && (!formData.destination || formData.destination === null)) && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Select a destination
+                      </li>
+                    )}
+                    {(formData.destinations.length > 0 && !formData.destinations.some((d: any) => d.destination)) && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Select at least one destination
+                      </li>
+                    )}
+                    {(formData.destinations.length > 0 && formData.destinations.some((d: any) => d.destination && (!d.arrivalDate || !d.departureDate))) && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Set dates for all destinations
+                      </li>
+                    )}
+                    {(!formData.startDate || formData.startDate === null) && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Choose a start date
+                      </li>
+                    )}
+                    {(!formData.endDate || formData.endDate === null) && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Choose an end date
+                      </li>
+                    )}
+                    {(!formData.travelers[0]?.name || formData.travelers[0]?.name.trim() === '') && (
+                      <li className="flex items-center gap-2">
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                        Enter traveler name
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="ghost"
+                  onClick={previousStep}
+                  disabled={currentStep === 1}
+                  className="gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </Button>
+                
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">
+                    Step {currentStep} of {STEPS.length}
+                  </span>
+                  
+                  {currentStep < STEPS.length ? (
+                    <Button
+                      onClick={nextStep}
+                      disabled={!canProceed()}
+                      className="gap-2"
+                    >
+                      Continue
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={createTrip}
+                      disabled={!canProceed() || isCreating}
+                      className="gap-2"
+                    >
+                      {isCreating ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          Create Trip
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-          
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={previousStep}
-              disabled={currentStep === 1}
-            >
-              Previous
-            </Button>
-            
-            {currentStep < STEPS.length ? (
-              <Button
-                onClick={nextStep}
-                disabled={!canProceed()}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                onClick={createTrip}
-                disabled={!canProceed() || isCreating}
-              >
-                {isCreating ? 'Creating Trip...' : 'Create Trip'}
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
