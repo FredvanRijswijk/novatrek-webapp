@@ -80,8 +80,11 @@ export function TripChat({ trip }: TripChatProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Generate unique IDs using timestamp + random string
+    const generateId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: generateId(),
       role: 'user',
       content: input,
       timestamp: new Date()
@@ -105,7 +108,7 @@ export function TripChat({ trip }: TripChatProps) {
 
       // Create a placeholder message for streaming
       const assistantMessage: Message = {
-        id: Date.now().toString(),
+        id: generateId(),
         role: 'assistant',
         content: '',
         timestamp: new Date()
@@ -224,7 +227,7 @@ export function TripChat({ trip }: TripChatProps) {
                     className={cn(
                       'rounded-lg px-4 py-2',
                       message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-blue-600 text-white dark:bg-blue-500'
                         : 'bg-muted'
                     )}
                   >
