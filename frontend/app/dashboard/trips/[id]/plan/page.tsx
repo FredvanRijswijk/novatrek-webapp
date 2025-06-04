@@ -63,7 +63,11 @@ export default function TripPlanningPage() {
     return null;
   }
 
-  const tripDuration = differenceInDays(new Date(trip.endDate), new Date(trip.startDate)) + 1;
+  // Safely parse dates
+  const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
+  const endDate = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
+  
+  const tripDuration = differenceInDays(endDate, startDate) + 1;
   const daysPlanned = trip.itinerary?.length || 0;
   const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
 
@@ -90,7 +94,7 @@ export default function TripPlanningPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(trip.startDate), 'MMM d')} - {format(new Date(trip.endDate), 'MMM d, yyyy')}
+                    {format(startDate, 'MMM d')} - {format(endDate, 'MMM d, yyyy')}
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
@@ -184,7 +188,7 @@ export default function TripPlanningPage() {
                 <div>
                   <p className="text-sm font-medium">Dates</p>
                   <p className="text-sm text-muted-foreground">
-                    {format(new Date(trip.startDate), 'MMM d')} - {format(new Date(trip.endDate), 'MMM d, yyyy')}
+                    {format(startDate, 'MMM d')} - {format(endDate, 'MMM d, yyyy')}
                   </p>
                 </div>
                 <div>

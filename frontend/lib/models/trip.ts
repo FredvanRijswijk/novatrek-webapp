@@ -11,7 +11,7 @@ import {
   limit
 } from '@/lib/firebase'
 import { Trip, DayItinerary, Activity } from '@/types/travel'
-import { cleanFirestoreData } from '@/lib/utils/firebase-helpers'
+import { cleanFirestoreData, convertTimestampsToDates } from '@/lib/utils/firebase-helpers'
 
 export class TripModel {
   static readonly COLLECTION = 'trips'
@@ -31,16 +31,18 @@ export class TripModel {
 
   // Get a trip by ID
   static async getById(tripId: string): Promise<Trip | null> {
-    return await getDocument<Trip>(this.COLLECTION, tripId)
+    const trip = await getDocument<Trip>(this.COLLECTION, tripId)
+    return trip ? convertTimestampsToDates(trip) : null
   }
 
   // Get all trips for a user
   static async getUserTrips(userId: string): Promise<Trip[]> {
-    return await getCollection<Trip>(
+    const trips = await getCollection<Trip>(
       this.COLLECTION,
       where('userId', '==', userId),
       orderBy('createdAt', 'desc')
     )
+    return trips.map(trip => convertTimestampsToDates(trip))
   }
 
   // Update trip
@@ -56,14 +58,18 @@ export class TripModel {
 
   // Subscribe to trip changes
   static subscribeToTrip(tripId: string, callback: (trip: Trip | null) => void) {
-    return subscribeToDocument<Trip>(this.COLLECTION, tripId, callback)
+    return subscribeToDocument<Trip>(this.COLLECTION, tripId, (trip) => {
+      callback(trip ? convertTimestampsToDates(trip) : null)
+    })
   }
 
   // Subscribe to user's trips
   static subscribeToUserTrips(userId: string, callback: (trips: Trip[]) => void) {
     return subscribeToCollection<Trip>(
       this.COLLECTION,
-      callback,
+      (trips) => {
+        callback(trips.map(trip => convertTimestampsToDates(trip)))
+      },
       where('userId', '==', userId),
       orderBy('createdAt', 'desc')
     )
