@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trip } from '@/types/travel';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface TripChatProps {
   trip: Trip;
@@ -199,7 +201,39 @@ export function TripChat({ trip }: TripChatProps) {
                         : 'bg-muted'
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'user' ? (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        className="text-sm prose prose-sm dark:prose-invert max-w-none"
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="ml-2">{children}</li>,
+                          h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          code: ({ children }) => <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-xs">{children}</code>,
+                          pre: ({ children }) => <pre className="bg-black/10 dark:bg-white/10 p-2 rounded overflow-x-auto mb-2">{children}</pre>,
+                          blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/50 pl-2 italic">{children}</blockquote>,
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              {children}
+                            </a>
+                          ),
+                          hr: () => <hr className="my-2 border-t border-border" />,
+                          table: ({ children }) => <table className="w-full border-collapse mb-2">{children}</table>,
+                          th: ({ children }) => <th className="border border-border px-2 py-1 text-left font-semibold">{children}</th>,
+                          td: ({ children }) => <td className="border border-border px-2 py-1">{children}</td>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
                   </div>
 
                   {message.suggestions && message.suggestions.length > 0 && (
