@@ -52,12 +52,20 @@ export type ActivityType =
   | 'sports'
   | 'photography'
 
+export interface TripDestination {
+  destination: Destination
+  arrivalDate: Date
+  departureDate: Date
+  order: number
+}
+
 export interface Trip {
   id: string
   userId: string
   title: string
   description?: string
-  destination: Destination
+  destination?: Destination // Keep for backward compatibility
+  destinations?: TripDestination[] // New multi-destination support
   startDate: Date
   endDate: Date
   budget?: Budget
@@ -113,6 +121,7 @@ export interface DayItinerary {
   tripId: string
   date: Date
   dayNumber: number
+  destinationId?: string // Reference to which destination this day belongs to
   activities: Activity[]
   accommodations?: Accommodation[]
   transportation?: Transportation[]

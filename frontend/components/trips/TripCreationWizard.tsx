@@ -19,7 +19,13 @@ import { ReviewStep } from './wizard-steps/ReviewStep';
 
 interface TripFormData {
   // Step 1: Destination & Dates
-  destination: Destination | null;
+  destination: Destination | null; // Keep for single destination
+  destinations: Array<{
+    destination: Destination;
+    arrivalDate: Date | null;
+    departureDate: Date | null;
+    order: number;
+  }>; // New multi-destination support
   startDate: Date | null;
   endDate: Date | null;
   travelers: Array<{
@@ -61,6 +67,7 @@ export function TripCreationWizard() {
 
   const [formData, setFormData] = useState<TripFormData>({
     destination: null,
+    destinations: [],
     startDate: null,
     endDate: null,
     travelers: [{ name: user?.displayName || '', relationship: 'self' }],
@@ -108,8 +115,9 @@ export function TripCreationWizard() {
     switch (step) {
       case 1:
         // Validate destination
-        if (!formData.destination) {
-          newErrors.destination = 'Please select a destination';
+        const hasDestinations = formData.destinations.length > 0 || formData.destination;
+        if (!hasDestinations) {
+          newErrors.destination = 'Please select at least one destination';
         }
 
         // Validate dates
@@ -172,7 +180,7 @@ export function TripCreationWizard() {
     switch (currentStep) {
       case 1:
         // Check if all required fields are filled
-        const hasDestination = formData.destination !== null && formData.destination !== undefined;
+        const hasDestination = (formData.destinations.length > 0) || (formData.destination !== null && formData.destination !== undefined);
         const hasStartDate = formData.startDate !== null && formData.startDate !== undefined;
         const hasEndDate = formData.endDate !== null && formData.endDate !== undefined;
         const hasTravelers = formData.travelers.length > 0 && formData.travelers[0]?.name?.trim() !== '';
@@ -190,18 +198,34 @@ export function TripCreationWizard() {
   };
 
   const createTrip = async () => {
-    if (!user || !formData.destination || !formData.startDate || !formData.endDate) {
+    const hasDestinations = formData.destinations.length > 0 || formData.destination;
+    if (!user || !hasDestinations || !formData.startDate || !formData.endDate) {
       return;
     }
 
     setIsCreating(true);
 
     try {
+      const hasMultipleDestinations = formData.destinations.length > 0;
+      const tripTitle = hasMultipleDestinations
+        ? `Trip to ${formData.destinations.map(d => d.destination.name).join(', ')}`
+        : formData.destination
+        ? `Trip to ${formData.destination.name}`
+        : 'New Trip';
+      
+      const tripDescription = formData.customRequests || 
+        (hasMultipleDestinations 
+          ? `Exploring ${formData.destinations.map(d => d.destination.name).join(', ')}`
+          : formData.destination
+          ? `Exploring ${formData.destination.name}`
+          : 'New adventure');
+
       const tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
-        title: `Trip to ${formData.destination.name}`,
-        description: formData.customRequests || `Exploring ${formData.destination.name}`,
-        destination: formData.destination,
+        title: tripTitle,
+        description: tripDescription,
+        destination: hasMultipleDestinations ? undefined : formData.destination!,
+        destinations: hasMultipleDestinations ? formData.destinations : undefined,
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: {

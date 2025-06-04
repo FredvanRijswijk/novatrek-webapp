@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, MapPin, Users, Plus, Minus, Loader2 } from 'lucide-react';
+import { CalendarDays, MapPin, Users, Plus, Minus, Loader2, Trash2, ArrowRight } from 'lucide-react';
 import { Destination } from '@/types/travel';
 import { useGooglePlacesNew } from '@/hooks/use-google-places-new';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -17,16 +17,29 @@ interface DestinationDateStepProps {
 }
 
 export function DestinationDateStep({ formData, updateFormData, errors = {} }: DestinationDateStepProps) {
+  const [isMultiDestination, setIsMultiDestination] = useState(formData.destinations.length > 0);
+  const [activeDestinationIndex, setActiveDestinationIndex] = useState(0);
+  
+  // For single destination mode
   const [destinationSearch, setDestinationSearch] = useState(
     formData.destination ? `${formData.destination.name}, ${formData.destination.country}` : ''
   );
+  
+  // For multi-destination mode
+  const [multiDestinationSearches, setMultiDestinationSearches] = useState<string[]>(
+    formData.destinations.map((d: any) => `${d.destination.name}, ${d.destination.country}`)
+  );
+  
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const { searchDestinations } = useGooglePlacesNew();
-  const debouncedSearch = useDebounce(destinationSearch, 300);
+  const debouncedSearch = useDebounce(
+    isMultiDestination ? multiDestinationSearches[activeDestinationIndex] || '' : destinationSearch, 
+    300
+  );
 
   // Search for destinations when input changes
   useEffect(() => {
@@ -46,72 +59,6 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
     }
   }, [debouncedSearch, searchDestinations]);
 
-  // Keep mock data as fallback
-  const mockDestinations: Destination[] = [
-    {
-      id: 'paris-france',
-      name: 'Paris',
-      country: 'France',
-      city: 'Paris',
-      coordinates: { lat: 48.8566, lng: 2.3522 },
-      timeZone: 'Europe/Paris',
-      currency: 'EUR',
-      language: ['fr', 'en'],
-      description: 'The City of Light',
-      imageUrl: 'https://images.unsplash.com/photo-1502602898536-47ad22581b52'
-    },
-    {
-      id: 'tokyo-japan',
-      name: 'Tokyo',
-      country: 'Japan',
-      city: 'Tokyo',
-      coordinates: { lat: 35.6762, lng: 139.6503 },
-      timeZone: 'Asia/Tokyo',
-      currency: 'JPY',
-      language: ['ja', 'en'],
-      description: 'Modern metropolis meets traditional culture',
-      imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf'
-    },
-    {
-      id: 'bali-indonesia',
-      name: 'Bali',
-      country: 'Indonesia',
-      city: 'Denpasar',
-      coordinates: { lat: -8.4095, lng: 115.1889 },
-      timeZone: 'Asia/Makassar',
-      currency: 'IDR',
-      language: ['id', 'en'],
-      description: 'Tropical paradise with rich culture',
-      imageUrl: 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2'
-    },
-    {
-      id: 'new-york-usa',
-      name: 'New York City',
-      country: 'United States',
-      city: 'New York',
-      coordinates: { lat: 40.7128, lng: -74.0060 },
-      timeZone: 'America/New_York',
-      currency: 'USD',
-      language: ['en'],
-      description: 'The city that never sleeps',
-      imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9'
-    }
-  ];
-
-  // Use API suggestions if available, otherwise fall back to filtered mock data
-  const displaySuggestions = suggestions.length > 0 
-    ? suggestions 
-    : mockDestinations.filter(dest =>
-        dest.name.toLowerCase().includes(destinationSearch.toLowerCase()) ||
-        dest.country.toLowerCase().includes(destinationSearch.toLowerCase())
-      );
-
-  const selectDestination = (destination: Destination) => {
-    updateFormData({ destination });
-    setDestinationSearch(destination.name + ', ' + destination.country);
-    setShowSuggestions(false);
-  };
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -125,6 +72,135 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Auto-calculate overall trip dates based on destinations
+  useEffect(() => {
+    if (isMultiDestination && formData.destinations.length > 0) {
+      const firstArrival = formData.destinations[0]?.arrivalDate;
+      const lastDeparture = formData.destinations[formData.destinations.length - 1]?.departureDate;
+      
+      if (firstArrival && lastDeparture) {
+        updateFormData({
+          startDate: new Date(firstArrival),
+          endDate: new Date(lastDeparture)
+        });
+      }
+    }
+  }, [formData.destinations, isMultiDestination]);
+
+  const toggleMultiDestination = () => {
+    if (!isMultiDestination) {
+      // Convert single destination to multi-destination format
+      if (formData.destination) {
+        updateFormData({
+          destinations: [{
+            destination: formData.destination,
+            arrivalDate: formData.startDate,
+            departureDate: formData.endDate,
+            order: 0
+          }],
+          destination: null
+        });
+        setMultiDestinationSearches([`${formData.destination.name}, ${formData.destination.country}`]);
+      } else {
+        // Start with empty first destination
+        updateFormData({
+          destinations: [{
+            destination: null,
+            arrivalDate: formData.startDate,
+            departureDate: formData.endDate,
+            order: 0
+          }]
+        });
+        setMultiDestinationSearches(['']);
+      }
+    } else {
+      // Convert back to single destination
+      if (formData.destinations.length > 0 && formData.destinations[0].destination) {
+        updateFormData({
+          destination: formData.destinations[0].destination,
+          destinations: [],
+          startDate: formData.destinations[0].arrivalDate,
+          endDate: formData.destinations[formData.destinations.length - 1]?.departureDate || formData.destinations[0].departureDate
+        });
+        setDestinationSearch(`${formData.destinations[0].destination.name}, ${formData.destinations[0].destination.country}`);
+      }
+      setMultiDestinationSearches([]);
+    }
+    setIsMultiDestination(!isMultiDestination);
+  };
+
+  const selectDestination = (destination: Destination) => {
+    if (isMultiDestination) {
+      const updatedDestinations = [...formData.destinations];
+      updatedDestinations[activeDestinationIndex] = {
+        ...updatedDestinations[activeDestinationIndex],
+        destination
+      };
+      updateFormData({ destinations: updatedDestinations });
+      
+      const updatedSearches = [...multiDestinationSearches];
+      updatedSearches[activeDestinationIndex] = `${destination.name}, ${destination.country}`;
+      setMultiDestinationSearches(updatedSearches);
+    } else {
+      updateFormData({ destination });
+      setDestinationSearch(`${destination.name}, ${destination.country}`);
+    }
+    setShowSuggestions(false);
+  };
+
+  const addDestination = () => {
+    const lastDestination = formData.destinations[formData.destinations.length - 1];
+    const newDestination = {
+      destination: null,
+      arrivalDate: lastDestination?.departureDate || null,
+      departureDate: null,
+      order: formData.destinations.length
+    };
+    
+    updateFormData({
+      destinations: [...formData.destinations, newDestination]
+    });
+    setMultiDestinationSearches([...multiDestinationSearches, '']);
+    setActiveDestinationIndex(formData.destinations.length);
+  };
+
+  const removeDestination = (index: number) => {
+    if (formData.destinations.length > 1) {
+      const updatedDestinations = formData.destinations.filter((_: any, i: number) => i !== index);
+      // Reorder remaining destinations
+      updatedDestinations.forEach((dest: any, i: number) => {
+        dest.order = i;
+      });
+      
+      updateFormData({ destinations: updatedDestinations });
+      
+      const updatedSearches = multiDestinationSearches.filter((_, i) => i !== index);
+      setMultiDestinationSearches(updatedSearches);
+      
+      if (activeDestinationIndex >= updatedDestinations.length) {
+        setActiveDestinationIndex(Math.max(0, updatedDestinations.length - 1));
+      }
+    }
+  };
+
+  const updateDestinationDates = (index: number, field: 'arrivalDate' | 'departureDate', value: Date | null) => {
+    const updatedDestinations = [...formData.destinations];
+    updatedDestinations[index] = {
+      ...updatedDestinations[index],
+      [field]: value
+    };
+    
+    // Auto-adjust next destination's arrival date
+    if (field === 'departureDate' && value && index < updatedDestinations.length - 1) {
+      const nextDestination = updatedDestinations[index + 1];
+      if (!nextDestination.arrivalDate || nextDestination.arrivalDate < value) {
+        nextDestination.arrivalDate = value;
+      }
+    }
+    
+    updateFormData({ destinations: updatedDestinations });
+  };
 
   const updateTraveler = (index: number, field: string, value: any) => {
     const updatedTravelers = [...formData.travelers];
@@ -161,74 +237,216 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
     <div className="space-y-8">
       {/* Destination Selection */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-blue-500" />
-          <Label className="text-lg font-semibold">Where are you going? *</Label>
-        </div>
-        
-        <div>
-          <div className="relative" ref={dropdownRef}>
-            <Input
-              placeholder="Search for a destination..."
-              value={destinationSearch}
-              onChange={(e) => {
-                setDestinationSearch(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              className={errors.destination ? 'border-red-500' : ''}
-            />
-          
-          {showSuggestions && (
-            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {isSearching ? (
-                <div className="p-4 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-                  <p className="text-sm text-gray-500 mt-2">Searching destinations...</p>
-                </div>
-              ) : displaySuggestions.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <p className="text-sm">No destinations found</p>
-                </div>
-              ) : (
-                displaySuggestions.map((destination) => (
-                <button
-                  key={destination.id}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                  onClick={() => selectDestination(destination)}
-                >
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={destination.imageUrl} 
-                      alt={destination.name}
-                      className="w-12 h-12 rounded-md object-cover"
-                    />
-                    <div>
-                      <div className="font-medium">{destination.name}</div>
-                      <div className="text-sm text-gray-500">{destination.country}</div>
-                      <div className="text-xs text-gray-400">{destination.description}</div>
-                    </div>
-                  </div>
-                </button>
-                ))
-              )}
-            </div>
-          )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-blue-500" />
+            <Label className="text-lg font-semibold">Where are you going? *</Label>
           </div>
-          {errors.destination && (
-            <p className="text-sm text-red-500 mt-1">{errors.destination}</p>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={toggleMultiDestination}
+          >
+            {isMultiDestination ? 'Single Destination' : 'Multi-Destination'}
+          </Button>
         </div>
 
-        {formData.destination && (
+        {!isMultiDestination ? (
+          // Single destination mode
+          <div>
+            <div className="relative" ref={dropdownRef}>
+              <Input
+                placeholder="Search for a destination..."
+                value={destinationSearch}
+                onChange={(e) => {
+                  setDestinationSearch(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                className={errors.destination ? 'border-red-500' : ''}
+              />
+            
+            {showSuggestions && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {isSearching ? (
+                  <div className="p-4 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                    <p className="text-sm text-gray-500 mt-2">Searching destinations...</p>
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <p className="text-sm">No destinations found</p>
+                  </div>
+                ) : (
+                  suggestions.map((destination) => (
+                  <button
+                    key={destination.id}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    onClick={() => selectDestination(destination)}
+                  >
+                    <div className="flex items-center gap-3">
+                      {destination.imageUrl && (
+                        <img 
+                          src={destination.imageUrl} 
+                          alt={destination.name}
+                          className="w-12 h-12 rounded-md object-cover"
+                        />
+                      )}
+                      <div>
+                        <div className="font-medium">{destination.name}</div>
+                        <div className="text-sm text-gray-500">{destination.country}</div>
+                        {destination.description && (
+                          <div className="text-xs text-gray-400">{destination.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                  ))
+                )}
+              </div>
+            )}
+            </div>
+            {errors.destination && (
+              <p className="text-sm text-red-500 mt-1">{errors.destination}</p>
+            )}
+          </div>
+        ) : (
+          // Multi-destination mode
+          <div className="space-y-4">
+            {formData.destinations.map((dest: any, index: number) => (
+              <Card key={index} className={`${activeDestinationIndex === index ? 'border-blue-500' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">
+                          Destination {index + 1}
+                        </Label>
+                        {formData.destinations.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDestination(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="relative" ref={activeDestinationIndex === index ? dropdownRef : undefined}>
+                        <Input
+                          placeholder="Search for a destination..."
+                          value={multiDestinationSearches[index] || ''}
+                          onChange={(e) => {
+                            const updatedSearches = [...multiDestinationSearches];
+                            updatedSearches[index] = e.target.value;
+                            setMultiDestinationSearches(updatedSearches);
+                            setActiveDestinationIndex(index);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => {
+                            setActiveDestinationIndex(index);
+                            setShowSuggestions(true);
+                          }}
+                        />
+                        
+                        {showSuggestions && activeDestinationIndex === index && (
+                          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            {isSearching ? (
+                              <div className="p-4 text-center">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                                <p className="text-sm text-gray-500 mt-2">Searching destinations...</p>
+                              </div>
+                            ) : suggestions.length === 0 ? (
+                              <div className="p-4 text-center text-gray-500">
+                                <p className="text-sm">No destinations found</p>
+                              </div>
+                            ) : (
+                              suggestions.map((destination) => (
+                              <button
+                                key={destination.id}
+                                className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                onClick={() => selectDestination(destination)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {destination.imageUrl && (
+                                    <img 
+                                      src={destination.imageUrl} 
+                                      alt={destination.name}
+                                      className="w-12 h-12 rounded-md object-cover"
+                                    />
+                                  )}
+                                  <div>
+                                    <div className="font-medium">{destination.name}</div>
+                                    <div className="text-sm text-gray-500">{destination.country}</div>
+                                    {destination.description && (
+                                      <div className="text-xs text-gray-400">{destination.description}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Arrival</Label>
+                          <Input
+                            type="date"
+                            value={formatDate(dest.arrivalDate)}
+                            onChange={(e) => updateDestinationDates(index, 'arrivalDate', parseDate(e.target.value))}
+                            min={index > 0 ? formatDate(formData.destinations[index - 1]?.departureDate) : new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Departure</Label>
+                          <Input
+                            type="date"
+                            value={formatDate(dest.departureDate)}
+                            onChange={(e) => updateDestinationDates(index, 'departureDate', parseDate(e.target.value))}
+                            min={dest.arrivalDate ? formatDate(dest.arrivalDate) : undefined}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {index < formData.destinations.length - 1 && (
+                      <ArrowRight className="h-5 w-5 text-gray-400 mt-8" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addDestination}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Another Destination
+            </Button>
+          </div>
+        )}
+
+        {/* Display selected destination(s) */}
+        {!isMultiDestination && formData.destination && (
           <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <img 
-                  src={formData.destination.imageUrl} 
-                  alt={formData.destination.name}
-                  className="w-16 h-16 rounded-md object-cover"
-                />
+                {formData.destination.imageUrl && (
+                  <img 
+                    src={formData.destination.imageUrl} 
+                    alt={formData.destination.name}
+                    className="w-16 h-16 rounded-md object-cover"
+                  />
+                )}
                 <div>
                   <h3 className="font-semibold text-lg">{formData.destination.name}</h3>
                   <p className="text-gray-600 dark:text-gray-400">{formData.destination.country}</p>
@@ -240,50 +458,69 @@ export function DestinationDateStep({ formData, updateFormData, errors = {} }: D
         )}
       </div>
 
-      {/* Date Selection */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 text-blue-500" />
-          <Label className="text-lg font-semibold">When are you traveling? *</Label>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="startDate">Start Date</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={formatDate(formData.startDate)}
-              onChange={(e) => updateFormData({ startDate: parseDate(e.target.value) })}
-              min={new Date().toISOString().split('T')[0]}
-              className={errors.startDate ? 'border-red-500' : ''}
-            />
-            {errors.startDate && (
-              <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>
-            )}
+      {/* Date Selection (only for single destination) */}
+      {!isMultiDestination && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-blue-500" />
+            <Label className="text-lg font-semibold">When are you traveling? *</Label>
           </div>
-          <div>
-            <Label htmlFor="endDate">End Date</Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={formatDate(formData.endDate)}
-              onChange={(e) => updateFormData({ endDate: parseDate(e.target.value) })}
-              min={formData.startDate ? formatDate(formData.startDate) : new Date().toISOString().split('T')[0]}
-              className={errors.endDate ? 'border-red-500' : ''}
-            />
-            {errors.endDate && (
-              <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>
-            )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formatDate(formData.startDate)}
+                onChange={(e) => updateFormData({ startDate: parseDate(e.target.value) })}
+                min={new Date().toISOString().split('T')[0]}
+                className={errors.startDate ? 'border-red-500' : ''}
+              />
+              {errors.startDate && (
+                <p className="text-sm text-red-500 mt-1">{errors.startDate}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="endDate">End Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={formatDate(formData.endDate)}
+                onChange={(e) => updateFormData({ endDate: parseDate(e.target.value) })}
+                min={formData.startDate ? formatDate(formData.startDate) : new Date().toISOString().split('T')[0]}
+                className={errors.endDate ? 'border-red-500' : ''}
+              />
+              {errors.endDate && (
+                <p className="text-sm text-red-500 mt-1">{errors.endDate}</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        {formData.startDate && formData.endDate && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Trip duration: {Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
-          </div>
-        )}
-      </div>
+          {formData.startDate && formData.endDate && (
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Trip duration: {Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overall trip duration for multi-destination */}
+      {isMultiDestination && formData.startDate && formData.endDate && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-blue-500" />
+                <span className="font-medium">Total Trip Duration</span>
+              </div>
+              <span className="text-lg font-semibold">
+                {Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Travelers */}
       <div className="space-y-4">
