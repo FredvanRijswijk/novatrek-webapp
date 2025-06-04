@@ -10,13 +10,16 @@ export function cleanFirestoreData<T extends Record<string, any>>(data: T): T {
   Object.keys(cleaned).forEach(key => {
     if (cleaned[key] === undefined) {
       delete cleaned[key];
+    } else if (cleaned[key] instanceof Date) {
+      // Keep Date objects as-is - Firestore SDK will handle conversion
+      // Do nothing, just keep the Date
     } else if (cleaned[key] !== null && typeof cleaned[key] === 'object' && !Array.isArray(cleaned[key])) {
       // Recursively clean nested objects
       cleaned[key] = cleanFirestoreData(cleaned[key]);
     } else if (Array.isArray(cleaned[key])) {
       // Clean arrays
       cleaned[key] = cleaned[key].map((item: any) => 
-        typeof item === 'object' && item !== null ? cleanFirestoreData(item) : item
+        typeof item === 'object' && item !== null && !(item instanceof Date) ? cleanFirestoreData(item) : item
       );
     }
   });
