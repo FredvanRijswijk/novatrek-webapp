@@ -12,12 +12,14 @@ interface UseVertexAIOptions {
     travelers?: number
     preferences?: string[]
   }
+  fullTrip?: any // Full trip object for enhanced context
   useCase?: 'chat' | 'advanced'
   includeUserPreferences?: boolean
+  providerId?: string // AI provider selection
 }
 
 export function useVertexAI(options: UseVertexAIOptions = {}) {
-  const { tripContext, useCase = 'chat', includeUserPreferences = true } = options
+  const { tripContext, fullTrip, useCase = 'chat', includeUserPreferences = true, providerId } = options
   const { preferences } = useTravelPreferences()
   
   // Get shareable preferences
@@ -30,8 +32,10 @@ export function useVertexAI(options: UseVertexAIOptions = {}) {
     api: '/api/chat',
     body: {
       tripContext,
+      fullTrip,
       userPreferences,
       useCase,
+      providerId, // Pass the selected provider
     },
     onError: (error) => {
       console.error('useVertexAI - Chat error:', error)

@@ -55,6 +55,15 @@ const EditDestinationsDialog = lazy(() =>
   import('@/components/trips/EditDestinationsDialog').then(mod => ({ default: mod.EditDestinationsDialog }))
 );
 
+// Import progress indicator
+const TripProgressIndicator = dynamic(
+  () => import('@/components/trips/TripProgressIndicator').then(mod => ({ default: mod.TripProgressIndicator })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-64 rounded-lg" />,
+    ssr: false 
+  }
+);
+
 export default function TripPlanningPage() {
   const params = useParams();
   const router = useRouter();
@@ -255,6 +264,15 @@ export default function TripPlanningPage() {
 
           {/* Sidebar */}
           <div className="space-y-4">
+            {/* Progress Indicator */}
+            <TripProgressIndicator 
+              trip={trip} 
+              onSuggestionClick={(suggestion) => {
+                // Switch to chat tab and populate with suggestion
+                setActiveTab('chat')
+              }}
+            />
+            
             {/* Trip Details */}
             <Card>
               <CardHeader>

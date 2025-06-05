@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useVertexAI } from '@/hooks/use-vertex-ai'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +9,8 @@ import { Send, Bot, User, Loader2, X, Sparkles } from 'lucide-react'
 import { type Trip } from '@/lib/models'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { ProviderSelector } from '@/components/ai/ProviderSelector'
+import { DEFAULT_PROVIDER } from '@/lib/ai/providers'
 
 interface TravelChatProps {
   tripContext?: Trip | null
@@ -18,6 +20,13 @@ interface TravelChatProps {
 
 export default function TravelChat({ tripContext, onClose, className }: TravelChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    // Load saved preference or use default
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('preferred-ai-provider') || DEFAULT_PROVIDER
+    }
+    return DEFAULT_PROVIDER
+  })
 
   const tripContextForAI = tripContext ? {
     destination: tripContext.destination,
@@ -31,7 +40,9 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
 
   const { messages, handleSubmit, isLoading, input: chatInput, setInput: setChatInput } = useVertexAI({
     tripContext: tripContextForAI,
+    fullTrip: tripContext, // Pass full trip for enhanced context
     useCase: 'chat',
+    providerId: selectedProvider,
   })
 
   // Set initial message when component mounts
@@ -66,23 +77,35 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
 
   return (
     <Card className={`flex flex-col h-[600px] ${className}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          AI Travel Assistant
-          {tripContext && (
-            <span className="text-sm font-normal text-muted-foreground ml-2">
-              • {tripContext.destinations && tripContext.destinations.length > 0
-                  ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                  : tripContext.destination?.name || 'Trip'}
-            </span>
+      <CardHeader className="flex flex-col gap-3 pb-3">
+        <div className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI Travel Assistant
+            {tripContext && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                • {tripContext.destinations && tripContext.destinations.length > 0
+                    ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                    : tripContext.destination?.name || 'Trip'}
+              </span>
+            )}
+          </CardTitle>
+          {onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
           )}
-        </CardTitle>
-        {onClose && (
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        )}
+        </div>
+        <div className="flex items-center justify-between">
+          <ProviderSelector 
+            value={selectedProvider}
+            onChange={setSelectedProvider}
+            showCost={true}
+          />
+          <p className="text-xs text-muted-foreground">
+            Model selection for AI responses
+          </p>
+        </div>
       </CardHeader>
 
       <CardContent className="flex flex-col flex-1 p-0">

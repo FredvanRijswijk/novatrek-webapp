@@ -67,11 +67,33 @@ export function TripChat({ trip }: TripChatProps) {
   const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
   const endDate = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
   
+  // Analyze trip progress for contextual greeting
+  const emptyDays = [];
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  for (let i = 1; i <= totalDays; i++) {
+    const dayItinerary = trip.itinerary?.find(day => day.dayNumber === i);
+    if (!dayItinerary || !dayItinerary.activities?.length) {
+      emptyDays.push(i);
+    }
+  }
+  
+  const getContextualGreeting = () => {
+    const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
+    
+    if (totalActivities === 0) {
+      return `Hi! I see you're just starting to plan your trip to ${getDestinationName(trip)}. I'm here to help you discover the best attractions, restaurants, and experiences. Let's start building your perfect itinerary!`;
+    } else if (emptyDays.length > 0) {
+      return `Welcome back! I can see you've made great progress planning your trip to ${getDestinationName(trip)}. You still have ${emptyDays.length} day${emptyDays.length > 1 ? 's' : ''} to plan. Would you like suggestions for day ${emptyDays[0]}?`;
+    } else {
+      return `Your trip to ${getDestinationName(trip)} is looking great! All days have activities planned. I can help you optimize your itinerary, find restaurant reservations, or suggest additional activities if you'd like to pack more in.`;
+    }
+  };
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: `Hi! I'm your AI travel assistant for your trip to ${getDestinationName(trip)}. I can help you plan activities, find restaurants, suggest itineraries, and answer any questions about your destination${trip.destinations && trip.destinations.length > 1 ? 's' : ''}. What would you like to know?`,
+      content: getContextualGreeting(),
       timestamp: new Date(),
       suggestions: getContextualSuggestions(trip)
     }

@@ -56,6 +56,8 @@ Keep responses helpful, engaging, and well-structured with clear recommendations
 - Preferences: ${tripContext.preferences?.join(', ') || 'None specified'}`
     }
 
+    // For now, stream endpoint uses default model
+    // In future, we can add provider selection here too
     const result = await streamText({
       model: openai('gpt-4o-mini'),
       system: systemPrompt,

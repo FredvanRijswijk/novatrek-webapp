@@ -1,11 +1,15 @@
 import { streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
+import { createEnhancedContext } from '@/lib/ai/trip-context-analyzer'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { messages, tripContext, userPreferences } = body
+    const { messages, tripContext, userPreferences, fullTrip, providerId = 'openai-gpt4o-mini' } = body
+    
+    // Create enhanced context if full trip data is provided
+    const enhancedContext = fullTrip ? createEnhancedContext(fullTrip, userPreferences) : null
     
     // Ensure messages have the correct format for the AI SDK
     const formattedMessages = messages.map((msg: any) => ({
@@ -33,6 +37,28 @@ Guidelines:
 
 Keep responses helpful, engaging, and well-structured with clear recommendations.`
 
+    // Add enhanced context if available
+    if (enhancedContext) {
+      systemPrompt += `\n\nTrip Planning Context:
+- Planning Stage: ${enhancedContext.planningStage} (${enhancedContext.completionPercentage}% complete)
+- Progress: ${enhancedContext.daysWithActivities} of ${enhancedContext.duration} days planned
+- Activities: ${enhancedContext.activities.total} activities added
+- Empty Days: ${enhancedContext.emptyDays.length > 0 ? `Days ${enhancedContext.emptyDays.join(', ')} need activities` : 'All days have activities'}
+
+Budget Status:
+${enhancedContext.budget ? `- Total Budget: ${enhancedContext.budget.currency} ${enhancedContext.budget.total}
+- Spent: ${enhancedContext.budget.currency} ${enhancedContext.budget.spent} (${Math.round((enhancedContext.budget.spent / enhancedContext.budget.total) * 100)}%)
+- Remaining: ${enhancedContext.budget.currency} ${enhancedContext.budget.remaining}` : '- No budget set yet'}
+
+Current Focus Areas:
+${enhancedContext.suggestions.immediate.map(s => `- ${s}`).join('\n')}
+
+When responding, consider the user's planning stage and provide contextually relevant advice. For example:
+- If in 'initial' stage, focus on must-see attractions and setting up the trip framework
+- If in 'partial' stage, help fill in specific days and suggest complementary activities
+- If in 'detailed' or 'complete' stage, focus on optimization, reservations, and practical tips`
+    }
+
     // Add user preferences to context
     if (userPreferences) {
       systemPrompt += `\n\nUser Travel Preferences:
@@ -55,8 +81,24 @@ Keep responses helpful, engaging, and well-structured with clear recommendations
 - Preferences: ${tripContext.preferences?.join(', ') || 'None specified'}`
     }
 
+    // Select the model based on provider ID
+    let model;
+    switch (providerId) {
+      case 'openai-gpt4o':
+        model = openai('gpt-4o')
+        break
+      case 'openai-gpt4o-mini':
+      default:
+        model = openai('gpt-4o-mini')
+        break
+      // Future providers can be added here
+      // case 'vertex-gemini-flash':
+      //   model = vertex('gemini-2.0-flash-exp')
+      //   break
+    }
+
     const result = await streamText({
-      model: openai('gpt-4o-mini'),
+      model,
       system: systemPrompt,
       messages: formattedMessages,
       maxTokens: 1000,
