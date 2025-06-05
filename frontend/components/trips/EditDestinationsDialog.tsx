@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { TripModel } from '@/lib/models/trip';
-import { useGooglePlaces } from '@/hooks/use-google-places';
+import { useGooglePlacesV2 } from '@/hooks/use-google-places-v2';
 
 interface EditDestinationsDialogProps {
   trip: Trip;
@@ -50,8 +50,8 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
   const [showNewDestination, setShowNewDestination] = useState(false);
 
   // Google Places integration
-  const { searchPlaces, isLoading: isSearching } = useGooglePlaces();
-  const [searchResults, setSearchResults] = useState<google.maps.places.PlaceResult[]>([]);
+  const { searchDestinations, isLoading: isSearching } = useGooglePlacesV2();
+  const [searchResults, setSearchResults] = useState<Destination[]>([]);
 
   useEffect(() => {
     // Initialize destinations from trip
@@ -79,7 +79,7 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
     }
 
     try {
-      const results = await searchPlaces(newDestinationSearch);
+      const results = await searchDestinations(newDestinationSearch);
       setSearchResults(results);
     } catch (err) {
       console.error('Error searching places:', err);
@@ -88,35 +88,10 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
   };
 
   // Handle place selection
-  const handlePlaceSelect = (place: google.maps.places.PlaceResult) => {
-    if (!place.geometry?.location) return;
-
-    const newDestination: Destination = {
-      id: place.place_id || `dest-${Date.now()}`,
-      name: place.name || '',
-      country: getAddressComponent(place, 'country') || '',
-      city: getAddressComponent(place, 'locality') || getAddressComponent(place, 'administrative_area_level_1') || '',
-      coordinates: {
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng()
-      },
-      timeZone: '', // Would need additional API call to get timezone
-      currency: '', // Would need additional logic based on country
-      language: [], // Would need additional logic based on country
-      description: place.formatted_address || '',
-    };
-
-    setSelectedNewDestination(newDestination);
+  const handlePlaceSelect = (place: Destination) => {
+    setSelectedNewDestination(place);
     setSearchResults([]);
     setNewDestinationSearch('');
-  };
-
-  // Helper to extract address components
-  const getAddressComponent = (place: google.maps.places.PlaceResult, type: string): string => {
-    const component = place.address_components?.find(comp => 
-      comp.types.includes(type)
-    );
-    return component?.long_name || '';
   };
 
   // Add new destination
@@ -432,7 +407,7 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
                       >
                         <div className="font-medium">{place.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {place.formatted_address}
+                          {place.city}, {place.country}
                         </div>
                       </button>
                     ))}

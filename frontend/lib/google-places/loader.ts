@@ -29,9 +29,9 @@ export function loadGoogleMapsAPI(apiKey: string): Promise<void> {
 
     isLoading = true;
 
-    // Create script element
+    // Create script element with async loading
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps&loading=async`;
     script.async = true;
     script.defer = true;
 

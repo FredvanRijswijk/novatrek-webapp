@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Destination } from "@/types/travel";
-import { useGooglePlacesNew } from "@/hooks/use-google-places-new";
+import { useGooglePlacesV2 } from "@/hooks/use-google-places-v2";
 import { useDebounce } from "@/hooks/use-debounce";
 
 interface DestinationDateStepProps {
@@ -54,7 +54,7 @@ export function DestinationDateStep({
   const [suggestions, setSuggestions] = useState<Destination[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { searchDestinations } = useGooglePlacesNew();
+  const { searchDestinations } = useGooglePlacesV2();
   const debouncedSearch = useDebounce(
     isMultiDestination
       ? multiDestinationSearches[activeDestinationIndex] || ""
