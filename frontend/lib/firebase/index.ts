@@ -8,5 +8,8 @@ export * from './auth'
 // Firestore
 export * from './firestore'
 
+// Storage
+export * from './storage'
+
 // Context
 export { FirebaseProvider, useFirebase } from './context'

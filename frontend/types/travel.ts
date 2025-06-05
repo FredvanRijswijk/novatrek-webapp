@@ -59,6 +59,22 @@ export interface TripDestination {
   order: number
 }
 
+export interface TripPhoto {
+  id: string
+  url: string
+  path: string
+  caption?: string
+  uploadedBy: string
+  uploadedAt: Date
+  activityId?: string
+  dayNumber?: number
+  location?: {
+    lat: number
+    lng: number
+    name?: string
+  }
+}
+
 export interface Trip {
   id: string
   userId: string
@@ -74,6 +90,8 @@ export interface Trip {
   status: 'planning' | 'booked' | 'active' | 'completed' | 'cancelled'
   aiRecommendations?: AIRecommendation[]
   weatherData?: WeatherData[]
+  photos?: TripPhoto[]
+  coverImage?: string
   createdAt: Date
   updatedAt: Date
 }

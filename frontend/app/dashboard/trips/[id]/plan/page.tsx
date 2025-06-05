@@ -46,6 +46,14 @@ const TripChat = dynamic(
   }
 );
 
+const PhotoUpload = dynamic(
+  () => import('@/components/trips/PhotoUpload').then(mod => ({ default: mod.PhotoUpload })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
 // Lazy load dialogs since they're used conditionally
 const EditTripDialog = lazy(() => 
   import('@/components/trips/EditTripDialog').then(mod => ({ default: mod.EditTripDialog }))
@@ -232,9 +240,10 @@ export default function TripPlanningPage() {
 
             {/* Planning Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
                 <TabsTrigger value="budget">Budget</TabsTrigger>
+                <TabsTrigger value="photos">Photos</TabsTrigger>
                 <TabsTrigger value="chat">AI Assistant</TabsTrigger>
               </TabsList>
 
@@ -254,6 +263,20 @@ export default function TripPlanningPage() {
 
               <TabsContent value="budget" className="mt-6">
                 {activeTab === 'budget' && <BudgetTracker trip={trip} onUpdate={setTrip} />}
+              </TabsContent>
+
+              <TabsContent value="photos" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Trip Photos</CardTitle>
+                    <CardDescription>
+                      Upload and manage photos from your trip
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {activeTab === 'photos' && <PhotoUpload tripId={trip.id} userId={trip.userId} maxPhotos={50} />}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">

@@ -13,8 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Camera, MapPin, Calendar, Plane, Trophy, Loader2 } from 'lucide-react'
+import { Camera, MapPin, Calendar, Plane, Trophy, Loader2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { uploadProfilePhoto, validateImageFile, resizeImage } from '@/lib/firebase/storage'
 
 interface UserProfile {
   displayName: string
@@ -37,6 +38,7 @@ export default function ProfilePage() {
   const { user } = useFirebase()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [profile, setProfile] = useState<UserProfile>({
     displayName: '',
     photoURL: '',
@@ -173,9 +175,42 @@ export default function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
-    // For now, we'll show a message about photo upload
-    // In production, you'd upload to Firebase Storage or similar
-    toast.info('Photo upload will be implemented with cloud storage integration')
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      toast.error(validation.error)
+      return
+    }
+
+    setUploadingPhoto(true)
+    const toastId = toast.loading('Uploading photo...')
+    
+    try {
+      // Resize image if needed
+      const resizedFile = await resizeImage(file)
+      
+      // Upload to Firebase Storage
+      const photoURL = await uploadProfilePhoto(user.uid, resizedFile)
+      
+      // Update profile
+      setProfile(prev => ({ ...prev, photoURL }))
+      
+      // Update Firebase Auth profile
+      await updateProfile(user, { photoURL })
+      
+      // Update Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        photoURL,
+        updatedAt: new Date()
+      })
+      
+      toast.success('Photo uploaded successfully', { id: toastId })
+    } catch (error) {
+      console.error('Error uploading photo:', error)
+      toast.error('Failed to upload photo', { id: toastId })
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   if (loading) {
@@ -212,12 +247,21 @@ export default function ProfilePage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <Label htmlFor="photo-upload" className="cursor-pointer">
+              <Label htmlFor="photo-upload" className={uploadingPhoto ? "cursor-not-allowed" : "cursor-pointer"}>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" asChild>
+                  <Button variant="outline" size="sm" asChild disabled={uploadingPhoto}>
                     <span>
-                      <Camera className="h-4 w-4 mr-2" />
-                      Change Photo
+                      {uploadingPhoto ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-4 w-4 mr-2" />
+                          Change Photo
+                        </>
+                      )}
                     </span>
                   </Button>
                 </div>
@@ -228,9 +272,10 @@ export default function ProfilePage() {
                 accept="image/*"
                 className="hidden"
                 onChange={handlePhotoUpload}
+                disabled={uploadingPhoto}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                JPG, PNG or GIF. Max size 5MB.
+                JPG, PNG, GIF or WebP. Max size 5MB.
               </p>
             </div>
           </div>
