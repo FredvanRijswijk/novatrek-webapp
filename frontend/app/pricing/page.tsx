@@ -5,12 +5,12 @@ import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
-import { useAuth } from '@/lib/firebase/context';
+import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
 import { getStripe } from '@/lib/stripe/client';
 
 export default function PricingPage() {
-  const { user } = useAuth();
+  const { user } = useFirebase();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
