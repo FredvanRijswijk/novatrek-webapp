@@ -18,6 +18,18 @@ service cloud.firestore {
       }
     }
     
+    // Travel Preferences - users can only access their own preferences
+    match /travelPreferences/{userId} {
+      // Allow users to create their own preferences document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to read and update their own preferences
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      
+      // Prevent deletion of preferences (soft delete by updating instead)
+      allow delete: if false;
+    }
+    
     // Trips - users can only access their own trips
     match /trips/{tripId} {
       // Allow authenticated users to create trips

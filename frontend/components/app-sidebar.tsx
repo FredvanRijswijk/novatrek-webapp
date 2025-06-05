@@ -96,8 +96,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/dashboard/settings/profile",
           },
           {
-            title: "Preferences",
-            url: "/dashboard/settings/preferences",
+            title: "Travel Preferences",
+            url: "/dashboard/settings/travel-preferences",
           },
           {
             title: "Notifications",

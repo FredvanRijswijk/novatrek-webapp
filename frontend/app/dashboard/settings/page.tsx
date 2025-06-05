@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings, User, Bell, Globe, Shield } from "lucide-react";
+import { useState } from "react";
+import { Settings, User, Bell, Globe, Shield, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,8 +20,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useFirebase } from "@/lib/firebase/context";
+import { UserModel } from "@/lib/models/user";
 
 export default function SettingsPage() {
+  const { user } = useFirebase();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    firstName: "",
+    lastName: "",
+    email: user?.email || "",
+    currency: "USD"
+  });
+  
+  // Notification settings
+  const [notifications, setNotifications] = useState({
+    tripReminders: true,
+    travelDeals: false,
+    aiSuggestions: true
+  });
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    
+    setSaving(true);
+    setSaved(false);
+    
+    try {
+      // Update user profile
+      await UserModel.update(user.uid, {
+        displayName: `${profileData.firstName} ${profileData.lastName}`.trim() || user.displayName,
+        preferences: {
+          currency: profileData.currency
+        }
+      });
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -46,32 +92,66 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" placeholder="Enter your first name" />
+                <Input 
+                  id="firstName" 
+                  placeholder="Enter your first name"
+                  value={profileData.firstName}
+                  onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" placeholder="Enter your last name" />
+                <Input 
+                  id="lastName" 
+                  placeholder="Enter your last name"
+                  value={profileData.lastName}
+                  onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="Enter your email" />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="Enter your email"
+                value={profileData.email}
+                onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                disabled
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">Preferred Currency</Label>
-              <Select>
+              <Select 
+                value={profileData.currency}
+                onValueChange={(value) => setProfileData({...profileData, currency: value})}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="usd">USD - US Dollar</SelectItem>
-                  <SelectItem value="eur">EUR - Euro</SelectItem>
-                  <SelectItem value="gbp">GBP - British Pound</SelectItem>
-                  <SelectItem value="jpy">JPY - Japanese Yen</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                  <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button>Save Profile</Button>
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Saved!
+                </>
+              ) : (
+                "Save Profile"
+              )}
+            </Button>
           </CardContent>
         </Card>
 
@@ -94,7 +174,10 @@ export default function SettingsPage() {
                   Get notified about upcoming trips and important dates
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={notifications.tripReminders}
+                onCheckedChange={(checked) => setNotifications({...notifications, tripReminders: checked})}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -103,7 +186,10 @@ export default function SettingsPage() {
                   Receive notifications about travel deals and offers
                 </p>
               </div>
-              <Switch />
+              <Switch 
+                checked={notifications.travelDeals}
+                onCheckedChange={(checked) => setNotifications({...notifications, travelDeals: checked})}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -112,7 +198,10 @@ export default function SettingsPage() {
                   Get personalized travel suggestions from our AI assistant
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={notifications.aiSuggestions}
+                onCheckedChange={(checked) => setNotifications({...notifications, aiSuggestions: checked})}
+              />
             </div>
           </CardContent>
         </Card>
@@ -125,50 +214,20 @@ export default function SettingsPage() {
               Travel Preferences
             </CardTitle>
             <CardDescription>
-              Set your default travel preferences and settings
+              Set your comprehensive travel profile for personalized recommendations
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="travelStyle">Travel Style</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select travel style" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="budget">Budget Traveler</SelectItem>
-                    <SelectItem value="comfort">Comfort Seeker</SelectItem>
-                    <SelectItem value="luxury">Luxury Traveler</SelectItem>
-                    <SelectItem value="adventure">Adventure Seeker</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="accommodation">Accommodation Type</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select accommodation" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hotel">Hotels</SelectItem>
-                    <SelectItem value="hostel">Hostels</SelectItem>
-                    <SelectItem value="airbnb">Airbnb</SelectItem>
-                    <SelectItem value="resort">Resorts</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Dietary Restrictions</Label>
-                <p className="text-sm text-muted-foreground">
-                  Consider dietary preferences in recommendations
-                </p>
-              </div>
-              <Switch />
-            </div>
-            <Button>Save Preferences</Button>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create a detailed travel profile including your travel style, activity preferences, 
+              dietary restrictions, budget ranges, and more. This helps us provide better 
+              recommendations and makes group travel planning easier.
+            </p>
+            <Button asChild>
+              <a href="/dashboard/settings/travel-preferences">
+                Manage Travel Preferences
+              </a>
+            </Button>
           </CardContent>
         </Card>
 

@@ -10,6 +10,7 @@ import { TripModel } from '@/lib/models/trip';
 import { UserModel } from '@/lib/models/user';
 import { User, Trip, Destination, Budget, ActivityType } from '@/types/travel';
 import { dateValidation } from '@/lib/utils/validation';
+import { useTravelPreferences } from '@/hooks/use-travel-preferences';
 
 // Step Components
 import { DestinationDateStep } from './wizard-steps/DestinationDateStep';
@@ -60,6 +61,7 @@ const STEPS = [
 export function TripCreationWizard() {
   const { user } = useFirebase();
   const router = useRouter();
+  const { preferences, loading: preferencesLoading, markAsUsed } = useTravelPreferences();
   const [currentStep, setCurrentStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [userProfile, setUserProfile] = useState<User | null>(null);
@@ -80,30 +82,53 @@ export function TripCreationWizard() {
     customRequests: ''
   });
 
-  // Load user profile for smart defaults
+  // Load user profile and travel preferences for smart defaults
   useEffect(() => {
     if (user) {
       UserModel.getById(user.uid).then(profile => {
         if (profile) {
           setUserProfile(profile);
-          // Pre-fill from user preferences, but preserve existing form data
-          setFormData(prev => ({
-            ...prev,
-            travelers: prev.travelers.length > 0 && prev.travelers[0].name === '' 
-              ? [{ ...prev.travelers[0], name: user.displayName || '' }]
-              : prev.travelers,
-            travelStyle: profile.preferences?.travelStyle || prev.travelStyle,
-            accommodationType: profile.preferences?.accommodationType || prev.accommodationType,
-            activityTypes: profile.preferences?.activityTypes || prev.activityTypes,
-            budgetRange: {
-              ...prev.budgetRange,
-              currency: profile.preferences?.currency || prev.budgetRange.currency
-            }
-          }));
         }
       });
     }
   }, [user]);
+
+  // Apply travel preferences when they load
+  useEffect(() => {
+    if (preferences && !preferencesLoading) {
+      setFormData(prev => ({
+        ...prev,
+        travelers: prev.travelers.length > 0 && prev.travelers[0].name === '' 
+          ? [{ ...prev.travelers[0], name: user?.displayName || '' }]
+          : prev.travelers,
+        // Map travel style from preferences
+        travelStyle: preferences.travelStyle.includes('luxury') ? 'luxury' :
+                     preferences.travelStyle.includes('budget') ? 'budget' : 'mid-range',
+        // Map accommodation type
+        accommodationType: preferences.accommodationTypes[0] || prev.accommodationType,
+        // Use activity types from preferences
+        activityTypes: preferences.activityTypes.map(type => {
+          // Map our preference activity types to the Trip activity types
+          const mapping: Record<string, ActivityType> = {
+            'sightseeing': 'sightseeing',
+            'outdoor': 'adventure',
+            'museums': 'culture',
+            'nightlife': 'nightlife',
+            'shopping': 'shopping',
+            'wellness': 'relaxation',
+            'water-sports': 'beach',
+          };
+          return mapping[type] || 'sightseeing';
+        }) as ActivityType[],
+        // Use budget range from preferences
+        budgetRange: {
+          min: preferences.budgetRange.min || prev.budgetRange.min,
+          max: preferences.budgetRange.max || prev.budgetRange.max,
+          currency: preferences.budgetRange.currency || prev.budgetRange.currency
+        }
+      }));
+    }
+  }, [preferences, preferencesLoading, user]);
 
   const updateFormData = (updates: Partial<TripFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -301,6 +326,11 @@ export function TripCreationWizard() {
       };
 
       const tripId = await TripModel.create(tripData);
+      
+      // Mark travel preferences as used
+      if (preferences) {
+        await markAsUsed();
+      }
       
       // Redirect to the trip planning page
       router.push(`/dashboard/trips/${tripId}/plan`);

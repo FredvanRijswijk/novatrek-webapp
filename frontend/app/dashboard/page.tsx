@@ -5,6 +5,7 @@ import { useFirebase } from '@/lib/firebase'
 import { TripModel, UserModel, type Trip, type User } from '@/lib/models'
 import { Button } from '@/components/ui/button'
 import { Plus, MessageCircle, MapPin, Calendar, Plane } from 'lucide-react'
+import PreferencesPrompt from '@/components/preferences/PreferencesPrompt'
 
 export default function DashboardPage() {
   const { user: authUser, isAuthenticated, loading } = useFirebase()
@@ -112,6 +113,9 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        {/* Travel Preferences Prompt */}
+        <PreferencesPrompt variant="banner" />
 
         {/* Active Trip */}
         {activeTrip && (

@@ -1,11 +1,11 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { useChat } from 'ai/react'
+import { useVertexAI } from '@/hooks/use-vertex-ai'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Send, Bot, User, Loader2, X } from 'lucide-react'
+import { Send, Bot, User, Loader2, X, Sparkles } from 'lucide-react'
 import { type Trip } from '@/lib/models'
 
 interface TravelChatProps {
@@ -17,33 +17,35 @@ interface TravelChatProps {
 export default function TravelChat({ tripContext, onClose, className }: TravelChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, handleSubmit, isLoading, input: chatInput, setInput: setChatInput } = useChat({
-    api: '/api/chat',
-    body: {
-      tripContext: tripContext ? {
-        destination: tripContext.destination,
-        destinations: tripContext.destinations,
-        duration: Math.ceil((new Date(tripContext.endDate).getTime() - new Date(tripContext.startDate).getTime()) / (1000 * 60 * 60 * 24)),
-        startDate: tripContext.startDate,
-        budget: tripContext.budget,
-        travelers: tripContext.travelers,
-        preferences: tripContext.preferences
-      } : null
-    },
-    initialMessages: [
-      {
-        id: '1',
-        role: 'assistant',
-        content: tripContext 
-          ? `Hi! I'm your NovaTrek AI assistant. I can see you're planning a trip to ${
-              tripContext.destinations && tripContext.destinations.length > 0
-                ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                : tripContext.destination?.name || 'your destination'
-            }. I'm here to help with recommendations, itinerary planning, and any travel questions you have!`
-          : `Hi! I'm your NovaTrek AI assistant. I'm here to help you plan amazing trips! Tell me about your travel plans, and I'll provide personalized recommendations.`
-      }
-    ]
+  const tripContextForAI = tripContext ? {
+    destination: tripContext.destination,
+    destinations: tripContext.destinations,
+    duration: Math.ceil((new Date(tripContext.endDate).getTime() - new Date(tripContext.startDate).getTime()) / (1000 * 60 * 60 * 24)),
+    startDate: tripContext.startDate,
+    budget: tripContext.budget,
+    travelers: tripContext.travelers,
+    preferences: tripContext.preferences
+  } : undefined
+
+  const { messages, handleSubmit, isLoading, input: chatInput, setInput: setChatInput } = useVertexAI({
+    tripContext: tripContextForAI,
+    useCase: 'chat',
   })
+
+  // Set initial message when component mounts
+  useEffect(() => {
+    if (messages.length === 0) {
+      const initialMessage = tripContext 
+        ? `Hi! I'm your NovaTrek AI assistant powered by Gemini. I can see you're planning a trip to ${
+            tripContext.destinations && tripContext.destinations.length > 0
+              ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+              : tripContext.destination?.name || 'your destination'
+          }. I'm here to help with recommendations, itinerary planning, and any travel questions you have!`
+        : `Hi! I'm your NovaTrek AI assistant powered by Gemini. I'm here to help you plan amazing trips! Tell me about your travel plans, and I'll provide personalized recommendations.`
+      
+      // You might need to handle initial messages differently based on your setup
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -64,10 +66,15 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
     <Card className={`flex flex-col h-[600px] ${className}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2">
-          <Bot className="w-5 h-5" />
+          <Sparkles className="w-5 h-5 text-primary" />
           AI Travel Assistant
+          {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && (
+            <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              Powered by Gemini
+            </span>
+          )}
           {tripContext && (
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-sm font-normal text-muted-foreground ml-2">
               • {tripContext.destinations && tripContext.destinations.length > 0
                   ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
                   : tripContext.destination?.name || 'Trip'}
