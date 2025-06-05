@@ -317,22 +317,22 @@ export function TripCreationWizard() {
   const progress = (currentStep / STEPS.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className="min-h-[calc(100vh-4rem)] bg-background">
+      <div className="max-w-2xl mx-auto py-6 px-4">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Create Your Trip</h1>
-          <p className="text-muted-foreground">Let's plan your perfect journey</p>
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold">Create Your Trip</h1>
+          <p className="text-sm text-muted-foreground mt-1">Let's plan your perfect journey</p>
         </div>
 
         {/* Steps Indicator */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between relative">
             {STEPS.map((step, index) => (
               <div key={step.id} className="flex flex-col items-center flex-1">
                 {/* Connector Line - positioned before circle for proper layering */}
                 {index > 0 && (
-                  <div className="absolute top-6 h-0.5 bg-muted" style={{
+                  <div className="absolute top-5 h-0.5 bg-muted" style={{
                     left: `${(100 / STEPS.length) * index - (50 / STEPS.length)}%`,
                     width: `${100 / STEPS.length}%`,
                   }}>
@@ -348,7 +348,7 @@ export function TripCreationWizard() {
                 <div className="relative z-10">
                   <div
                     className={`
-                      w-12 h-12 rounded-full flex items-center justify-center font-medium text-sm
+                      w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm
                       transition-all duration-200 border-2
                       ${step.id < currentStep 
                         ? 'bg-primary text-primary-foreground border-primary' 
@@ -369,8 +369,8 @@ export function TripCreationWizard() {
                 </div>
                 
                 {/* Step Label */}
-                <div className="mt-3 text-center">
-                  <p className={`text-sm font-medium ${step.id <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <div className="mt-2 text-center">
+                  <p className={`text-xs font-medium ${step.id <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {step.title}
                   </p>
                 </div>
