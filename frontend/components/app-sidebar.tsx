@@ -23,6 +23,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useFirebase } from "@/lib/firebase";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isAuthenticated } = useFirebase();
@@ -128,9 +129,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-4 py-2">
-            <Plane className="h-6 w-6" />
-            <span className="font-bold">NovaTrek</span>
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex items-center gap-2">
+              <Plane className="h-6 w-6" />
+              <span className="font-bold">NovaTrek</span>
+            </div>
+            <ThemeToggle />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -146,16 +150,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Plane className="size-4" />
+        <div className="flex items-center justify-between px-2 py-2">
+          <div className="flex items-center gap-2">
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Plane className="size-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-semibold">NovaTrek</span>
+              <span className="text-xs text-muted-foreground">
+                Travel Planner
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5 leading-none">
-            <span className="font-semibold">NovaTrek</span>
-            <span className="text-xs text-muted-foreground">
-              Travel Planner
-            </span>
-          </div>
+          <ThemeToggle />
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -1,142 +1,242 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useFirebase } from "@/lib/firebase"
-import Link from "next/link"
-import AuthButton from "@/components/auth/AuthButton"
-import { MapPin, MessageCircle, Calendar, Plane, Sparkles } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { 
+  Plane, 
+  MapPin, 
+  Sparkles,
+  Check
+} from "lucide-react"
+import { signInWithGoogle } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function Home() {
   const { isAuthenticated } = useFirebase()
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard')
+    }
+  }, [isAuthenticated, router])
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true)
+    try {
+      await signInWithGoogle()
+    } catch (error) {
+      console.error('Sign in error:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEmailSignUp = (e: React.FormEvent) => {
+    e.preventDefault()
+    // TODO: Implement email sign up
+    console.log('Email sign up:', email)
+  }
 
   return (
-    <main className="flex min-h-screen flex-col">
-      {/* Navigation */}
-      <nav className="absolute top-0 right-0 p-4">
+    <main className="flex min-h-screen">
+      {/* Theme toggle - absolute positioned */}
+      <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
-      </nav>
+      </div>
       
-      {/* Hero Section */}
-      <div className="flex flex-col items-center justify-center p-8 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900">
-        <div className="z-10 w-full max-w-6xl text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <Plane className="w-12 h-12 text-primary" />
-            <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              NovaTrek
-            </h1>
-          </div>
-          
-          <p className="text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Personalized travel experiences tailored to your preferences with our advanced AI technology
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            {isAuthenticated ? (
-              <Link href="/dashboard">
-                <Button size="lg" className="text-lg px-8 py-4">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Go to Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <AuthButton />
-            )}
+      {/* Left side - Sign in form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-950">
+        <div className="w-full max-w-md space-y-8">
+          {/* Logo and Title */}
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-8">
+              <Plane className="w-10 h-10 text-primary" />
+              <span className="text-3xl font-bold">NovaTrek</span>
+            </div>
             
-            <Button variant="outline" size="lg" className="text-lg px-8 py-4">
-              <Sparkles className="w-5 h-5 mr-2" />
-              Learn More
+            <h1 className="text-2xl font-semibold mb-2">
+              Get started with NovaTrek
+            </h1>
+            <p className="text-muted-foreground">
+              Try NovaTrek free
+            </p>
+          </div>
+
+          {/* Social sign in buttons */}
+          <div className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span className="flex-1 text-left">Continue with Google</span>
+            </Button>
+
+            <Button 
+              variant="outline" 
+              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
+              disabled
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
+              </svg>
+              <span className="flex-1 text-left">Continue with Apple ID</span>
+            </Button>
+
+            <Button 
+              variant="outline" 
+              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
+              disabled
+            >
+              <MapPin className="w-5 h-5" />
+              <span className="flex-1 text-left">SSO through employer</span>
             </Button>
           </div>
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            <div className="bg-white/50 dark:bg-black/20 backdrop-blur border rounded-lg p-6">
-              <MessageCircle className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-3">AI Travel Assistant</h3>
-              <p className="text-muted-foreground">
-                Chat with our AI to get personalized recommendations for destinations, activities, and accommodations.
-              </p>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
             </div>
-            
-            <div className="bg-white/50 dark:bg-black/20 backdrop-blur border rounded-lg p-6">
-              <Calendar className="w-12 h-12 text-green-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Day-by-Day Planning</h3>
-              <p className="text-muted-foreground">
-                Create detailed itineraries with activities, restaurants, and attractions planned for each day.
-              </p>
-            </div>
-            
-            <div className="bg-white/50 dark:bg-black/20 backdrop-blur border rounded-lg p-6">
-              <MapPin className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Weather Integration</h3>
-              <p className="text-muted-foreground">
-                Get real-time weather forecasts for your destinations to help plan the perfect activities.
-              </p>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-gray-950 px-2 text-muted-foreground">Or</span>
             </div>
           </div>
+
+          {/* Email sign up form */}
+          <form onSubmit={handleEmailSignUp} className="space-y-4">
+            <Input
+              type="email"
+              placeholder="E-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-12"
+              required
+            />
+            <Button 
+              type="submit" 
+              className="w-full py-6 text-base bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
+              SIGN UP
+            </Button>
+          </form>
+
+          <p className="text-center text-sm">
+            Already have an account?{" "}
+            <button className="text-primary hover:underline font-medium">
+              Sign in
+            </button>
+          </p>
+
+          {/* Legal text */}
+          <p className="text-xs text-muted-foreground text-center">
+            By creating an account, you agree to our{" "}
+            <a href="#" className="underline">Terms of Service</a> and{" "}
+            <a href="#" className="underline">Privacy Policy</a>. You also
+            acknowledge that you have reviewed our{" "}
+            <a href="#" className="underline">Travel Guidelines</a>.
+          </p>
         </div>
       </div>
 
-      {/* Demo Section - Only show if not authenticated */}
-      {!isAuthenticated && (
-        <div className="py-16 px-8 bg-white dark:bg-gray-900">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-12">
-              See NovaTrek in Action
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Authentication Demo */}
-              <div className="bg-card border rounded-lg p-6">
-                <h3 className="text-xl font-semibold mb-4 text-center">
-                  🔐 Quick Sign In
-                </h3>
-                <div className="flex justify-center">
-                  <AuthButton />
+      {/* Right side - Features */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-12 items-center">
+        <div className="max-w-xl">
+          <h2 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
+            Plan, explore, and experience your perfect journey, all on NovaTrek.
+          </h2>
+
+          {/* Phone mockup */}
+          <div className="mb-12 relative">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-4 max-w-sm mx-auto">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-bold">$2,847</span>
+                  <Sparkles className="w-6 h-6 text-yellow-500" />
                 </div>
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  Sign in with Google to start planning your adventures
-                </p>
-              </div>
-              
-              {/* Features Preview */}
-              <div className="bg-card border rounded-lg p-6">
-                <h3 className="text-xl font-semibold mb-4 text-center">
-                  ✨ What&apos;s Included
-                </h3>
-                <ul className="space-y-3">
-                  <li className="flex items-center gap-3">
-                    <MessageCircle className="w-5 h-5 text-blue-600" />
-                    <span>AI-powered travel recommendations</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-green-600" />
-                    <span>Smart itinerary planning</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <MapPin className="w-5 h-5 text-purple-600" />
-                    <span>Weather-aware suggestions</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <Plane className="w-5 h-5 text-orange-600" />
-                    <span>Multi-trip management</span>
-                  </li>
-                </ul>
+                <div className="space-y-2">
+                  <div className="bg-green-500 h-2 rounded-full w-3/4"></div>
+                  <div className="bg-blue-500 h-2 rounded-full w-1/2"></div>
+                  <div className="bg-purple-500 h-2 rounded-full w-1/4"></div>
+                </div>
+                <p className="text-sm text-muted-foreground">Trip budget overview</p>
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Footer */}
-      <footer className="bg-gray-50 dark:bg-gray-900 py-8">
-        <div className="max-w-6xl mx-auto px-8 text-center">
-          <p className="text-muted-foreground">
-            Built with Next.js 15, Firebase, and AI technology
-          </p>
+          {/* Features list */}
+          <ul className="space-y-4">
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Access smart travel planning and budgeting tools
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Track your trips, itineraries, and travel expenses
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Get weather forecasts and activity recommendations
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Chat with AI for personalized travel advice
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Share itineraries with travel companions
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Get AI-powered destination insights
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Check className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white">
+                Create detailed day-by-day itineraries
+              </span>
+            </li>
+          </ul>
         </div>
-      </footer>
+      </div>
     </main>
   )
 }
