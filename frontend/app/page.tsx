@@ -5,12 +5,18 @@ import { useFirebase } from "@/lib/firebase"
 import Link from "next/link"
 import AuthButton from "@/components/auth/AuthButton"
 import { MapPin, MessageCircle, Calendar, Plane, Sparkles } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function Home() {
   const { isAuthenticated } = useFirebase()
 
   return (
     <main className="flex min-h-screen flex-col">
+      {/* Navigation */}
+      <nav className="absolute top-0 right-0 p-4">
+        <ThemeToggle />
+      </nav>
+      
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center p-8 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900">
         <div className="z-10 w-full max-w-6xl text-center">

@@ -22,6 +22,7 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
     body: {
       tripContext: tripContext ? {
         destination: tripContext.destination,
+        destinations: tripContext.destinations,
         duration: Math.ceil((new Date(tripContext.endDate).getTime() - new Date(tripContext.startDate).getTime()) / (1000 * 60 * 60 * 24)),
         startDate: tripContext.startDate,
         budget: tripContext.budget,
@@ -34,7 +35,11 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
         id: '1',
         role: 'assistant',
         content: tripContext 
-          ? `Hi! I'm your NovaTrek AI assistant. I can see you're planning a trip to ${tripContext.destination.city}, ${tripContext.destination.country}. I'm here to help with recommendations, itinerary planning, and any travel questions you have!`
+          ? `Hi! I'm your NovaTrek AI assistant. I can see you're planning a trip to ${
+              tripContext.destinations && tripContext.destinations.length > 0
+                ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                : tripContext.destination?.name || 'your destination'
+            }. I'm here to help with recommendations, itinerary planning, and any travel questions you have!`
           : `Hi! I'm your NovaTrek AI assistant. I'm here to help you plan amazing trips! Tell me about your travel plans, and I'll provide personalized recommendations.`
       }
     ]
@@ -63,7 +68,9 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
           AI Travel Assistant
           {tripContext && (
             <span className="text-sm font-normal text-muted-foreground">
-              • {tripContext.destination.city}
+              • {tripContext.destinations && tripContext.destinations.length > 0
+                  ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                  : tripContext.destination?.name || 'Trip'}
             </span>
           )}
         </CardTitle>
@@ -129,7 +136,11 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
               onChange={(e) => setChatInput(e.target.value)}
               placeholder={
                 tripContext 
-                  ? `Ask about ${tripContext.destination.city}...`
+                  ? `Ask about ${
+                      tripContext.destinations && tripContext.destinations.length > 0
+                        ? 'your multi-stop trip'
+                        : tripContext.destination?.name || 'your trip'
+                    }...`
                   : "Ask me anything about travel..."
               }
               className="flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
