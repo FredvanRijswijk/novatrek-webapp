@@ -3,6 +3,8 @@
  * Uses the Google Maps JavaScript API with Places library (v2)
  */
 
+import { getPhotoUrl, getFallbackImage } from './photo-utils';
+
 interface PlaceResult {
   id: string;
   displayName: string;
@@ -164,7 +166,17 @@ export class GooglePlacesClientV2 {
     const city = cityComponent?.longText || place.displayName;
 
     // Get photo URL if available
-    const imageUrl = place.photos?.[0]?.getURI({ maxWidth: 800, maxHeight: 600 });
+    let imageUrl: string | undefined;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    
+    if (place.photos && place.photos.length > 0) {
+      imageUrl = getPhotoUrl(place.photos[0], apiKey);
+    }
+    
+    // Use fallback image if no photo is available
+    if (!imageUrl) {
+      imageUrl = getFallbackImage(city);
+    }
 
     // Map country code to currency (simplified - in production use a proper mapping)
     const currencyMap: Record<string, string> = {
