@@ -33,6 +33,15 @@ export function useVertexAI(options: UseVertexAIOptions = {}) {
       userPreferences,
       useCase,
     },
+    onError: (error) => {
+      console.error('useVertexAI - Chat error:', error)
+    },
+    onResponse: (response) => {
+      console.log('useVertexAI - Got response:', response)
+    },
+    onFinish: (message) => {
+      console.log('useVertexAI - Message finished:', message)
+    },
   })
 
   return chat

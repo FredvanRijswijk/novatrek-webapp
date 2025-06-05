@@ -9,8 +9,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trip } from '@/types/travel';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import dynamic from 'next/dynamic';
+
+// Lazy load markdown renderer to improve initial load time
+const ReactMarkdown = dynamic(() => import('react-markdown'), {
+  loading: () => <div className="animate-pulse h-4 bg-muted rounded" />,
+});
 
 interface TripChatProps {
   trip: Trip;
@@ -120,7 +124,7 @@ export function TripChat({ trip }: TripChatProps) {
       
       setMessages(prev => [...prev, assistantMessage]);
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -241,7 +245,6 @@ export function TripChat({ trip }: TripChatProps) {
                       <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
                         {message.content ? (
                           <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
                             components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                           ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,

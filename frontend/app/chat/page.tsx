@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useFirebase } from '@/lib/firebase'
+import { useFirebase } from '@/lib/firebase/context'
 import { TripModel, type Trip } from '@/lib/models'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
 import TravelChat from '@/components/chat/TravelChat'

@@ -2,6 +2,7 @@ import { streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
 
+// This endpoint is for direct streaming (used by TripChat)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -63,9 +64,10 @@ Keep responses helpful, engaging, and well-structured with clear recommendations
       temperature: 0.7,
     })
 
-    return result.toDataStreamResponse()
+    // Return plain text stream for TripChat
+    return result.toTextStreamResponse()
   } catch (error) {
-    console.error('Chat API error:', error)
+    console.error('Chat stream API error:', error)
     return new Response(
       JSON.stringify({ error: 'Failed to generate response' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,43 @@ import { TripModel } from '@/lib/models/trip';
 import { Trip } from '@/types/travel';
 import { format, differenceInDays } from 'date-fns';
 
-// Import planning components
-import { ItineraryBuilder } from '@/components/trips/planning/ItineraryBuilder';
-import { BudgetTracker } from '@/components/trips/planning/BudgetTracker';
-import { TripChat } from '@/components/trips/planning/TripChat';
-import { EditTripDialog } from '@/components/trips/EditTripDialog';
-import { EditDestinationsDialog } from '@/components/trips/EditDestinationsDialog';
+// Lazy load planning components for better performance
+import dynamic from 'next/dynamic';
+import { Suspense, lazy } from 'react';
+
+// Dynamically import heavy components
+const ItineraryBuilder = dynamic(
+  () => import('@/components/trips/planning/ItineraryBuilder').then(mod => ({ default: mod.ItineraryBuilder })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+const BudgetTracker = dynamic(
+  () => import('@/components/trips/planning/BudgetTracker').then(mod => ({ default: mod.BudgetTracker })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+const TripChat = dynamic(
+  () => import('@/components/trips/planning/TripChat').then(mod => ({ default: mod.TripChat })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+// Lazy load dialogs since they're used conditionally
+const EditTripDialog = lazy(() => 
+  import('@/components/trips/EditTripDialog').then(mod => ({ default: mod.EditTripDialog }))
+);
+
+const EditDestinationsDialog = lazy(() => 
+  import('@/components/trips/EditDestinationsDialog').then(mod => ({ default: mod.EditDestinationsDialog }))
+);
 
 export default function TripPlanningPage() {
   const params = useParams();
@@ -58,6 +89,33 @@ export default function TripPlanningPage() {
     loadTrip();
   }, [user, tripId, router]);
 
+  // Memoize date calculations and trip statistics
+  const { startDate, endDate, tripDuration, daysPlanned, totalActivities } = useMemo(() => {
+    if (!trip) {
+      return {
+        startDate: new Date(),
+        endDate: new Date(),
+        tripDuration: 0,
+        daysPlanned: 0,
+        totalActivities: 0
+      };
+    }
+    
+    const start = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
+    const end = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
+    const duration = differenceInDays(end, start) + 1;
+    const planned = trip.itinerary?.length || 0;
+    const activities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
+    
+    return {
+      startDate: start,
+      endDate: end,
+      tripDuration: duration,
+      daysPlanned: planned,
+      totalActivities: activities
+    };
+  }, [trip]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -72,14 +130,6 @@ export default function TripPlanningPage() {
   if (!trip) {
     return null;
   }
-
-  // Safely parse dates
-  const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
-  const endDate = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
-  
-  const tripDuration = differenceInDays(endDate, startDate) + 1;
-  const daysPlanned = trip.itinerary?.length || 0;
-  const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -188,17 +238,17 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ItineraryBuilder trip={trip} onUpdate={setTrip} />
+                    {activeTab === 'itinerary' && <ItineraryBuilder trip={trip} onUpdate={setTrip} />}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="budget" className="mt-6">
-                <BudgetTracker trip={trip} onUpdate={setTrip} />
+                {activeTab === 'budget' && <BudgetTracker trip={trip} onUpdate={setTrip} />}
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">
-                <TripChat trip={trip} />
+                {activeTab === 'chat' && <TripChat trip={trip} />}
               </TabsContent>
             </Tabs>
           </div>
@@ -271,22 +321,26 @@ export default function TripPlanningPage() {
 
       {/* Edit Trip Dialog */}
       {trip && (
-        <EditTripDialog
-          trip={trip}
-          isOpen={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
-          onUpdate={setTrip}
-        />
+        <Suspense fallback={null}>
+          <EditTripDialog
+            trip={trip}
+            isOpen={showEditDialog}
+            onClose={() => setShowEditDialog(false)}
+            onUpdate={setTrip}
+          />
+        </Suspense>
       )}
 
       {/* Edit Destinations Dialog */}
       {trip && (
-        <EditDestinationsDialog
-          trip={trip}
-          isOpen={showDestinationsDialog}
-          onClose={() => setShowDestinationsDialog(false)}
-          onUpdate={setTrip}
-        />
+        <Suspense fallback={null}>
+          <EditDestinationsDialog
+            trip={trip}
+            isOpen={showDestinationsDialog}
+            onClose={() => setShowDestinationsDialog(false)}
+            onUpdate={setTrip}
+          />
+        </Suspense>
       )}
     </div>
   );

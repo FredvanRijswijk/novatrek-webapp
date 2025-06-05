@@ -1,132 +1,149 @@
 "use client";
 
-import { MessageCircle, Send, Bot, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import TravelChat from "@/components/chat/TravelChat";
+import { useFirebase } from "@/lib/firebase/context";
+import { TripModel, type Trip } from "@/lib/models";
 
 export default function ChatPage() {
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: "bot",
-      content:
-        "Hello! I'm your AI travel assistant. How can I help you plan your next adventure?",
-      timestamp: new Date(),
-    },
-  ]);
+  const { user: authUser, isAuthenticated, loading } = useFirebase();
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [loadingTrips, setLoadingTrips] = useState(true);
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
+  useEffect(() => {
+    const loadTrips = async () => {
+      if (!authUser) return;
 
-    const newMessage = {
-      id: messages.length + 1,
-      type: "user",
-      content: message,
-      timestamp: new Date(),
+      try {
+        const userTrips = await TripModel.getUserTrips(authUser.uid);
+        setTrips(userTrips);
+        if (userTrips.length > 0) {
+          // Auto-select the most recent trip
+          setSelectedTrip(userTrips[0]);
+        }
+      } catch (error) {
+        console.log("No trips found:", error);
+        setTrips([]);
+      } finally {
+        setLoadingTrips(false);
+      }
     };
 
-    setMessages([...messages, newMessage]);
-    setMessage("");
+    if (isAuthenticated && authUser) {
+      loadTrips();
+    } else {
+      setLoadingTrips(false);
+    }
+  }, [isAuthenticated, authUser]);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse = {
-        id: messages.length + 2,
-        type: "bot",
-        content:
-          "I'd be happy to help you with that! Let me think about the best recommendations for your travel needs.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botResponse]);
-    }, 1000);
-  };
+  if (loading || loadingTrips) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+          <span className="text-lg">Loading AI assistant...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 px-4">
+        <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
+        <h2 className="text-2xl font-bold mb-4">AI Travel Assistant</h2>
+        <p className="text-muted-foreground mb-6 text-center">
+          Please sign in to chat with our AI assistant
+        </p>
+        <Button onClick={() => (window.location.href = "/")}>
+          Go to Home
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">AI Travel Assistant</h1>
-        <p className="text-muted-foreground mt-1">
-          Get personalized travel recommendations and planning assistance
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">AI Travel Assistant</h1>
+          <p className="text-muted-foreground mt-1">
+            Get personalized travel recommendations and planning assistance
+          </p>
+        </div>
+
+        {trips.length > 0 && (
+          <div className="flex items-center gap-3 mt-4 sm:mt-0">
+            <span className="text-sm font-medium">Trip context:</span>
+            <Select
+              value={selectedTrip?.id || "none"}
+              onValueChange={(value) => {
+                if (value === "none") {
+                  setSelectedTrip(null);
+                } else {
+                  const trip = trips.find((t) => t.id === value);
+                  setSelectedTrip(trip || null);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select a trip" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">General travel chat</SelectItem>
+                {trips.map((trip) => (
+                  <SelectItem key={trip.id} value={trip.id}>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3 h-3" />
+                      {trip.destinations && trip.destinations.length > 0
+                        ? trip.destinations
+                            .map((d) => d.destination?.name)
+                            .filter(Boolean)
+                            .join(" → ")
+                        : trip.destination?.name ||
+                          trip.title ||
+                          "Unknown location"}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      <Card className="h-[600px] flex flex-col">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Travel Chat
-          </CardTitle>
-          <CardDescription>
-            Ask me anything about travel planning, destinations, or trip
-            organization
-          </CardDescription>
-        </CardHeader>
+      <div className="max-w-4xl mx-auto">
+        <TravelChat tripContext={selectedTrip} className="w-full" />
+      </div>
 
-        <CardContent className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3 ${
-                  msg.type === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`flex gap-3 max-w-[80%] ${
-                    msg.type === "user" ? "flex-row-reverse" : "flex-row"
-                  }`}
-                >
-                  <div className="flex-shrink-0">
-                    {msg.type === "bot" ? (
-                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                        <Bot className="w-4 h-4 text-primary-foreground" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-secondary-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    className={`rounded-lg p-3 ${
-                      msg.type === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    <p className="text-sm">{msg.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {msg.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Help Section */}
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-muted/50 rounded-lg p-6">
+          <h3 className="font-semibold mb-3">What can I help you with?</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="font-medium">Trip Planning:</span>
+              <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                <li>Destination recommendations</li>
+                <li>Itinerary optimization</li>
+                <li>Activity suggestions</li>
+              </ul>
+            </div>
+            <div>
+              <span className="font-medium">Travel Advice:</span>
+              <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                <li>Weather and seasonal tips</li>
+                <li>Budget planning</li>
+                <li>Transportation options</li>
+              </ul>
+            </div>
           </div>
-
-          <div className="flex gap-2">
-            <Input
-              placeholder="Ask me about travel planning..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-              className="flex-1"
-            />
-            <Button onClick={handleSendMessage} size="icon">
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
