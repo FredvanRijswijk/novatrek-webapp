@@ -13,23 +13,51 @@ import {
 } from "lucide-react"
 import { signInWithGoogle } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useSubscription } from "@/hooks/use-subscription"
 
 export default function Home() {
-  const { isAuthenticated } = useFirebase()
+  const { isAuthenticated, user } = useFirebase()
+  const { subscription, loading: subLoading, fetchSubscriptionStatus } = useSubscription()
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [checkingSubscription, setCheckingSubscription] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard')
+    if (isAuthenticated && !checkingSubscription && !subLoading) {
+      checkSubscriptionAndRedirect()
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, subLoading])
+
+  const checkSubscriptionAndRedirect = async () => {
+    setCheckingSubscription(true)
+    
+    try {
+      // Fetch latest subscription status
+      await fetchSubscriptionStatus()
+      
+      // Check subscription and redirect accordingly
+      setTimeout(() => {
+        if (subscription?.status === 'active') {
+          router.push('/dashboard')
+        } else {
+          router.push('/onboarding')
+        }
+        setCheckingSubscription(false)
+      }, 500)
+    } catch (error) {
+      console.error('Error checking subscription:', error)
+      // Default to onboarding on error
+      router.push('/onboarding')
+      setCheckingSubscription(false)
+    }
+  }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
       await signInWithGoogle()
+      // Subscription check will happen automatically via useEffect
     } catch (error) {
       console.error('Sign in error:', error)
     } finally {
