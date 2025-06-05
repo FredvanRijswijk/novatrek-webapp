@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useFirebase } from '@/lib/firebase/context';
 import { TripModel } from '@/lib/models/trip';
 import { Trip } from '@/types/travel';
@@ -15,6 +21,8 @@ import { format, differenceInDays } from 'date-fns';
 import { ItineraryBuilder } from '@/components/trips/planning/ItineraryBuilder';
 import { BudgetTracker } from '@/components/trips/planning/BudgetTracker';
 import { TripChat } from '@/components/trips/planning/TripChat';
+import { EditTripDialog } from '@/components/trips/EditTripDialog';
+import { EditDestinationsDialog } from '@/components/trips/EditDestinationsDialog';
 
 export default function TripPlanningPage() {
   const params = useParams();
@@ -23,6 +31,8 @@ export default function TripPlanningPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('itinerary');
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDestinationsDialog, setShowDestinationsDialog] = useState(false);
 
   const tripId = params.id as string;
 
@@ -106,6 +116,23 @@ export default function TripPlanningPage() {
                 </div>
               </div>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Trip Details
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowDestinationsDialog(true)}>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Edit Destinations
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -241,6 +268,26 @@ export default function TripPlanningPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Trip Dialog */}
+      {trip && (
+        <EditTripDialog
+          trip={trip}
+          isOpen={showEditDialog}
+          onClose={() => setShowEditDialog(false)}
+          onUpdate={setTrip}
+        />
+      )}
+
+      {/* Edit Destinations Dialog */}
+      {trip && (
+        <EditDestinationsDialog
+          trip={trip}
+          isOpen={showDestinationsDialog}
+          onClose={() => setShowDestinationsDialog(false)}
+          onUpdate={setTrip}
+        />
+      )}
     </div>
   );
 }

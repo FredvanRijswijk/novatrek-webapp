@@ -134,13 +134,16 @@ export interface Activity {
   id: string
   name: string
   description?: string
-  type: ActivityType
+  type: ActivityType | string
   location: Location
-  startTime?: Date
-  endTime?: Date
+  startTime?: string | Date
+  endTime?: string | Date
   duration?: number // in minutes
-  cost?: number
-  currency?: string
+  cost?: {
+    amount: number
+    currency: string
+    perPerson?: boolean
+  }
   bookingUrl?: string
   rating?: number
   reviews?: Review[]
