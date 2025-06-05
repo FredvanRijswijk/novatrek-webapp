@@ -104,7 +104,10 @@ export default function ChatPage() {
                     <SelectItem key={trip.id} value={trip.id}>
                       <div className="flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
-                        {trip.destination.city}
+                        {trip.destinations && trip.destinations.length > 0
+                          ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                          : trip.destination?.name || trip.title || 'Unknown location'
+                        }
                       </div>
                     </SelectItem>
                   ))}
