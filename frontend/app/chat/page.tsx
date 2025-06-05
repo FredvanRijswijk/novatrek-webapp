@@ -71,83 +71,60 @@ export default function ChatPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
+      <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">AI Travel Assistant</h1>
-            <p className="text-muted-foreground mt-1">
-              Get personalized travel recommendations and planning help
-            </p>
-          </div>
-
-          {trips.length > 0 && (
-            <div className="flex items-center gap-3 mt-4 sm:mt-0">
-              <span className="text-sm font-medium">Trip context:</span>
-              <Select 
-                value={selectedTrip?.id || 'none'} 
-                onValueChange={(value) => {
-                  if (value === 'none') {
-                    setSelectedTrip(null)
-                  } else {
-                    const trip = trips.find(t => t.id === value)
-                    setSelectedTrip(trip || null)
-                  }
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select a trip" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">General travel chat</SelectItem>
-                  {trips.map((trip) => (
-                    <SelectItem key={trip.id} value={trip.id}>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-3 h-3" />
-                        {trip.destinations && trip.destinations.length > 0
-                          ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                          : trip.destination?.name || trip.title || 'Unknown location'
-                        }
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="p-6 pb-4 border-b">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">AI Travel Assistant</h1>
+              <p className="text-muted-foreground mt-1">
+                Get personalized travel recommendations and planning help
+              </p>
             </div>
-          )}
+
+            {trips.length > 0 && (
+              <div className="flex items-center gap-3 mt-4 sm:mt-0">
+                <span className="text-sm font-medium">Trip context:</span>
+                <Select 
+                  value={selectedTrip?.id || 'none'} 
+                  onValueChange={(value) => {
+                    if (value === 'none') {
+                      setSelectedTrip(null)
+                    } else {
+                      const trip = trips.find(t => t.id === value)
+                      setSelectedTrip(trip || null)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select a trip" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">General travel chat</SelectItem>
+                    {trips.map((trip) => (
+                      <SelectItem key={trip.id} value={trip.id}>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3 h-3" />
+                          {trip.destinations && trip.destinations.length > 0
+                            ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                            : trip.destination?.name || trip.title || 'Unknown location'
+                          }
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Chat Interface */}
-        <div className="max-w-4xl mx-auto">
+        {/* Chat Interface - Full height */}
+        <div className="flex-1 overflow-hidden">
           <TravelChat 
             tripContext={selectedTrip}
-            className="w-full"
+            className="h-full"
           />
-        </div>
-
-        {/* Help Section */}
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-muted/50 rounded-lg p-6">
-            <h3 className="font-semibold mb-3">What can I help you with?</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="font-medium">Trip Planning:</span>
-                <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                  <li>Destination recommendations</li>
-                  <li>Itinerary optimization</li>
-                  <li>Activity suggestions</li>
-                </ul>
-              </div>
-              <div>
-                <span className="font-medium">Travel Advice:</span>
-                <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                  <li>Weather and seasonal tips</li>
-                  <li>Budget planning</li>
-                  <li>Transportation options</li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </DashboardLayout>

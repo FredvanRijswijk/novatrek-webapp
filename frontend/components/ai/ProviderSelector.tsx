@@ -24,13 +24,15 @@ interface ProviderSelectorProps {
   onChange?: (providerId: string) => void
   className?: string
   showCost?: boolean
+  size?: 'default' | 'sm' | 'lg'
 }
 
 export function ProviderSelector({ 
   value = DEFAULT_PROVIDER, 
   onChange, 
   className,
-  showCost = true 
+  showCost = true,
+  size = 'default' 
 }: ProviderSelectorProps) {
   const [selectedProvider, setSelectedProvider] = useState<AIProvider | undefined>(
     getProvider(value)
@@ -62,7 +64,9 @@ export function ProviderSelector({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Select value={value} onValueChange={handleChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className={cn(
+          size === 'sm' ? "w-[140px]" : size === 'lg' ? "w-[220px]" : "w-[180px]"
+        )}>
           <SelectValue>
             <div className="flex items-center gap-2">
               <span>{selectedProvider?.icon}</span>
@@ -131,8 +135,14 @@ export function ProviderSelector({
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Info className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn(
+              size === 'sm' ? "h-6 w-6" : "h-8 w-8"
+            )}
+          >
+            <Info className={size === 'sm' ? "h-3 w-3" : "h-4 w-4"} />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80">

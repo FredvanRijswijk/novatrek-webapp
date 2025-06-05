@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Trip } from '@/types/travel';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import { ProviderSelector } from '@/components/ai/ProviderSelector';
+import { DEFAULT_PROVIDER } from '@/lib/ai/providers';
 
 // Lazy load markdown renderer to improve initial load time
 const ReactMarkdown = dynamic(() => import('react-markdown'), {
@@ -100,11 +103,21 @@ export function TripChat({ trip }: TripChatProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    // Load saved preference or use default
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('preferred-ai-provider') || DEFAULT_PROVIDER;
+    }
+    return DEFAULT_PROVIDER;
+  });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    // Scroll to the bottom of the page
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    // Find the scrollable container (messages area)
+    const scrollContainer = document.querySelector('.overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
   }, [messages]);
 
   const handleSend = async () => {
@@ -209,30 +222,39 @@ export function TripChat({ trip }: TripChatProps) {
   };
 
   return (
-    <div className="flex flex-col bg-card rounded-lg">
-      <div className="p-6 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Sparkles className="h-5 w-5 text-primary" />
+    <div className="flex flex-col h-full bg-background">
+      {/* Fixed Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">AI Travel Assistant</h3>
+                <p className="text-sm text-muted-foreground">
+                  Get personalized recommendations for {getDestinationName(trip)}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold">AI Travel Assistant</h3>
-              <p className="text-sm text-muted-foreground">
-                Get personalized recommendations for {getDestinationName(trip)}
-              </p>
-            </div>
+            <ProviderSelector 
+              value={selectedProvider}
+              onChange={setSelectedProvider}
+              showCost={false}
+              size="sm"
+            />
           </div>
-          <Badge variant="secondary">
-            <Bot className="h-3 w-3 mr-1" />
-            Online
-          </Badge>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="px-6 pb-4">
-          <div className="space-y-4">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Top padding for empty space */}
+        <div className="h-20" />
+        
+        <div className="px-4">
+          <div className="space-y-4 max-w-4xl mx-auto">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -339,8 +361,14 @@ export function TripChat({ trip }: TripChatProps) {
             ))}
           </div>
         </div>
+        
+        {/* Bottom padding to ensure last message is visible above input */}
+        <div className="h-32" />
+      </div>
 
-        <div className="sticky bottom-0 p-4 border-t bg-card">
+      {/* Fixed Bottom Input */}
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+        <div className="max-w-4xl mx-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -353,9 +381,9 @@ export function TripChat({ trip }: TripChatProps) {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about activities, restaurants, or travel tips..."
               disabled={isLoading}
-              className="flex-1"
+              className="flex-1 h-12"
             />
-            <Button type="submit" disabled={!input.trim() || isLoading}>
+            <Button type="submit" disabled={!input.trim() || isLoading} className="h-12 px-4">
               <Send className="h-4 w-4" />
             </Button>
           </form>

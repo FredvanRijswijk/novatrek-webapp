@@ -119,7 +119,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
         name: "Travel Profile",
-        url: "/dashboard/profile",
+        url: "/dashboard/settings/travel-preferences",
         icon: User,
       },
     ],

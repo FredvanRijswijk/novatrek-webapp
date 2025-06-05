@@ -35,6 +35,20 @@ export function useSubscription() {
   const fetchSubscriptionStatus = async () => {
     try {
       const response = await fetch(`/api/subscription/status?userId=${user?.uid}`);
+      
+      // Check if response is ok
+      if (!response.ok) {
+        console.error('Error fetching subscription status:', response.status, response.statusText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Check content type
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error('Response is not JSON:', contentType);
+        throw new Error("Response is not JSON");
+      }
+      
       const data = await response.json();
       setSubscription(data);
       return data;

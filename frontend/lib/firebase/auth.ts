@@ -29,11 +29,7 @@ const createOrUpdateUserDocument = async (user: User) => {
       photoURL: user.photoURL,
       createdAt: new Date(),
       updatedAt: new Date(),
-      subscription: {
-        status: 'free',
-        currentPlan: 'free',
-        isActive: false,
-      }
+      subscription: null, // Will be populated when user subscribes
     });
   } else {
     // Update existing user document

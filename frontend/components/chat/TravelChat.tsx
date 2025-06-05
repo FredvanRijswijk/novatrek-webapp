@@ -76,41 +76,48 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
   }
 
   return (
-    <Card className={`flex flex-col h-[600px] ${className}`}>
-      <CardHeader className="flex flex-col gap-3 pb-3">
-        <div className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            AI Travel Assistant
-            {tripContext && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                • {tripContext.destinations && tripContext.destinations.length > 0
-                    ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                    : tripContext.destination?.name || 'Trip'}
-              </span>
+    <div className={`flex flex-col h-full ${className}`}>
+      {/* Fixed Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="p-4">
+          <div className="flex flex-row items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">AI Travel Assistant</h2>
+              {tripContext && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  • {tripContext.destinations && tripContext.destinations.length > 0
+                      ? tripContext.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                      : tripContext.destination?.name || 'Trip'}
+                </span>
+              )}
+            </div>
+            {onClose && (
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="w-4 h-4" />
+              </Button>
             )}
-          </CardTitle>
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
+          </div>
+          <div className="flex items-center justify-between">
+            <ProviderSelector 
+              value={selectedProvider}
+              onChange={setSelectedProvider}
+              showCost={true}
+            />
+            <p className="text-xs text-muted-foreground">
+              Model selection for AI responses
+            </p>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <ProviderSelector 
-            value={selectedProvider}
-            onChange={setSelectedProvider}
-            showCost={true}
-          />
-          <p className="text-xs text-muted-foreground">
-            Model selection for AI responses
-          </p>
-        </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex flex-col flex-1 p-0">
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
+      {/* Messages Area with padding at top and bottom */}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          {/* Top padding for empty space */}
+          <div className="h-20" />
+          
+          <div className="space-y-4 px-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -186,32 +193,36 @@ export default function TravelChat({ tripContext, onClose, className }: TravelCh
               </div>
             )}
           </div>
+          
+          {/* Bottom padding to ensure last message is visible above input */}
+          <div className="h-24" />
           <div ref={messagesEndRef} />
         </ScrollArea>
+      </div>
 
-        <div className="border-t p-4">
-          <form onSubmit={onSubmit} className="flex gap-2">
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder={
-                tripContext 
-                  ? `Ask about ${
-                      tripContext.destinations && tripContext.destinations.length > 0
-                        ? 'your multi-stop trip'
-                        : tripContext.destination?.name || 'your trip'
-                    }...`
-                  : "Ask me anything about travel..."
-              }
-              className="flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              disabled={isLoading}
-            />
-            <Button type="submit" size="sm" disabled={isLoading || !chatInput.trim()}>
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Fixed Bottom Input */}
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+        <form onSubmit={onSubmit} className="flex gap-2 max-w-4xl mx-auto">
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder={
+              tripContext 
+                ? `Ask about ${
+                    tripContext.destinations && tripContext.destinations.length > 0
+                      ? 'your multi-stop trip'
+                      : tripContext.destination?.name || 'your trip'
+                  }...`
+                : "Ask me anything about travel..."
+            }
+            className="flex-1 px-4 py-3 border border-input bg-background rounded-lg text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            disabled={isLoading}
+          />
+          <Button type="submit" size="default" disabled={isLoading || !chatInput.trim()} className="px-4">
+            <Send className="w-4 h-4" />
+          </Button>
+        </form>
+      </div>
+    </div>
   )
 }
