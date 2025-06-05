@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +16,13 @@ export async function GET(req: NextRequest) {
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      // Return default free plan if user document doesn't exist yet
+      return NextResponse.json({
+        subscription: null,
+        currentPlan: 'free',
+        isActive: false,
+        limits: SUBSCRIPTION_PLANS.free.limits,
+      });
     }
 
     const userData = userDoc.data();

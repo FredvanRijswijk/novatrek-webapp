@@ -36,12 +36,37 @@ export default function OnboardingPage() {
   }, [subscription, subLoading, router]);
 
   const handleStartTrial = async () => {
-    // In a real app, this would create a trial subscription
-    // For now, we'll just show success and redirect
-    setShowSuccess(true);
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 2000);
+    if (!user) {
+      router.push('/');
+      return;
+    }
+
+    try {
+      // Create checkout session with trial
+      const priceId = selectedPlan === 'yearly' 
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY 
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY;
+
+      const response = await fetch('/api/subscription/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId,
+          userId: user.uid,
+          userEmail: user.email,
+          trial_period_days: 7, // 7-day free trial
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.sessionId) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error creating trial:', error);
+    }
   };
 
   const handleSubscribe = async () => {

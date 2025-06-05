@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/firebase/context';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
+import { useFirebase } from '@/lib/firebase/context';
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
 
 interface SubscriptionData {
   subscription: any;
@@ -14,7 +14,7 @@ interface SubscriptionData {
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user } = useFirebase();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,15 +37,18 @@ export function useSubscription() {
       const response = await fetch(`/api/subscription/status?userId=${user?.uid}`);
       const data = await response.json();
       setSubscription(data);
+      return data;
     } catch (error) {
       console.error('Error fetching subscription:', error);
       // Default to free plan on error
-      setSubscription({
+      const defaultData = {
         subscription: null,
         currentPlan: 'free',
         isActive: false,
         limits: SUBSCRIPTION_PLANS.free.limits,
-      });
+      };
+      setSubscription(defaultData);
+      return defaultData;
     } finally {
       setLoading(false);
     }
@@ -79,5 +82,6 @@ export function useSubscription() {
     canAddItineraryDay,
     canUseAI,
     checkLimit,
+    fetchSubscriptionStatus,
   };
 }

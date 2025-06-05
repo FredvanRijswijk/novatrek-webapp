@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/firebase/context';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
 import { CreditCard, AlertCircle } from 'lucide-react';
 
 interface SubscriptionData {

@@ -33,22 +33,26 @@ export default function Home() {
     setCheckingSubscription(true)
     
     try {
+      // Skip subscription check for now - go directly to dashboard
+      router.push('/dashboard')
+      
+      // Original subscription check code (commented out for now)
+      /*
       // Fetch latest subscription status
-      await fetchSubscriptionStatus()
+      const subscriptionData = await fetchSubscriptionStatus()
       
       // Check subscription and redirect accordingly
-      setTimeout(() => {
-        if (subscription?.status === 'active') {
-          router.push('/dashboard')
-        } else {
-          router.push('/onboarding')
-        }
-        setCheckingSubscription(false)
-      }, 500)
+      if (subscriptionData?.isActive) {
+        router.push('/dashboard')
+      } else {
+        router.push('/onboarding')
+      }
+      */
     } catch (error) {
       console.error('Error checking subscription:', error)
-      // Default to onboarding on error
-      router.push('/onboarding')
+      // Default to dashboard for now
+      router.push('/dashboard')
+    } finally {
       setCheckingSubscription(false)
     }
   }

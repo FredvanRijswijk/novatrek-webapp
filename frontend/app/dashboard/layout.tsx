@@ -8,7 +8,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute requireSubscription={true}>
+    <ProtectedRoute requireSubscription={false}>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>

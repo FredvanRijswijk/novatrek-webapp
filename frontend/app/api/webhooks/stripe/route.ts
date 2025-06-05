@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe/config';
-import { adminDb } from '@/lib/firebase/admin';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -83,10 +84,11 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     updatedAt: new Date(),
   };
 
-  await adminDb.collection('users').doc(firebaseUid).update({
+  const userRef = doc(db, 'users', firebaseUid);
+  await setDoc(userRef, {
     subscription: subscriptionData,
     updatedAt: new Date(),
-  });
+  }, { merge: true });
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -100,7 +102,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   const firebaseUid = customer.metadata.firebaseUid;
   
-  await adminDb.collection('users').doc(firebaseUid).update({
+  const userRef = doc(db, 'users', firebaseUid);
+  await setDoc(userRef, {
     subscription: {
       subscriptionId: subscription.id,
       status: 'canceled',
@@ -109,7 +112,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       updatedAt: new Date(),
     },
     updatedAt: new Date(),
-  });
+  }, { merge: true });
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -122,7 +125,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const firebaseUid = customer.metadata.firebaseUid;
   
-  await adminDb.collection('users').doc(firebaseUid).collection('payments').add({
+  const paymentsRef = collection(db, 'users', firebaseUid, 'payments');
+  await addDoc(paymentsRef, {
     invoiceId: invoice.id,
     amount: invoice.amount_paid,
     currency: invoice.currency,
@@ -142,7 +146,8 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   const firebaseUid = customer.metadata.firebaseUid;
   
-  await adminDb.collection('users').doc(firebaseUid).collection('payments').add({
+  const paymentsRef = collection(db, 'users', firebaseUid, 'payments');
+  await addDoc(paymentsRef, {
     invoiceId: invoice.id,
     amount: invoice.amount_due,
     currency: invoice.currency,

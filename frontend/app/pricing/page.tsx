@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
 import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
 import { getStripe } from '@/lib/stripe/client';

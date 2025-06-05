@@ -10,7 +10,41 @@ import {
   User,
   UserCredential,
 } from 'firebase/auth'
-import { auth } from './config'
+import { auth, db } from './config'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+
+// Helper function to create/update user document
+const createOrUpdateUserDocument = async (user: User) => {
+  if (!user) return;
+  
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+  
+  if (!userSnap.exists()) {
+    // Create new user document
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      subscription: {
+        status: 'free',
+        currentPlan: 'free',
+        isActive: false,
+      }
+    });
+  } else {
+    // Update existing user document
+    await setDoc(userRef, {
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      updatedAt: new Date(),
+    }, { merge: true });
+  }
+}
 
 // Email/Password Authentication
 export const signUpWithEmail = async (
@@ -24,6 +58,9 @@ export const signUpWithEmail = async (
     await updateProfile(userCredential.user, { displayName })
   }
   
+  // Create user document in Firestore
+  await createOrUpdateUserDocument(userCredential.user)
+  
   return userCredential
 }
 
@@ -31,13 +68,23 @@ export const signInWithEmail = async (
   email: string,
   password: string
 ): Promise<UserCredential> => {
-  return await signInWithEmailAndPassword(auth, email, password)
+  const userCredential = await signInWithEmailAndPassword(auth, email, password)
+  
+  // Create or update user document in Firestore (in case it doesn't exist)
+  await createOrUpdateUserDocument(userCredential.user)
+  
+  return userCredential
 }
 
 // Google Authentication
 export const signInWithGoogle = async (): Promise<UserCredential> => {
   const provider = new GoogleAuthProvider()
-  return await signInWithPopup(auth, provider)
+  const userCredential = await signInWithPopup(auth, provider)
+  
+  // Create or update user document in Firestore
+  await createOrUpdateUserDocument(userCredential.user)
+  
+  return userCredential
 }
 
 // Sign Out

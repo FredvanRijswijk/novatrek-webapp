@@ -5,29 +5,71 @@ service cloud.firestore {
     // Users can read and write their own user document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow webhook updates to subscription data (for development)
+      // In production, use Firebase Admin SDK instead
+      allow write: if request.resource.data.keys().hasAll(['subscription', 'updatedAt']) 
+        && request.resource.data.keys().size() <= 3;
+        
+      // Allow payments subcollection writes (for webhooks)
+      match /payments/{paymentId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if true; // For webhook writes in development
+      }
     }
     
-    // Test documents - users can only access their own documents
-    match /test_documents/{documentId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
+    // Trips - users can only access their own trips
+    match /trips/{tripId} {
+      // Allow authenticated users to create trips
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own trips
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own trips
+      allow list: if request.auth != null;
     }
     
-    // Example: Public read, authenticated write for a posts collection
-    match /posts/{postId} {
-      allow read: if true; // Public read
-      allow write: if request.auth != null; // Authenticated write
+    // Chat messages - users can access their own messages
+    match /chat_messages/{messageId} {
+      // Allow authenticated users to create messages
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own messages
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own messages
+      allow list: if request.auth != null;
     }
     
-    // Example: Admin-only collection
-    match /admin/{document} {
-      allow read, write: if request.auth != null && 
-        request.auth.token.admin == true;
+    // Test documents - allow authenticated users to create and access their own documents
+    match /test_documents/{documentId} {
+      // Allow authenticated users to create documents
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own documents
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own documents
+      allow list: if request.auth != null;
     }
     
-    // Default: Deny all other requests
+    // Saved places - users can access their own saved places
+    match /saved_places/{placeId} {
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow list: if request.auth != null;
+    }
+    
+    // Default rule - deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

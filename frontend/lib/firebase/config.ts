@@ -52,7 +52,7 @@ let auth: Auth
 let db: Firestore
 
 const initializeFirebase = () => {
-  if (typeof window !== 'undefined' && !app) {
+  if (!app) {
     const config = getFirebaseConfig()
     app = initializeApp(config)
     auth = getAuth(app)
@@ -60,10 +60,8 @@ const initializeFirebase = () => {
   }
 }
 
-// Initialize Firebase on client side
-if (typeof window !== 'undefined') {
-  initializeFirebase()
-}
+// Initialize Firebase (works for both client and server in Next.js)
+initializeFirebase()
 
 export { app, auth, db }
 export default getFirebaseConfig
