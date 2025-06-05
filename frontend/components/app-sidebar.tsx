@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Plane,
   MapPin,
@@ -10,22 +10,22 @@ import {
   User,
   Home,
   PlusCircle,
-} from "lucide-react"
+} from "lucide-react";
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavUser } from "@/components/nav-user"
+import { NavMain } from "@/components/nav-main";
+import { NavProjects } from "@/components/nav-projects";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { useFirebase } from "@/lib/firebase"
+} from "@/components/ui/sidebar";
+import { useFirebase } from "@/lib/firebase";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, isAuthenticated } = useFirebase()
+  const { user, isAuthenticated } = useFirebase();
 
   // NovaTrek navigation data
   const data = {
@@ -39,7 +39,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Dashboard",
         url: "/dashboard",
         icon: Home,
-        isActive: true,
       },
       {
         title: "My Trips",
@@ -51,12 +50,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/dashboard/trips",
           },
           {
-            title: "Upcoming",
-            url: "/dashboard/trips/upcoming",
-          },
-          {
-            title: "Past Trips",
-            url: "/dashboard/trips/past",
+            title: "New Trip",
+            url: "/dashboard/trips/new",
           },
         ],
       },
@@ -127,7 +122,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: User,
       },
     ],
-  }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -145,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
-    )
+    );
   }
 
   return (
@@ -157,7 +152,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
           <div className="flex flex-col gap-0.5 leading-none">
             <span className="font-semibold">NovaTrek</span>
-            <span className="text-xs text-muted-foreground">Travel Planner</span>
+            <span className="text-xs text-muted-foreground">
+              Travel Planner
+            </span>
           </div>
         </div>
       </SidebarHeader>
@@ -170,5 +167,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

@@ -1,105 +1,139 @@
-import { AppSidebar } from "@/components/app-sidebar"
+"use client";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { Plus, MessageCircle, MapPin } from "lucide-react"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Plus, MessageCircle, MapPin, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function SimpleDashboard() {
+  const router = useRouter();
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Simple Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-        
-        <div className="flex flex-1 flex-col gap-6 p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Welcome to NovaTrek!</h1>
-              <p className="text-muted-foreground mt-1">
-                Your AI-powered travel planning assistant
-              </p>
-            </div>
-            
-            <div className="flex gap-3 mt-4 sm:mt-0">
-              <Button variant="outline" size="sm">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                AI Assistant
-              </Button>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                New Trip
-              </Button>
-            </div>
-          </div>
+    <div className="space-y-8">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Simple Dashboard</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card border rounded-lg p-6">
-              <div className="flex items-center gap-3">
-                <Plus className="w-8 h-8 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Plan New Trip</h3>
-                  <p className="text-sm text-muted-foreground">Start planning your next adventure</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-card border rounded-lg p-6">
-              <div className="flex items-center gap-3">
-                <MessageCircle className="w-8 h-8 text-green-600" />
-                <div>
-                  <h3 className="font-semibold">AI Travel Assistant</h3>
-                  <p className="text-sm text-muted-foreground">Get personalized recommendations</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-card border rounded-lg p-6">
-              <div className="flex items-center gap-3">
-                <MapPin className="w-8 h-8 text-blue-600" />
-                <div>
-                  <h3 className="font-semibold">View Itineraries</h3>
-                  <p className="text-sm text-muted-foreground">Manage your trip schedules</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border rounded-lg p-8 text-center">
-            <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Ready to start traveling?</h3>
-            <p className="text-muted-foreground mb-4">Create your first trip to get started!</p>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Trip
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Welcome to NovaTrek!
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Your AI-powered travel planning assistant
+          </p>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => router.push("/dashboard/chat")}
+            className="gap-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            AI Assistant
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => router.push("/dashboard/trips/new")}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            <Plus className="w-4 h-4" />
+            New Trip
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-blue-400"
+          onClick={() => router.push("/dashboard/trips/new")}
+        >
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-2 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/40 transition-colors">
+              <Plus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <CardTitle className="text-xl">Plan New Trip</CardTitle>
+            <CardDescription className="text-base">
+              Start planning your next adventure with our AI assistant
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-green-400"
+          onClick={() => router.push("/dashboard/chat")}
+        >
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-2 group-hover:bg-green-200 dark:group-hover:bg-green-900/40 transition-colors">
+              <Sparkles className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <CardTitle className="text-xl">AI Travel Assistant</CardTitle>
+            <CardDescription className="text-base">
+              Get personalized recommendations and travel insights
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card
+          className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-purple-400"
+          onClick={() => router.push("/dashboard/itineraries")}
+        >
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center mb-2 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40 transition-colors">
+              <MapPin className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <CardTitle className="text-xl">View Itineraries</CardTitle>
+            <CardDescription className="text-base">
+              Manage your trip schedules and daily activities
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Call to Action */}
+      <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 border-2 border-blue-200 dark:border-blue-800">
+        <CardContent className="text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+            <MapPin className="w-8 h-8 text-white" />
+          </div>
+          <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Ready to start traveling?
+          </h3>
+          <p className="text-lg text-muted-foreground mb-6 max-w-md mx-auto">
+            Create your first trip to get started with personalized
+            recommendations and AI-powered planning!
+          </p>
+          <Button
+            size="lg"
+            onClick={() => router.push("/dashboard/trips/new")}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-3"
+          >
+            <Plus className="w-5 h-5" />
+            Create Your First Trip
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
