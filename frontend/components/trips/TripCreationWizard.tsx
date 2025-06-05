@@ -318,11 +318,11 @@ export function TripCreationWizard() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">
-      <div className="max-w-2xl mx-auto py-6 px-4">
+      <div className="max-w-4xl mx-auto py-8 px-6">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold">Create Your Trip</h1>
-          <p className="text-sm text-muted-foreground mt-1">Let's plan your perfect journey</p>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold">Create Your Trip</h1>
+          <p className="text-base text-muted-foreground mt-2">Let's plan your perfect journey</p>
         </div>
 
         {/* Steps Indicator */}
@@ -381,7 +381,7 @@ export function TripCreationWizard() {
 
         {/* Main Card */}
         <Card className="border-0 shadow-lg">
-          <CardContent className="p-8 space-y-6">
+          <CardContent className="p-10 space-y-6">
             {/* General Error Message */}
             {errors.general && (
               <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">

@@ -291,10 +291,10 @@ export function DestinationDateStep({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       {/* Destination Section */}
       <Card className="border-0 shadow-sm">
-        <CardContent className="p-6">
+        <CardContent className="p-6 lg:p-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -324,7 +324,7 @@ export function DestinationDateStep({
                   setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                className={`h-12 ${
+                className={`h-12 lg:h-14 text-base ${
                   errors.destination ? "border-destructive" : ""
                 }`}
               />
@@ -377,8 +377,56 @@ export function DestinationDateStep({
                 </div>
               )}
             </div>
-          ) : (
-            // Multi-destination mode
+          ) : null}
+          
+          {/* Display selected destination */}
+          {formData.destination && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                {formData.destination.imageUrl && (
+                  <img
+                    src={formData.destination.imageUrl}
+                    alt={formData.destination.name}
+                    className="w-12 h-12 rounded object-cover"
+                  />
+                )}
+                <div className="flex-1">
+                  <p className="font-medium">{formData.destination.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.destination.country}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {errors.destination && (
+            <p className="text-xs text-destructive mt-1">{errors.destination}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Multi-destination mode */}
+      {isMultiDestination && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6 lg:p-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <MapPin className="h-4 w-4 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg">Multi-Stop Journey</h3>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={toggleMultiDestination}
+                className="text-xs"
+              >
+                ← Single destination
+              </Button>
+            </div>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Build your multi-stop journey
@@ -584,35 +632,14 @@ export function DestinationDateStep({
                 </p>
               )}
             </div>
-          )}
-
-          {/* Display selected destination */}
-          {!isMultiDestination && formData.destination && (
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                {formData.destination.imageUrl && (
-                  <img
-                    src={formData.destination.imageUrl}
-                    alt={formData.destination.name}
-                    className="w-12 h-12 rounded object-cover"
-                  />
-                )}
-                <div className="flex-1">
-                  <p className="font-medium">{formData.destination.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formData.destination.country}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dates Section - Single Destination */}
       {!isMultiDestination && (
         <Card className="border-0 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-6 lg:p-8">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <CalendarDays className="h-4 w-4 text-primary" />
@@ -620,7 +647,7 @@ export function DestinationDateStep({
               <h3 className="font-semibold">Travel Dates</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               <div>
                 <Label
                   htmlFor="startDate"
@@ -721,7 +748,7 @@ export function DestinationDateStep({
 
       {/* Travelers Section */}
       <Card className="border-0 shadow-sm">
-        <CardContent className="p-6">
+        <CardContent className="p-6 lg:p-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -743,8 +770,8 @@ export function DestinationDateStep({
 
           <div className="space-y-3">
             {formData.travelers.map((traveler: any, index: number) => (
-              <div key={index} className="grid grid-cols-12 gap-3 items-end">
-                <div className="col-span-5">
+              <div key={index} className="grid grid-cols-12 gap-3 lg:gap-4 items-end">
+                <div className="col-span-12 lg:col-span-5">
                   <Label className="text-sm font-normal text-muted-foreground">
                     Name
                   </Label>
@@ -754,15 +781,15 @@ export function DestinationDateStep({
                     onChange={(e) =>
                       updateTraveler(index, "name", e.target.value)
                     }
-                    className="mt-1.5 h-10"
+                    className="mt-1.5 h-10 lg:h-11"
                   />
                 </div>
-                <div className="col-span-4">
+                <div className="col-span-6 lg:col-span-4">
                   <Label className="text-sm font-normal text-muted-foreground">
                     Relationship
                   </Label>
                   <select
-                    className="w-full h-10 px-3 mt-1.5 text-sm bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full h-10 lg:h-11 px-3 mt-1.5 text-sm bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     value={traveler.relationship}
                     onChange={(e) =>
                       updateTraveler(index, "relationship", e.target.value)
@@ -774,7 +801,7 @@ export function DestinationDateStep({
                     <option value="friend">Friend</option>
                   </select>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-4 lg:col-span-2">
                   <Label className="text-sm font-normal text-muted-foreground">
                     Age
                   </Label>
@@ -789,10 +816,10 @@ export function DestinationDateStep({
                         e.target.value ? Number(e.target.value) : undefined
                       )
                     }
-                    className="mt-1.5 h-10"
+                    className="mt-1.5 h-10 lg:h-11"
                   />
                 </div>
-                <div className="col-span-1">
+                <div className="col-span-2 lg:col-span-1">
                   {formData.travelers.length > 1 && (
                     <Button
                       type="button"
