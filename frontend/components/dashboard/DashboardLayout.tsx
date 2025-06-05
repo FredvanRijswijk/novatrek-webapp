@@ -10,21 +10,17 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex-1 flex flex-col">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b">
-            <div className="flex items-center gap-2 px-4">
-              <SidebarTrigger className="-ml-1" />
-            </div>
-          </header>
-          <main className="flex-1 overflow-y-auto">
-            <div className="container mx-auto max-w-6xl p-4">
-              {children}
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 lg:h-16 items-center gap-4 border-b px-4 lg:px-6">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <div className="flex-1 space-y-4 p-4 md:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   )
 }
