@@ -1,8 +1,11 @@
 import { getRemoteConfig } from 'firebase-admin/remote-config'
 import { getApps, initializeApp, cert } from 'firebase-admin/app'
+import * as path from 'path'
+import * as fs from 'fs'
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
+  // First try environment variable
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
   
   if (serviceAccountJson) {
@@ -12,7 +15,20 @@ if (!getApps().length) {
         credential: cert(serviceAccount),
       })
     } catch (error) {
-      console.error('Failed to initialize Firebase Admin:', error)
+      console.error('Failed to initialize Firebase Admin from env:', error)
+    }
+  } else {
+    // Fallback to local file
+    try {
+      const serviceAccountPath = path.join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json')
+      if (fs.existsSync(serviceAccountPath)) {
+        const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
+        initializeApp({
+          credential: cert(serviceAccount),
+        })
+      }
+    } catch (error) {
+      console.error('Failed to initialize Firebase Admin from file:', error)
     }
   }
 }

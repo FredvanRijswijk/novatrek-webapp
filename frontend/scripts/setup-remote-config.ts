@@ -1,9 +1,69 @@
 #!/usr/bin/env node
 
-import { 
-  updateRemoteConfigParameter, 
-  createRolloutParameter 
-} from '../lib/firebase/remote-config-server'
+import { initializeApp, cert } from 'firebase-admin/app'
+import { getRemoteConfig } from 'firebase-admin/remote-config'
+import * as path from 'path'
+import * as fs from 'fs'
+
+// Initialize Firebase Admin
+const serviceAccountPath = path.join(__dirname, '..', 'novatrek-dev-firebase-adminsdk.json')
+
+if (!fs.existsSync(serviceAccountPath)) {
+  console.error(`Service account file not found at: ${serviceAccountPath}`)
+  console.error('Please ensure novatrek-dev-firebase-adminsdk.json is in the frontend directory')
+  process.exit(1)
+}
+
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
+
+initializeApp({
+  credential: cert(serviceAccount),
+})
+
+// Helper functions
+async function updateRemoteConfigParameter(
+  parameterKey: string,
+  defaultValue: string | number | boolean,
+  description?: string
+) {
+  try {
+    const template = await getRemoteConfig().getTemplate()
+    
+    template.parameters[parameterKey] = {
+      defaultValue: { value: String(defaultValue) },
+      description: description,
+      valueType: 'STRING' as const,
+    }
+    
+    await getRemoteConfig().publishTemplate(template)
+    console.log(`✅ Updated parameter: ${parameterKey}`)
+  } catch (error) {
+    console.error(`❌ Failed to update parameter ${parameterKey}:`, error)
+    throw error
+  }
+}
+
+async function createRolloutParameter(
+  featureName: string,
+  rolloutPercentage: number,
+  betaTestersEnabled: boolean = true
+) {
+  try {
+    // For now, just create the rollout percentage parameter
+    // Conditions require Google Analytics to be set up
+    await updateRemoteConfigParameter(
+      `rollout_${featureName}_percentage`,
+      rolloutPercentage,
+      `Rollout percentage for ${featureName}`
+    )
+    
+    console.log(`✅ Created rollout parameter for feature: ${featureName}`)
+    console.log(`   Note: To use conditions, link Google Analytics to your Firebase project`)
+  } catch (error) {
+    console.error(`❌ Failed to create rollout parameter for ${featureName}:`, error)
+    throw error
+  }
+}
 
 async function setupRemoteConfig() {
   console.log('Setting up Firebase Remote Config parameters...')

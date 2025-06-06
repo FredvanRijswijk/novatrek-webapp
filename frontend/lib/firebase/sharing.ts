@@ -1,3 +1,4 @@
+import { db } from './firestore'
 import { 
   collection, 
   doc, 
@@ -11,7 +12,6 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore'
-import { db } from './firestore'
 import type { TripShare, ShareSettings, SharePermissions } from '@/types/sharing'
 import { customAlphabet } from 'nanoid'
 

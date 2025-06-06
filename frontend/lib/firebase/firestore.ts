@@ -200,3 +200,6 @@ export {
   type DocumentData,
   type QueryDocumentSnapshot,
 }
+
+// Export db for direct usage when needed
+export { db }
