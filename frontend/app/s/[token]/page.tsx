@@ -66,7 +66,14 @@ export default function SharedTripPage() {
         return
       }
 
-      setTrip(tripData)
+      // Ensure trip data has the expected structure
+      const normalizedTrip = {
+        ...tripData,
+        destinations: tripData.destinations || [],
+        travelers: tripData.travelers || [],
+        itinerary: tripData.itinerary || []
+      }
+      setTrip(normalizedTrip)
     } catch (error) {
       console.error('Error loading shared trip:', error)
       setError('Failed to load trip')
@@ -241,7 +248,7 @@ export default function SharedTripPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{trip.travelers} travelers</span>
+                    <span className="text-sm">{trip.travelers?.length || 1} {trip.travelers?.length === 1 ? 'traveler' : 'travelers'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -261,7 +268,7 @@ export default function SharedTripPage() {
                         {index + 1}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">{destination.location.name}</h4>
+                        <h4 className="font-medium">{destination.location?.name || destination.destination?.name || 'Unknown location'}</h4>
                         <p className="text-sm text-muted-foreground">
                           {(() => {
                             try {
@@ -301,7 +308,8 @@ export default function SharedTripPage() {
                       <div key={day.id}>
                         <h4 className="font-medium mb-2">Day {day.dayNumber} - {day.date}</h4>
                         <div className="space-y-2">
-                          {day.activities.map((activity) => (
+                          {day.activities && day.activities.length > 0 ? (
+                            day.activities.map((activity) => (
                             <div key={activity.id} className="flex items-start gap-2 text-sm">
                               <Badge variant="outline" className="mt-0.5">
                                 {activity.time}
@@ -313,7 +321,9 @@ export default function SharedTripPage() {
                                 )}
                               </div>
                             </div>
-                          ))}
+                          ))) : (
+                            <p className="text-sm text-muted-foreground">No activities planned</p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -390,7 +400,7 @@ export default function SharedTripPage() {
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Per Person</span>
-                      <span>${Math.round(trip.budget.total / trip.travelers)}</span>
+                      <span>${Math.round(trip.budget.total / (trip.travelers?.length || 1))}</span>
                     </div>
                   </div>
                 </CardContent>
