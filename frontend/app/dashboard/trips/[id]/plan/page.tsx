@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,8 @@ import { useFirebase } from '@/lib/firebase/context';
 import { TripModel } from '@/lib/models/trip';
 import { Trip } from '@/types/travel';
 import { format, differenceInDays } from 'date-fns';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
+import { FeatureFlag } from '@/components/feature-flag/FeatureFlag';
 
 // Lazy load planning components for better performance
 import dynamic from 'next/dynamic';
@@ -63,6 +65,10 @@ const EditDestinationsDialog = lazy(() =>
   import('@/components/trips/EditDestinationsDialog').then(mod => ({ default: mod.EditDestinationsDialog }))
 );
 
+const ShareTripDialog = lazy(() => 
+  import('@/components/trips/ShareTripDialog').then(mod => ({ default: mod.ShareTripDialog }))
+);
+
 // Import progress indicator
 const TripProgressIndicator = dynamic(
   () => import('@/components/trips/TripProgressIndicator').then(mod => ({ default: mod.TripProgressIndicator })),
@@ -81,6 +87,8 @@ export default function TripPlanningPage() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDestinationsDialog, setShowDestinationsDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const tripSharingEnabled = useFeatureFlag('tripSharing');
 
   const tripId = params.id as string;
 
@@ -198,6 +206,12 @@ export default function TripPlanningPage() {
                   <MapPin className="mr-2 h-4 w-4" />
                   Edit Destinations
                 </DropdownMenuItem>
+                {tripSharingEnabled && (
+                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share Trip
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -380,6 +394,17 @@ export default function TripPlanningPage() {
             isOpen={showDestinationsDialog}
             onClose={() => setShowDestinationsDialog(false)}
             onUpdate={setTrip}
+          />
+        </Suspense>
+      )}
+
+      {/* Share Trip Dialog */}
+      {trip && tripSharingEnabled && (
+        <Suspense fallback={null}>
+          <ShareTripDialog
+            trip={trip}
+            open={showShareDialog}
+            onOpenChange={setShowShareDialog}
           />
         </Suspense>
       )}

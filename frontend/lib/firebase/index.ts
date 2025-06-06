@@ -11,5 +11,8 @@ export * from './firestore'
 // Storage
 export * from './storage'
 
+// Remote Config
+export * from './remote-config'
+
 // Context
 export { FirebaseProvider, useFirebase } from './context'
