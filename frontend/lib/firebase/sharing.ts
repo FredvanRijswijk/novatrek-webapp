@@ -171,7 +171,7 @@ export async function updateShareSettings(
 // Generate shareable URL
 export function getShareUrl(shareToken: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-  return `${baseUrl}/shared/trip/${shareToken}`
+  return `${baseUrl}/s/${shareToken}`
 }
 
 // Copy trip from shared link

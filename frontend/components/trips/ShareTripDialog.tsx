@@ -50,9 +50,17 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
       })
       
       toast.success('Share link created successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating share:', error)
-      toast.error('Failed to create share link')
+      
+      if (error?.code === 'permission-denied') {
+        toast.error(
+          'Permissions not configured. Please ask your admin to deploy the Firestore security rules.',
+          { duration: 5000 }
+        )
+      } else {
+        toast.error('Failed to create share link')
+      }
     } finally {
       setLoading(false)
     }

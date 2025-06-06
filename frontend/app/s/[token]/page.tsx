@@ -78,7 +78,7 @@ export default function SharedTripPage() {
   const handleCopyTrip = async () => {
     if (!user) {
       toast.error('Please sign in to copy this trip')
-      router.push(`/auth/signin?redirect=/shared/trip/${shareToken}`)
+      router.push(`/auth/signin?redirect=/s/${shareToken}`)
       return
     }
 

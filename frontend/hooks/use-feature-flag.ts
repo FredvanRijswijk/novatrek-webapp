@@ -17,20 +17,27 @@ export function useFeatureFlag(feature: keyof FeatureFlags): boolean {
   useEffect(() => {
     async function init() {
       if (!initialized) {
+        console.log('Initializing Remote Config...')
         await initializeRemoteConfig()
         setInitialized(true)
       }
       
       // Check basic feature flag
       const isEnabled = isFeatureEnabled(feature)
+      console.log(`Feature ${feature} enabled:`, isEnabled)
       
-      // If enabled, also check rollout percentage if user is available
-      if (isEnabled && user) {
-        const shouldShow = shouldShowFeature(feature, user.uid)
-        setEnabled(shouldShow)
-      } else {
-        setEnabled(isEnabled)
-      }
+      // For now, just use the feature flag without rollout percentage
+      // To enable rollout, set rollout_trip_sharing_percentage in Firebase Console
+      setEnabled(isEnabled)
+      
+      // Uncomment below to use rollout percentage:
+      // if (isEnabled && user) {
+      //   const shouldShow = shouldShowFeature(feature, user.uid)
+      //   console.log(`Feature ${feature} should show for user:`, shouldShow)
+      //   setEnabled(shouldShow)
+      // } else {
+      //   setEnabled(isEnabled)
+      // }
     }
 
     init()

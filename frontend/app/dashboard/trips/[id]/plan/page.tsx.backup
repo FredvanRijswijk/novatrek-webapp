@@ -92,6 +92,11 @@ export default function TripPlanningPage() {
   const tripSharingEnabled = useFeatureFlag('tripSharing');
 
   const tripId = params.id as string;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Trip sharing enabled:', tripSharingEnabled);
+  }, [tripSharingEnabled]);
 
   useEffect(() => {
     if (!user || !tripId) return;
@@ -200,7 +205,7 @@ export default function TripPlanningPage() {
                   onClick={() => setShowShareDialog(true)}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
-                  Share
+                  Share Trip
                 </Button>
               )}
               <DropdownMenu>
@@ -209,24 +214,23 @@ export default function TripPlanningPage() {
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Trip Details
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowDestinationsDialog(true)}>
-                  <MapPin className="mr-2 h-4 w-4" />
-                  Edit Destinations
-                </DropdownMenuItem>
-                {tripSharingEnabled && (
-                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share Trip
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Trip Details
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            </div>
+                  <DropdownMenuItem onClick={() => setShowDestinationsDialog(true)}>
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Edit Destinations
+                  </DropdownMenuItem>
+                  {tripSharingEnabled && (
+                    <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Share Trip
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
           </div>
         </div>
       </div>
