@@ -3,7 +3,9 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe/config';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, addDoc, getDoc } from 'firebase/firestore';
+import { sendSubscriptionConfirmationEmailServer } from '@/lib/email/server';
+import { stripePlans } from '@/lib/stripe/plans';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -72,10 +74,19 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   const firebaseUid = customer.metadata.firebaseUid;
+  const priceId = subscription.items.data[0]?.price.id;
+  
+  // Check if this is a new subscription (first payment)
+  const userRef = doc(db, 'users', firebaseUid);
+  const userDoc = await getDoc(userRef);
+  const userData = userDoc.data();
+  const isNewSubscription = !userData?.subscription?.subscriptionId || 
+    userData.subscription.subscriptionId !== subscription.id;
+  
   const subscriptionData = {
     subscriptionId: subscription.id,
     status: subscription.status,
-    planId: subscription.items.data[0]?.price.id,
+    planId: priceId,
     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
     currentPeriodStart: new Date(subscription.current_period_start * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -84,11 +95,30 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     updatedAt: new Date(),
   };
 
-  const userRef = doc(db, 'users', firebaseUid);
   await setDoc(userRef, {
     subscription: subscriptionData,
     updatedAt: new Date(),
   }, { merge: true });
+
+  // Send confirmation email for new subscriptions
+  if (isNewSubscription && subscription.status === 'active' && customer.email) {
+    try {
+      // Find the plan name and features
+      const plan = Object.values(stripePlans).find(p => 
+        p.priceIdMonthly === priceId || p.priceIdYearly === priceId
+      );
+      
+      if (plan) {
+        await sendSubscriptionConfirmationEmailServer(
+          customer.email,
+          plan.name,
+          plan.features
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send subscription confirmation email:', error);
+    }
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {

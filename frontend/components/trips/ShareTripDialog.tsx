@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Copy, Link, Mail, Check, Loader2, Shield, Globe, Eye } from 'lucide-react'
+import { Copy, Link, Mail, Check, Loader2, Shield, Globe, Eye, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { createTripShare, getShareUrl } from '@/lib/firebase/sharing'
 import { useFeatureTracking } from '@/hooks/use-feature-flag'
+import { sendTripSharedEmail } from '@/lib/email/client'
+import { useFirebase } from '@/lib/firebase/context'
 import type { Trip } from '@/lib/models/trip'
 import type { ShareSettings } from '@/types/sharing'
 
@@ -25,7 +27,10 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
   const [loading, setLoading] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
   const { trackUsage } = useFeatureTracking('trip_sharing')
+  const { user } = useFirebase()
   
   // Share settings
   const [settings, setSettings] = useState<ShareSettings>({
@@ -245,23 +250,67 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={handleEmailShare}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Email Link
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => window.open(shareUrl, '_blank')}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Send via email (optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="recipient@example.com"
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    disabled={!emailTo || sendingEmail}
+                    onClick={async () => {
+                      if (!emailTo || !user) return
+                      setSendingEmail(true)
+                      try {
+                        await sendTripSharedEmail(
+                          emailTo,
+                          trip.name,
+                          user.displayName || 'A friend',
+                          shareUrl
+                        )
+                        toast.success('Email sent successfully!')
+                        setEmailTo('')
+                        trackUsage('share_sent_email', { tripId: trip.id })
+                      } catch (error) {
+                        toast.error('Failed to send email')
+                      } finally {
+                        setSendingEmail(false)
+                      }
+                    }}
+                  >
+                    {sendingEmail ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleEmailShare}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Open Email Client
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => window.open(shareUrl, '_blank')}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </Button>
+              </div>
             </div>
 
             <Button

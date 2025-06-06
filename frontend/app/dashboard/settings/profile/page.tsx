@@ -13,9 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Camera, MapPin, Calendar, Plane, Trophy, Loader2, Upload } from 'lucide-react'
+import { Camera, MapPin, Calendar, Plane, Trophy, Loader2, Upload, Palette } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadProfilePhoto, validateImageFile, resizeImage } from '@/lib/firebase/storage'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { useTheme } from 'next-themes'
 
 interface UserProfile {
   displayName: string
@@ -36,6 +38,7 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const { user } = useFirebase()
+  const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -340,6 +343,27 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground">
               Separate languages with commas
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Customize the appearance of the application
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="theme">Theme</Label>
+              <p className="text-sm text-muted-foreground">
+                Select your preferred color theme
+              </p>
+            </div>
+            <ThemeToggle />
           </div>
         </CardContent>
       </Card>
