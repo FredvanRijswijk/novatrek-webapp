@@ -130,11 +130,36 @@ export default function SharedTripPage() {
     )
   }
 
-  if (!trip || !share) return null
+  if (!trip || !share) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Trip Not Found</CardTitle>
+            <CardDescription>This trip may have been removed or is no longer available.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => router.push('/')} className="w-full">
+              Go to Homepage
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
-  const tripDuration = trip.destinations.reduce((total, dest) => {
-    return total + differenceInDays(new Date(dest.endDate), new Date(dest.startDate)) + 1
-  }, 0)
+  const tripDuration = trip.destinations?.reduce((total, dest) => {
+    try {
+      const start = new Date(dest.startDate)
+      const end = new Date(dest.endDate)
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return total
+      }
+      return total + differenceInDays(end, start) + 1
+    } catch {
+      return total
+    }
+  }, 0) || 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -193,8 +218,21 @@ export default function SharedTripPage() {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(trip.destinations[0].startDate), 'MMM d')} - 
-                      {format(new Date(trip.destinations[trip.destinations.length - 1].endDate), 'MMM d, yyyy')}
+                      {(() => {
+                        try {
+                          if (!trip.destinations || trip.destinations.length === 0) {
+                            return 'No dates available'
+                          }
+                          const startDate = new Date(trip.destinations[0].startDate)
+                          const endDate = new Date(trip.destinations[trip.destinations.length - 1].endDate)
+                          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                            return 'Dates not available'
+                          }
+                          return `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`
+                        } catch {
+                          return 'Dates not available'
+                        }
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -216,7 +254,8 @@ export default function SharedTripPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {trip.destinations.map((destination, index) => (
+                  {trip.destinations && trip.destinations.length > 0 ? (
+                    trip.destinations.map((destination, index) => (
                     <div key={destination.id} className="flex items-start gap-4">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
                         {index + 1}
@@ -224,13 +263,25 @@ export default function SharedTripPage() {
                       <div className="flex-1">
                         <h4 className="font-medium">{destination.location.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(destination.startDate), 'MMM d')} - 
-                          {format(new Date(destination.endDate), 'MMM d, yyyy')}
-                          {' '}({differenceInDays(new Date(destination.endDate), new Date(destination.startDate)) + 1} days)
+                          {(() => {
+                            try {
+                              const start = new Date(destination.startDate)
+                              const end = new Date(destination.endDate)
+                              if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                                return 'Dates not available'
+                              }
+                              const days = differenceInDays(end, start) + 1
+                              return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')} (${days} days)`
+                            } catch {
+                              return 'Dates not available'
+                            }
+                          })()}
                         </p>
                       </div>
                     </div>
-                  ))}
+                  ))) : (
+                    <p className="text-sm text-muted-foreground">No destinations added yet</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
