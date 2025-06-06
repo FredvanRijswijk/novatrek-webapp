@@ -263,7 +263,7 @@ export default function SharedTripPage() {
                 <div className="space-y-4">
                   {trip.destinations && trip.destinations.length > 0 ? (
                     trip.destinations.map((destination, index) => (
-                    <div key={destination.id} className="flex items-start gap-4">
+                    <div key={destination.id || `destination-${index}`} className="flex items-start gap-4">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
                         {index + 1}
                       </div>
@@ -304,13 +304,16 @@ export default function SharedTripPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {trip.itinerary.slice(0, 3).map((day) => (
-                      <div key={day.id}>
-                        <h4 className="font-medium mb-2">Day {day.dayNumber} - {day.date}</h4>
+                    {trip.itinerary.slice(0, 3).map((day, index) => (
+                      <div key={day.id || `day-${index}`}>
+                        <h4 className="font-medium mb-2">
+                          Day {day.dayNumber}
+                          {day.date && ` - ${typeof day.date === 'string' ? day.date : format(new Date(day.date), 'MMM d, yyyy')}`}
+                        </h4>
                         <div className="space-y-2">
                           {day.activities && day.activities.length > 0 ? (
-                            day.activities.map((activity) => (
-                            <div key={activity.id} className="flex items-start gap-2 text-sm">
+                            day.activities.map((activity, actIndex) => (
+                            <div key={activity.id || `activity-${actIndex}`} className="flex items-start gap-2 text-sm">
                               <Badge variant="outline" className="mt-0.5">
                                 {activity.time}
                               </Badge>
