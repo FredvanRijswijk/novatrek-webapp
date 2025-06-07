@@ -132,7 +132,7 @@ export function ExpertApplicationForm() {
       }
 
       // Submit application
-      await MarketplaceModel.submitApplication({
+      const applicationId = await MarketplaceModel.submitApplication({
         userId: user.uid,
         businessName: formData.businessName,
         email: formData.email,
@@ -142,6 +142,25 @@ export function ExpertApplicationForm() {
         portfolio: allPortfolioUrls,
         references: formData.references.split('\n').filter(r => r.trim())
       })
+
+      // Send confirmation email (non-blocking)
+      try {
+        const token = await user.getIdToken()
+        await fetch('/api/email/expert-application', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'received',
+            applicationId
+          })
+        })
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError)
+        // Don't block the success flow if email fails
+      }
 
       setSuccess(true)
       

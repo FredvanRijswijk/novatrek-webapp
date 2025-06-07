@@ -36,6 +36,21 @@ const createOrUpdateUserDocument = async (user: User) => {
     };
     
     await setDoc(userRef, userData);
+    
+    // Send welcome email for new users (non-blocking)
+    try {
+      await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.displayName
+        })
+      });
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // Don't block the signup flow
+    }
   } else {
     // Update existing user document - only include defined fields
     const updateData: any = {
@@ -73,6 +88,16 @@ export const signUpWithEmail = async (
   
   // Create user document in Firestore
   await createOrUpdateUserDocument(userCredential.user)
+  
+  // Send email verification
+  if (userCredential.user && !userCredential.user.emailVerified) {
+    try {
+      await sendVerificationEmail(userCredential.user)
+    } catch (error) {
+      console.error('Failed to send verification email:', error)
+      // Don't block signup if email fails
+    }
+  }
   
   return userCredential
 }

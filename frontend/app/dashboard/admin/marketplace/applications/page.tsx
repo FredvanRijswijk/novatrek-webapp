@@ -88,6 +88,34 @@ export default function MarketplaceApplicationsPage() {
         reviewedBy: user.uid
       })
 
+      // Send email notification about the status update
+      try {
+        const token = await user.getIdToken()
+        const emailData: any = {
+          action: status === 'approved' ? 'approved' : 
+                  status === 'rejected' ? 'rejected' : 
+                  'needs_info',
+          applicationId: selectedApp.id
+        }
+
+        if (status === 'rejected' || status === 'additional_info_required') {
+          emailData.reason = reviewNotes
+          emailData.infoNeeded = reviewNotes
+        }
+
+        await fetch('/api/email/expert-application', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(emailData)
+        })
+      } catch (emailError) {
+        console.error('Failed to send status update email:', emailError)
+        // Don't block the review process if email fails
+      }
+
       // If approved, create the expert profile (this would be done server-side in production)
       if (status === 'approved') {
         // In production, trigger a Cloud Function to create the Stripe Connect account

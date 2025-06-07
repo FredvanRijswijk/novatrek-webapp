@@ -382,7 +382,7 @@ export class MarketplaceModel {
   }
 
   // Application Methods
-  static async submitApplication(data: Omit<ExpertApplication, 'id' | 'submittedAt' | 'status'>): Promise<ExpertApplication> {
+  static async submitApplication(data: Omit<ExpertApplication, 'id' | 'submittedAt' | 'status'>): Promise<string> {
     const docRef = doc(collection(db, COLLECTIONS.APPLICATIONS))
     const application = {
       ...data,
@@ -391,7 +391,7 @@ export class MarketplaceModel {
       submittedAt: serverTimestamp()
     }
     await setDoc(docRef, application)
-    return { ...application, submittedAt: new Date() }
+    return docRef.id
   }
 
   static async getApplicationByUserId(userId: string): Promise<ExpertApplication | null> {
@@ -408,6 +408,19 @@ export class MarketplaceModel {
     return {
       ...data,
       id: doc.id,
+      submittedAt: data.submittedAt?.toDate() || new Date(),
+      reviewedAt: data.reviewedAt?.toDate()
+    } as ExpertApplication
+  }
+
+  static async getApplicationById(applicationId: string): Promise<ExpertApplication | null> {
+    const docRef = doc(db, COLLECTIONS.APPLICATIONS, applicationId)
+    const docSnap = await getDoc(docRef)
+    if (!docSnap.exists()) return null
+    const data = docSnap.data()
+    return {
+      ...data,
+      id: docSnap.id,
       submittedAt: data.submittedAt?.toDate() || new Date(),
       reviewedAt: data.reviewedAt?.toDate()
     } as ExpertApplication
