@@ -76,9 +76,12 @@ class Logger {
     if (!this.config.enableFirestore) return
 
     try {
+      // Clean the entry to remove undefined values
+      const cleanEntry = this.cleanForFirestore(entry)
+      
       // Store in a logs collection with automatic timestamps
       await addDoc(collection(db, 'logs'), {
-        ...entry,
+        ...cleanEntry,
         sessionId: this.sessionId,
         timestamp: serverTimestamp(),
         createdAt: new Date() // Backup timestamp
@@ -87,6 +90,28 @@ class Logger {
       // If Firestore logging fails, at least log to console
       console.error('Failed to log to Firestore:', error)
     }
+  }
+
+  private cleanForFirestore(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return null
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.cleanForFirestore(item))
+    }
+    
+    if (typeof obj === 'object' && obj.constructor === Object) {
+      const cleaned: any = {}
+      for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+          cleaned[key] = this.cleanForFirestore(value)
+        }
+      }
+      return cleaned
+    }
+    
+    return obj
   }
 
   private formatConsoleMessage(entry: LogEntry): string {
