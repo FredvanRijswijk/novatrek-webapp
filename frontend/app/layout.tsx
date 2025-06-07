@@ -5,6 +5,8 @@ import { FirebaseProvider } from "@/lib/firebase";
 import { Analytics } from "@vercel/analytics/react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+import { LoggerProvider } from "@/lib/logging/LoggerProvider";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +38,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseProvider>
-            {children}
+            <LoggerProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </LoggerProvider>
           </FirebaseProvider>
           <Toaster position="bottom-right" />
         </ThemeProvider>

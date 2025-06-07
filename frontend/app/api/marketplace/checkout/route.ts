@@ -4,9 +4,13 @@ import { createConnectPaymentIntent } from '@/lib/stripe/connect'
 import { stripe } from '@/lib/stripe/config'
 import { auth } from 'firebase-admin'
 import { MarketplaceModel } from '@/lib/models/marketplace'
+import logger from '@/lib/logging/logger'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
+    logger.info('marketplace', 'Checkout request initiated')
     // Verify authentication
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

@@ -3,12 +3,17 @@ import { stripe } from '@/lib/stripe/config'
 import { db } from '@/lib/firebase'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth } from 'firebase-admin'
+import logger from '@/lib/logging/logger'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
+    logger.info('subscription', 'Subscription update request started')
     // Verify authentication from Authorization header
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('subscription', 'Unauthorized subscription update attempt - missing auth header')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -17,11 +22,15 @@ export async function POST(request: NextRequest) {
     try {
       decodedToken = await auth().verifyIdToken(token)
     } catch (error) {
-      console.error('Error verifying token:', error)
+      logger.error('auth', 'Token verification failed', error as Error, {
+        tokenLength: token?.length,
+        endpoint: '/api/subscription/update-plan'
+      })
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     const userId = decodedToken.uid
+    logger.setUserId(userId)
 
     const { priceId, isYearly } = await request.json()
 

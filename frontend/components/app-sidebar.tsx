@@ -179,6 +179,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Products",
             url: "/dashboard/admin/marketplace/products",
           },
+          {
+            title: "Analytics",
+            url: "/dashboard/admin/marketplace/analytics",
+          },
+          {
+            title: "System Logs",
+            url: "/dashboard/admin/logs",
+          },
         ],
       }] : []),
       // Show Test section in development
@@ -194,6 +202,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Expert Flow Test",
             url: "/dashboard/test-expert-flow",
+          },
+          {
+            title: "Logging Test",
+            url: "/dashboard/test-logging",
           },
         ],
       }] : []),

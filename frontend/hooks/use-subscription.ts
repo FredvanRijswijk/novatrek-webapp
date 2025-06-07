@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useFirebase } from '@/lib/firebase/context';
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
+import { useErrorHandler } from './use-error-handler';
 
 interface SubscriptionData {
   subscription: any;
@@ -17,6 +18,7 @@ export function useSubscription() {
   const { user } = useFirebase();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { handleError, logAction } = useErrorHandler();
 
   useEffect(() => {
     if (user) {
@@ -33,20 +35,30 @@ export function useSubscription() {
   }, [user]);
 
   const fetchSubscriptionStatus = async () => {
+    const startTime = Date.now();
+    
     try {
       const response = await fetch(`/api/subscription/status?userId=${user?.uid}`);
       
       // Check if response is ok
       if (!response.ok) {
-        console.error('Error fetching subscription status:', response.status, response.statusText);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        await handleError(error, 'fetchSubscriptionStatus', {
+          category: 'subscription',
+          showToast: false
+        });
+        throw error;
       }
       
       // Check content type
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.error('Response is not JSON:', contentType);
-        throw new Error("Response is not JSON");
+        const error = new Error("Response is not JSON");
+        await handleError(error, 'fetchSubscriptionStatus', {
+          category: 'subscription',
+          showToast: false
+        });
+        throw error;
       }
       
       const data = await response.json();

@@ -274,6 +274,24 @@ service cloud.firestore {
       allow write: if false; // Admin only via server
     }
     
+    // System Logs - write allowed for authenticated users, read for admins only
+    match /logs/{logId} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null && 
+          request.auth.token.admin == true;
+      }
+      
+      // Allow authenticated users to write logs
+      allow create: if request.auth != null;
+      
+      // Only admins can read logs
+      allow read, list: if isAdmin();
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
     // Default rule - deny all other access
     match /{document=**} {
       allow read, write: if false;
