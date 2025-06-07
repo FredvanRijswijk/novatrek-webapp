@@ -1,7 +1,7 @@
 // Vertex AI configuration for Firebase Genkit
 export const vertexAIConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  location: 'europe-west3', // or your preferred location
+  location: 'us-central1', // Gemini 2.0 models are available in us-central1
   // Model configuration
   models: {
     chat: 'gemini-2.0-flash-lite', // Fast model for chat
