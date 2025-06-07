@@ -39,9 +39,8 @@ export async function POST(request: NextRequest) {
     // Get user's Stripe customer ID using Admin SDK
     const adminDb = getAdminDb()
     if (!adminDb) {
-      console.error('Failed to initialize Firebase Admin SDK - using fallback approach')
-      // For now, return error since we need user's Stripe customer ID
-      await serverLogger.logApiError(endpoint, 'POST', new Error('Database initialization failed'), userId)
+      console.error('Failed to initialize Firebase Admin SDK - cannot proceed without database access')
+      // Don't use serverLogger here as it also needs Admin SDK
       return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 })
     }
     

@@ -5,10 +5,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 let adminDb: ReturnType<typeof getFirestore> | null = null;
-let initialized = false;
 
 function initializeAdmin() {
-  if (initialized || getApps().length > 0) {
+  // Check if already successfully initialized
+  if (adminDb && getApps().length > 0) {
     return adminDb;
   }
 
@@ -36,9 +36,10 @@ function initializeAdmin() {
         const fileContent = readFileSync(filePath, 'utf8');
         serviceAccount = JSON.parse(fileContent);
         console.log('Service account loaded from file:', filePath);
+        console.log('Project ID from service account:', serviceAccount.project_id);
         break;
       } catch (e) {
-        console.log('Failed to read from:', path);
+        console.log('Failed to read from:', path, 'Error:', e.message);
       }
     }
     
@@ -51,12 +52,16 @@ function initializeAdmin() {
     // Validate service account has required fields
     if (serviceAccount && serviceAccount.private_key && serviceAccount.client_email && serviceAccount.project_id) {
       console.log('Service account validated, initializing app...');
-      initializeApp({
-        credential: cert(serviceAccount),
-      });
-      adminDb = getFirestore();
-      initialized = true;
-      console.log('Firebase Admin SDK initialized successfully');
+      try {
+        initializeApp({
+          credential: cert(serviceAccount),
+        });
+        adminDb = getFirestore();
+        console.log('Firebase Admin SDK initialized successfully');
+      } catch (initError) {
+        console.error('Failed to initialize Firebase Admin app:', initError);
+        adminDb = null;
+      }
     } else {
       console.warn('Firebase Admin: Invalid service account - missing required fields');
       if (serviceAccount) {

@@ -1,1 +1,2 @@
 - always do a firebase rules deploy with the right rules for the new content / module
+- when integrating Firebase Admin SDK, think carefully and create a consistent, reusable approach instead of repeatedly changing the implementation for each new section or API
