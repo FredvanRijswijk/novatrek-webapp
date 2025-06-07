@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL REMINDERS
+
+🚨 **ALWAYS deploy Firebase rules after making changes:**
+```bash
+firebase deploy --only firestore:rules
+```
+- Any changes to firestore.rules MUST be deployed immediately
+- Permission errors often indicate rules need updating and deployment
+- Run deployment BEFORE testing any new features that touch Firestore
+
 ## Project Overview
 
 NovaTrek is a comprehensive travel planning platform built with Next.js 15.3.3 and React 19. It combines modern web technologies with AI capabilities to help users plan trips efficiently.

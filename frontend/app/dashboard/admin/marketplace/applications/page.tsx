@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 
 interface Application {
@@ -54,6 +55,10 @@ export default function MarketplaceApplicationsPage() {
   const [reviewNotes, setReviewNotes] = useState('')
   const [processing, setProcessing] = useState(false)
 
+  const fetchApplications = async () => {
+    // This will trigger a re-render when the snapshot listener updates
+    // No need to manually fetch as we're using real-time listeners
+  }
 
   // Subscribe to applications
   useEffect(() => {
@@ -81,51 +86,35 @@ export default function MarketplaceApplicationsPage() {
 
     setProcessing(true)
     try {
-      await updateDoc(doc(db, 'marketplace_applications', selectedApp.id), {
-        status,
-        reviewNotes,
-        reviewedAt: serverTimestamp(),
-        reviewedBy: user.uid
+      const token = await user.getIdToken()
+      const response = await fetch(`/api/admin/marketplace/applications/${selectedApp.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: status === 'approved' ? 'approve' : 
+                  status === 'rejected' ? 'reject' : 
+                  'needs_info',
+          reason: status === 'rejected' ? reviewNotes : undefined,
+          infoNeeded: status === 'additional_info_required' ? reviewNotes : undefined
+        })
       })
 
-      // Send email notification about the status update
-      try {
-        const token = await user.getIdToken()
-        const emailData: any = {
-          action: status === 'approved' ? 'approved' : 
-                  status === 'rejected' ? 'rejected' : 
-                  'needs_info',
-          applicationId: selectedApp.id
-        }
-
-        if (status === 'rejected' || status === 'additional_info_required') {
-          emailData.reason = reviewNotes
-          emailData.infoNeeded = reviewNotes
-        }
-
-        await fetch('/api/email/expert-application', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(emailData)
-        })
-      } catch (emailError) {
-        console.error('Failed to send status update email:', emailError)
-        // Don't block the review process if email fails
+      if (!response.ok) {
+        throw new Error('Failed to update application')
       }
 
-      // If approved, create the expert profile (this would be done server-side in production)
-      if (status === 'approved') {
-        // In production, trigger a Cloud Function to create the Stripe Connect account
-        // and expert profile
-      }
-
+      // Refresh the applications list
+      await fetchApplications()
+      
       setSelectedApp(null)
       setReviewNotes('')
+      toast.success(`Application ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'updated'} successfully`)
     } catch (error) {
       console.error('Error updating application:', error)
+      toast.error("Failed to update application")
     } finally {
       setProcessing(false)
     }

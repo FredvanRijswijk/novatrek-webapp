@@ -20,7 +20,9 @@ export interface TravelExpert {
   userId: string; // Firebase Auth UID
   stripeConnectAccountId: string;
   businessName: string;
+  slug: string; // SEO-friendly URL slug
   bio: string;
+  tagline?: string; // Short description for SEO
   specializations: string[];
   rating: number;
   reviewCount: number;
@@ -28,13 +30,27 @@ export interface TravelExpert {
   onboardingComplete: boolean;
   payoutSchedule: 'daily' | 'weekly' | 'monthly';
   profileImageUrl?: string;
+  coverImageUrl?: string; // Hero/banner image
   contactEmail?: string;
   websiteUrl?: string;
   socialLinks?: {
     instagram?: string;
     facebook?: string;
     twitter?: string;
+    linkedin?: string;
+    youtube?: string;
   };
+  location?: {
+    city?: string;
+    state?: string;
+    country?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+  languages?: string[];
+  certifications?: string[];
+  yearsOfExperience?: number;
+  totalTripsPlanned?: number;
+  featuredIn?: string[]; // Media mentions
   createdAt: Date;
   updatedAt: Date;
 }
@@ -196,6 +212,45 @@ export class MarketplaceModel {
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date()
     } as TravelExpert
+  }
+
+  static async getExpertBySlug(slug: string): Promise<TravelExpert | null> {
+    const q = query(
+      collection(db, COLLECTIONS.EXPERTS),
+      where('slug', '==', slug),
+      where('status', '==', 'active'),
+      limit(1)
+    )
+    const querySnapshot = await getDocs(q)
+    if (querySnapshot.empty) return null
+    const doc = querySnapshot.docs[0]
+    const data = doc.data()
+    return {
+      ...data,
+      id: doc.id,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as TravelExpert
+  }
+
+  static async getActiveExperts(limit = 20): Promise<TravelExpert[]> {
+    const q = query(
+      collection(db, COLLECTIONS.EXPERTS),
+      where('status', '==', 'active'),
+      orderBy('rating', 'desc'),
+      orderBy('reviewCount', 'desc'),
+      limit
+    )
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      } as TravelExpert
+    })
   }
 
   static async updateExpert(expertId: string, data: Partial<TravelExpert>): Promise<void> {

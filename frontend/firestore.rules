@@ -143,8 +143,11 @@ service cloud.firestore {
     
     // Marketplace Travel Experts
     match /marketplace_experts/{expertId} {
-      // Allow public read of active experts
+      // Allow public read of active experts (for SEO and public profiles)
       allow read: if resource.data.status == 'active';
+      
+      // Allow public listing of active experts (for /experts page)
+      allow list: if true;
       
       // Allow experts to update their own profile
       allow update: if request.auth != null && 
@@ -153,24 +156,27 @@ service cloud.firestore {
       // Only server can create expert profiles (after application approval)
       allow create: if false;
       
-      // List active experts
-      allow list: if request.auth != null;
+      // Allow deletion only by the expert themselves or admin
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
     }
     
     // Marketplace Products
     match /marketplace_products/{productId} {
-      // Allow public read of active products
+      // Allow public read of active products (for SEO and public access)
       allow read: if resource.data.status == 'active';
       
-      // Allow experts to manage their own products
-      allow create: if request.auth != null && 
-        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid));
-      
-      allow update, delete: if request.auth != null && 
-        get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid;
-      
-      // List products (filtered by status on client)
+      // Allow public listing of products (for marketplace and expert profiles)
       allow list: if true;
+      
+      // Allow experts to create products if they have an expert profile
+      allow create: if request.auth != null && 
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) &&
+        request.auth.uid == request.resource.data.expertId;
+      
+      // Allow experts to update/delete their own products
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.expertId;
     }
     
     // Marketplace Transactions
@@ -189,8 +195,8 @@ service cloud.firestore {
     
     // Marketplace Reviews
     match /marketplace_reviews/{reviewId} {
-      // Allow public read of reviews
-      allow read: if true;
+      // Allow public read and list of reviews (for SEO and transparency)
+      allow read, list: if true;
       
       // Allow verified buyers to create reviews
       allow create: if request.auth != null && 
@@ -199,15 +205,14 @@ service cloud.firestore {
         get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.buyerId == request.auth.uid &&
         get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.status == 'completed';
       
-      // Allow buyers to update their own reviews
+      // Allow buyers to update their own reviews within 30 days
       allow update: if request.auth != null && 
-        request.auth.uid == resource.data.buyerId;
+        request.auth.uid == resource.data.buyerId &&
+        request.time < resource.data.createdAt + duration.value(30, 'd');
       
-      // No deletion of reviews
-      allow delete: if false;
-      
-      // List reviews
-      allow list: if true;
+      // Allow soft delete by buyer or admin
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.buyerId || request.auth.token.admin == true);
     }
     
     // Marketplace Applications
@@ -290,6 +295,75 @@ service cloud.firestore {
       
       // No updates or deletes
       allow update, delete: if false;
+    }
+    
+    // Help Categories - public read, admin write
+    match /help_categories/{categoryId} {
+      // Allow public read for help categories
+      allow read, list: if true;
+      
+      // Only admins can create/update/delete categories
+      allow create, update, delete: if request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // Help Articles - public read, admin write
+    match /help_articles/{articleId} {
+      // Allow public read for published articles
+      allow read: if resource.data.status == 'published';
+      
+      // Allow list for all (filtering done client-side)
+      allow list: if true;
+      
+      // Allow anyone to update view count, helpful, or notHelpful fields only
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) ||
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpful']) ||
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notHelpful']);
+      
+      // Only admins can create/delete help articles and do full updates
+      allow create: if request.auth != null && 
+        request.auth.token.admin == true;
+      allow update: if request.auth != null && 
+        request.auth.token.admin == true &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpful']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notHelpful']);
+      allow delete: if request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // Help Feedback - write for all users, read for admins
+    match /help_feedback/{feedbackId} {
+      // Allow anyone to create feedback (including anonymous users)
+      allow create: if true;
+      
+      // Only admins can read feedback
+      allow read, list: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
+    // Contact/Support Requests
+    match /support_requests/{requestId} {
+      // Allow authenticated users to create support requests
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own support requests
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+      
+      // Allow admins to update support requests (status, response)
+      allow update: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // Allow listing for users (their own) and admins (all)
+      allow list: if request.auth != null;
+      
+      // No deletion of support requests
+      allow delete: if false;
     }
     
     // Default rule - deny all other access

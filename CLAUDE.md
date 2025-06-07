@@ -1,0 +1,1 @@
+- always do a firebase rules deploy with the right rules for the new content / module

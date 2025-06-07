@@ -15,6 +15,7 @@ import {
   Store,
   ShieldCheck,
   Shield,
+  HelpCircle,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -97,6 +98,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Marketplace",
         url: "/marketplace",
         icon: Store,
+        items: [
+          {
+            title: "Browse Experts",
+            url: "/experts",
+          },
+          {
+            title: "Products",
+            url: "/marketplace",
+          },
+        ],
       },
       {
         title: "AI Assistant",
@@ -132,6 +143,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Settings",
         url: "/dashboard/settings/profile",
         icon: Settings,
+      },
+      {
+        title: "Help Center",
+        url: "/help",
+        icon: HelpCircle,
+        items: [
+          {
+            title: "Browse Articles",
+            url: "/help",
+          },
+          {
+            title: "Contact Support",
+            url: "/contact",
+          },
+        ],
       },
       // Show Expert Dashboard if user is an expert
       ...(isExpert ? [{
@@ -186,6 +212,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "System Logs",
             url: "/dashboard/admin/logs",
+          },
+          {
+            title: "Help Center",
+            url: "/dashboard/admin/help",
           },
         ],
       }] : []),
