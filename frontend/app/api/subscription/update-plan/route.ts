@@ -6,6 +6,7 @@ import serverLogger from '@/lib/logging/server-logger'
 
 export async function POST(request: NextRequest) {
   const endpoint = '/api/subscription/update-plan'
+  let userId: string | undefined
   
   try {
     // Verify authentication from Authorization header
@@ -16,8 +17,15 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await auth.verifyIdToken(token)
-    const userId = decodedToken.uid
+    
+    try {
+      const decodedToken = await auth.verifyIdToken(token)
+      userId = decodedToken.uid
+    } catch (authError) {
+      console.error('Auth verification error:', authError)
+      await serverLogger.logApiResponse(endpoint, 'POST', 401, undefined, { error: 'Invalid authentication token' })
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 })
+    }
     
     await serverLogger.logApiRequest(endpoint, 'POST', userId)
 
@@ -31,6 +39,8 @@ export async function POST(request: NextRequest) {
     // Get user's Stripe customer ID using Admin SDK
     const adminDb = getAdminDb()
     if (!adminDb) {
+      console.error('Failed to initialize Firebase Admin SDK - using fallback approach')
+      // For now, return error since we need user's Stripe customer ID
       await serverLogger.logApiError(endpoint, 'POST', new Error('Database initialization failed'), userId)
       return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 })
     }

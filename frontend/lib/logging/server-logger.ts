@@ -56,7 +56,16 @@ class ServerLogger {
 
   private async logToFirestore(entry: LogEntry) {
     try {
-      const adminDb = getAdminDb()
+      // Try to get Admin DB, but don't throw if it fails
+      let adminDb;
+      try {
+        adminDb = getAdminDb()
+      } catch (e) {
+        // Admin SDK not initialized, skip Firestore logging
+        console.warn('Firebase Admin SDK not initialized, skipping Firestore logging')
+        return
+      }
+      
       if (!adminDb) {
         console.error('Failed to get admin database for logging')
         return

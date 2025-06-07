@@ -15,6 +15,7 @@ function initializeAdmin() {
   console.log('Initializing Firebase Admin SDK...');
   console.log('FIREBASE_SERVICE_ACCOUNT_KEY_FILE:', process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE);
   console.log('Current working directory:', process.cwd());
+  console.log('NODE_ENV:', process.env.NODE_ENV);
   
   try {
     let serviceAccount;
@@ -24,7 +25,8 @@ function initializeAdmin() {
       process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE,
       'novatrek-dev-firebase-adminsdk.json',
       './novatrek-dev-firebase-adminsdk.json',
-      join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json')
+      join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json'),
+      join(process.cwd(), 'frontend', 'novatrek-dev-firebase-adminsdk.json')
     ].filter(Boolean);
     
     for (const path of possiblePaths) {
@@ -74,9 +76,6 @@ function initializeAdmin() {
 export function getAdminDb() {
   if (!adminDb) {
     adminDb = initializeAdmin();
-    if (!adminDb) {
-      throw new Error('Failed to initialize Firebase Admin SDK - check service account configuration');
-    }
   }
   return adminDb;
 }
@@ -109,4 +108,11 @@ export function getAdminAuth() {
 }
 
 export { initializeAdmin };
-export const auth = getAdminAuth();
+
+// Create a lazy auth object that initializes on first use
+export const auth = {
+  verifyIdToken: async (idToken: string) => {
+    const adminAuth = getAdminAuth();
+    return adminAuth.verifyIdToken(idToken);
+  }
+};
