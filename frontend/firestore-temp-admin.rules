@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMPORARY: Allow specific user to create their admin document
+    match /admin_users/{adminId} {
+      // Allow reading own admin document
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      
+      // TEMPORARY: Allow creating admin document for specific user
+      // REMOVE THIS AFTER CREATING YOUR ADMIN DOCUMENT
+      allow create: if request.auth != null && 
+        request.auth.uid == adminId && 
+        request.auth.uid == "JPwgiIT4wWYxmZE74LMhAT7LIUI2" &&
+        request.resource.data.role == "super_admin";
+      
+      // No other writes allowed
+      allow update, delete: if false;
+    }
+    
+    // Keep all other rules the same
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /payments/{paymentId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if true;
+      }
+    }
+    
+    // ... (include all other rules from your original firestore.rules file)
+  }
+}

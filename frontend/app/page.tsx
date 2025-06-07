@@ -9,7 +9,10 @@ import {
   Plane, 
   MapPin, 
   Sparkles,
-  Check
+  Check,
+  Store,
+  Users,
+  Star
 } from "lucide-react"
 import { signInWithGoogle } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -266,7 +269,34 @@ export default function Home() {
                 Create detailed day-by-day itineraries
               </span>
             </li>
+            <li className="flex items-start gap-3">
+              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
+                <Store className="w-3 h-3 text-white dark:text-gray-900" />
+              </div>
+              <span className="text-gray-900 dark:text-white font-semibold">
+                NEW: Browse trip templates from expert travel planners
+              </span>
+            </li>
           </ul>
+          
+          {/* Marketplace CTA */}
+          <div className="mt-8 p-4 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur">
+            <div className="flex items-center gap-2 mb-2">
+              <Store className="w-5 h-5" />
+              <span className="font-semibold">Marketplace Now Open!</span>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+              Discover curated trip templates and connect with verified travel experts.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => router.push('/marketplace')}
+            >
+              Explore Marketplace
+              <Sparkles className="ml-2 w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </main>

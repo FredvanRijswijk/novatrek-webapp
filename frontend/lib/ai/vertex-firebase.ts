@@ -331,5 +331,115 @@ ${enhancedContext.suggestions.immediate.map((s: string) => `- ${s}`).join('\n')}
   return chatConversation(formattedMessages, systemPrompt, 'flash')
 }
 
+// Structured output helper for packing suggestions
+export async function generatePackingSuggestions(context: {
+  trip: {
+    destinations: any[]
+    startDate: Date
+    endDate: Date
+    duration: number
+    travelers: number
+    budget?: any
+  }
+  weather: {
+    averageTemp: { high: number; low: number }
+    rainExpected: boolean
+    snowExpected: boolean
+  }
+  activities: Array<{ type: string; name: string }>
+  preferences?: any
+  existingItems: string[]
+}) {
+  const model = getModel('flash')
+  
+  // Define the response schema for structured output
+  const responseSchema = {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            category: { type: 'string' },
+            quantity: { type: 'number' },
+            reason: { type: 'string' },
+            weatherDependent: { type: 'boolean' },
+            activityDependent: {
+              type: 'array',
+              items: { type: 'string' }
+            }
+          },
+          required: ['name', 'category', 'quantity']
+        }
+      },
+      reminders: {
+        type: 'array',
+        items: { type: 'string' }
+      },
+      weatherTips: {
+        type: 'array',
+        items: { type: 'string' }
+      }
+    },
+    required: ['items', 'reminders', 'weatherTips']
+  }
+  
+  const destinations = context.trip.destinations
+    .map(d => `${d.city || d.name}, ${d.country}`)
+    .join(' -> ')
+  
+  const activityTypes = [...new Set(context.activities.map(a => a.type))].join(', ')
+  const activityNames = context.activities.map(a => a.name).join(', ')
+  
+  const prompt = `You are a helpful travel packing assistant. Generate personalized packing suggestions based on the following trip details:
+
+Trip Information:
+- Destinations: ${destinations}
+- Duration: ${context.trip.duration} days
+- Dates: ${context.trip.startDate.toLocaleDateString()} to ${context.trip.endDate.toLocaleDateString()}
+- Number of travelers: ${context.trip.travelers}
+
+Weather Conditions:
+- Average temperature: ${context.weather.averageTemp.low}°C to ${context.weather.averageTemp.high}°C
+- Rain expected: ${context.weather.rainExpected}
+- Snow expected: ${context.weather.snowExpected}
+
+Planned Activities:
+- Types: ${activityTypes || 'General sightseeing'}
+- Specific: ${activityNames || 'Not specified'}
+
+Already Packed Items:
+${context.existingItems.join(', ')}
+
+Please suggest ADDITIONAL items that would be helpful for this specific trip. For each item:
+1. Consider the weather conditions
+2. Think about the planned activities
+3. Account for the trip duration
+4. Don't suggest items already in the list
+
+Focus on items that are:
+- Specific to the destination or activities
+- Weather-dependent items they might forget
+- Activity-specific gear
+- Local customs or requirements (e.g., modest clothing for temples)
+- Practical items for the specific climate
+
+Group suggestions by category (Clothes, Electronics, Health & Safety, Accessories, Activity Gear, etc.)`
+
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema,
+      temperature: 0.7,
+      maxOutputTokens: 1500,
+    }
+  })
+  
+  return JSON.parse(result.response.text())
+}
+
 // Export AI instance for advanced usage
 export { ai }

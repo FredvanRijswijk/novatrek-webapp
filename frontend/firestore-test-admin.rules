@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Test: Simple admin_users collection rules
+    match /admin_users/{adminId} {
+      // Allow reading own admin document
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      
+      // Allow specific user to create their admin document
+      allow create: if request.auth != null && 
+        request.auth.uid == adminId && 
+        request.auth.uid == "JPwgiIT4wWYxmZE74LMhAT7LIUI2";
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

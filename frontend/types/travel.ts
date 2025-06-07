@@ -92,6 +92,7 @@ export interface Trip {
   weatherData?: WeatherData[]
   photos?: TripPhoto[]
   coverImage?: string
+  packingListId?: string // Reference to associated packing list
   createdAt: Date
   updatedAt: Date
 }
@@ -271,4 +272,55 @@ export interface SavedPlace {
   notes?: string
   tags: string[]
   savedAt: Date
+}
+
+export interface PackingCategory {
+  id: string
+  name: string
+  icon?: string
+  order: number
+  items: PackingItem[]
+}
+
+export interface PackingItem {
+  id: string
+  name: string
+  quantity?: number
+  checked: boolean
+  categoryId: string
+  notes?: string
+  isShared?: boolean
+  sharedWith?: string[]
+  aiSuggested?: boolean
+  weatherDependent?: boolean
+  activityDependent?: string[] // Related activity types
+}
+
+export interface PackingList {
+  id: string
+  tripId: string
+  userId: string
+  name: string
+  categories: PackingCategory[]
+  templateId?: string // Reference to standard template used
+  weatherConsiderations?: {
+    averageTemp: { high: number; low: number }
+    rainExpected: boolean
+    snowExpected: boolean
+  }
+  tripType?: 'leisure' | 'business' | 'adventure' | 'beach' | 'city' | 'mixed'
+  lastUpdated: Date
+  createdAt: Date
+}
+
+export interface PackingTemplate {
+  id: string
+  name: string
+  description: string
+  tripType: 'leisure' | 'business' | 'adventure' | 'beach' | 'city'
+  climate: 'tropical' | 'temperate' | 'cold' | 'desert' | 'mixed'
+  duration: 'weekend' | 'week' | 'extended' // 2-3 days, 4-7 days, 8+ days
+  categories: PackingCategory[]
+  isDefault: boolean
+  createdAt: Date
 }

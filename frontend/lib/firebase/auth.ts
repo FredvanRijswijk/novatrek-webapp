@@ -13,6 +13,9 @@ import {
 import { auth, db } from './config'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
+// Default avatar URL for users without photos
+const DEFAULT_AVATAR_URL = '/avatars/default-avatar.svg';
+
 // Helper function to create/update user document
 const createOrUpdateUserDocument = async (user: User) => {
   if (!user) return;
@@ -22,23 +25,37 @@ const createOrUpdateUserDocument = async (user: User) => {
   
   if (!userSnap.exists()) {
     // Create new user document
-    await setDoc(userRef, {
+    const userData: any = {
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
+      displayName: user.displayName || null,
+      photoURL: user.photoURL || DEFAULT_AVATAR_URL,
       createdAt: new Date(),
       updatedAt: new Date(),
       subscription: null, // Will be populated when user subscribes
-    });
+    };
+    
+    await setDoc(userRef, userData);
   } else {
-    // Update existing user document
-    await setDoc(userRef, {
+    // Update existing user document - only include defined fields
+    const updateData: any = {
       email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
       updatedAt: new Date(),
-    }, { merge: true });
+    };
+    
+    // Only add fields if they have values
+    if (user.displayName !== null && user.displayName !== undefined) {
+      updateData.displayName = user.displayName;
+    }
+    
+    if (user.photoURL !== null && user.photoURL !== undefined) {
+      updateData.photoURL = user.photoURL;
+    } else if (!userSnap.data().photoURL) {
+      // If no photo URL exists, set default
+      updateData.photoURL = DEFAULT_AVATAR_URL;
+    }
+    
+    await setDoc(userRef, updateData, { merge: true });
   }
 }
 

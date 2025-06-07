@@ -141,6 +141,139 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
+    // Marketplace Travel Experts
+    match /marketplace_experts/{expertId} {
+      // Allow public read of active experts
+      allow read: if resource.data.status == 'active';
+      
+      // Allow experts to update their own profile
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Only server can create expert profiles (after application approval)
+      allow create: if false;
+      
+      // List active experts
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Products
+    match /marketplace_products/{productId} {
+      // Allow public read of active products
+      allow read: if resource.data.status == 'active';
+      
+      // Allow experts to manage their own products
+      allow create: if request.auth != null && 
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid));
+      
+      allow update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid;
+      
+      // List products (filtered by status on client)
+      allow list: if true;
+    }
+    
+    // Marketplace Transactions
+    match /marketplace_transactions/{transactionId} {
+      // Allow buyers and sellers to read their own transactions
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.buyerId || 
+         request.auth.uid == resource.data.sellerId);
+      
+      // Only server can create/update transactions (via webhooks)
+      allow create, update: if false;
+      
+      // List own transactions
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Reviews
+    match /marketplace_reviews/{reviewId} {
+      // Allow public read of reviews
+      allow read: if true;
+      
+      // Allow verified buyers to create reviews
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.buyerId &&
+        exists(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)) &&
+        get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.buyerId == request.auth.uid &&
+        get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.status == 'completed';
+      
+      // Allow buyers to update their own reviews
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.buyerId;
+      
+      // No deletion of reviews
+      allow delete: if false;
+      
+      // List reviews
+      allow list: if true;
+    }
+    
+    // Marketplace Applications
+    match /marketplace_applications/{applicationId} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null && 
+          request.auth.token.admin == true;
+      }
+      
+      // Allow users to create one application
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own application OR admins to read any
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || isAdmin());
+      
+      // Only admins can update applications (approval/rejection)
+      allow update: if isAdmin();
+      
+      // No deletion of applications
+      allow delete: if false;
+      
+      // Users can list their own applications OR admins can list all
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Configuration (read-only for all authenticated users)
+    match /marketplace_config/{configId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via server
+    }
+    
+    // Admin Users - only admins can read, no client-side writes
+    match /admin_users/{adminId} {
+      // Allow admins to read their own admin record
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      // No client-side writes - admin creation/updates via server only
+      allow write: if false;
+    }
+    
+    // Packing Lists - users can manage their own packing lists
+    match /packing_lists/{listId} {
+      // Allow users to create packing lists
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read and update their own packing lists
+      allow read, update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to delete their own packing lists
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own packing lists
+      allow list: if request.auth != null;
+    }
+    
+    // Packing Templates - read-only for all authenticated users
+    match /packing_templates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via server
+    }
+    
     // Default rule - deny all other access
     match /{document=**} {
       allow read, write: if false;

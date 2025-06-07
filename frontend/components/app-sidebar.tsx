@@ -11,6 +11,9 @@ import {
   Home,
   PlusCircle,
   Inbox,
+  Briefcase,
+  Store,
+  ShieldCheck,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -27,6 +30,34 @@ import { useFirebase } from "@/lib/firebase";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isAuthenticated } = useFirebase();
+  const [isExpert, setIsExpert] = React.useState(false);
+  const [isAdminUser, setIsAdminUser] = React.useState(false);
+
+  // Check if user is an expert or admin
+  React.useEffect(() => {
+    async function checkUserStatus() {
+      if (!user) return;
+      
+      // Check admin status using AdminModel
+      try {
+        const { AdminModel } = await import('@/lib/models/admin');
+        const isAdmin = await AdminModel.isAdmin(user.uid);
+        setIsAdminUser(isAdmin);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+      
+      // Check expert status
+      try {
+        const { MarketplaceModel } = await import('@/lib/models/marketplace');
+        const expert = await MarketplaceModel.getExpertByUserId(user.uid);
+        setIsExpert(!!expert && expert.onboardingComplete);
+      } catch (error) {
+        console.error('Error checking expert status:', error);
+      }
+    }
+    checkUserStatus();
+  }, [user]);
 
   // NovaTrek navigation data
   const data = {
@@ -60,6 +91,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Travel Inbox",
         url: "/dashboard/captures",
         icon: Inbox,
+      },
+      {
+        title: "Marketplace",
+        url: "/marketplace",
+        icon: Store,
       },
       {
         title: "AI Assistant",
@@ -96,6 +132,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/dashboard/settings/profile",
         icon: Settings,
       },
+      // Show Expert Dashboard if user is an expert
+      ...(isExpert ? [{
+        title: "Expert Dashboard",
+        url: "/dashboard/expert",
+        icon: Briefcase,
+        items: [
+          {
+            title: "Overview",
+            url: "/dashboard/expert",
+          },
+          {
+            title: "Products",
+            url: "/dashboard/expert/products",
+          },
+          {
+            title: "Earnings",
+            url: "/dashboard/expert/earnings",
+          },
+          {
+            title: "Reviews",
+            url: "/dashboard/expert/reviews",
+          },
+        ],
+      }] : []),
+      // Show Admin section if user is an admin
+      ...(isAdminUser ? [{
+        title: "Admin",
+        url: "/dashboard/admin/marketplace",
+        icon: ShieldCheck,
+        items: [
+          {
+            title: "Dashboard",
+            url: "/dashboard/admin/marketplace",
+          },
+          {
+            title: "Applications",
+            url: "/dashboard/admin/marketplace/applications",
+          },
+          {
+            title: "Experts",
+            url: "/dashboard/admin/marketplace/experts",
+          },
+          {
+            title: "Products",
+            url: "/dashboard/admin/marketplace/products",
+          },
+        ],
+      }] : []),
     ],
     projects: [
       {
@@ -113,6 +197,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/dashboard/settings/travel-preferences",
         icon: User,
       },
+      // Only show "Become an Expert" if user is not already an expert
+      ...(!isExpert ? [{
+        name: "Become an Expert",
+        url: "/dashboard/become-expert",
+        icon: Briefcase,
+      }] : []),
     ],
   };
 

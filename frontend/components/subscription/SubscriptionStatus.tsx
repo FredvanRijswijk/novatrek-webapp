@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/lib/firebase/context';
+import { useFirebase } from '@/lib/firebase/context';
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans';
 import { CreditCard, AlertCircle } from 'lucide-react';
 
@@ -16,7 +16,7 @@ interface SubscriptionData {
 }
 
 export function SubscriptionStatus() {
-  const { user } = useAuth();
+  const { user } = useFirebase();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);

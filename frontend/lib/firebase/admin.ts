@@ -19,16 +19,29 @@ function initializeAdmin() {
   try {
     let serviceAccount;
     
-    // First try to read from file if specified
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE) {
-      const filePath = join(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE);
-      console.log('Attempting to read service account from:', filePath);
-      const fileContent = readFileSync(filePath, 'utf8');
-      serviceAccount = JSON.parse(fileContent);
-      console.log('Service account loaded from file');
-    } 
-    // Otherwise try to parse from environment variable
-    else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    // Try multiple paths for the service account file
+    const possiblePaths = [
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE,
+      'novatrek-dev-firebase-adminsdk.json',
+      './novatrek-dev-firebase-adminsdk.json',
+      join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json')
+    ].filter(Boolean);
+    
+    for (const path of possiblePaths) {
+      try {
+        const filePath = path.startsWith('/') ? path : join(process.cwd(), path);
+        console.log('Attempting to read service account from:', filePath);
+        const fileContent = readFileSync(filePath, 'utf8');
+        serviceAccount = JSON.parse(fileContent);
+        console.log('Service account loaded from file:', filePath);
+        break;
+      } catch (e) {
+        console.log('Failed to read from:', path);
+      }
+    }
+    
+    // If not found in files, try environment variable
+    if (!serviceAccount && process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
       serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
       console.log('Service account loaded from env variable');
     }
@@ -60,7 +73,7 @@ function initializeAdmin() {
 // Lazy getter for adminDb
 export function getAdminDb() {
   if (!adminDb) {
-    return initializeAdmin();
+    adminDb = initializeAdmin();
   }
   return adminDb;
 }
@@ -80,3 +93,15 @@ export async function verifyIdToken(idToken: string) {
     throw error;
   }
 }
+
+// Export functions to get admin instances
+export function getAdminAuth() {
+  if (!getApps().length) {
+    initializeAdmin();
+  }
+  return getAuth();
+}
+
+export { initializeAdmin };
+export const auth = getAdminAuth();
+export const db = getAdminDb();
