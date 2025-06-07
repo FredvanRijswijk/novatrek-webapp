@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { User, Shield, CreditCard } from 'lucide-react'
+import { User, Shield, CreditCard, Smartphone, Plane } from 'lucide-react'
 
 const settingsTabs = [
   {
@@ -17,6 +17,18 @@ const settingsTabs = [
     href: '/dashboard/settings/account',
     icon: Shield,
     description: 'Security settings and account management'
+  },
+  {
+    title: 'Travel Preferences',
+    href: '/dashboard/settings/travel-preferences',
+    icon: Plane,
+    description: 'Your travel style and preferences'
+  },
+  {
+    title: 'API & Shortcuts',
+    href: '/dashboard/settings/api',
+    icon: Smartphone,
+    description: 'iOS Shortcuts and API access'
   },
   {
     title: 'Billing',

@@ -10,6 +10,7 @@ import {
   User,
   Home,
   PlusCircle,
+  Inbox,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -54,6 +55,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/dashboard/trips/new",
           },
         ],
+      },
+      {
+        title: "Travel Inbox",
+        url: "/dashboard/captures",
+        icon: Inbox,
       },
       {
         title: "AI Assistant",
