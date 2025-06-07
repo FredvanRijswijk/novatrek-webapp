@@ -1,0 +1,19 @@
+{
+  "name": "novatrek-browser-extension",
+  "version": "1.0.0",
+  "description": "Save travel inspiration from anywhere on the web to NovaTrek",
+  "scripts": {
+    "dev": "npm run build -- --watch",
+    "build": "node scripts/build.js",
+    "clean": "rm -rf dist",
+    "package": "npm run build && cd dist && zip -r ../novatrek-extension.zip *"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.258",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0"
+  }
+}

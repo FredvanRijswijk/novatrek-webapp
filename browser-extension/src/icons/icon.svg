@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="64" cy="64" r="64" fill="#000000"/>
+  
+  <!-- Airplane Icon -->
+  <path d="M64 32L80 64H96L64 48L32 64H48L64 32Z" fill="white"/>
+  <path d="M48 64L64 96L80 64H48Z" fill="white"/>
+  
+  <!-- Plus Sign (for saving) -->
+  <circle cx="96" cy="96" r="20" fill="#00D000"/>
+  <path d="M96 86V106M86 96H106" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>
