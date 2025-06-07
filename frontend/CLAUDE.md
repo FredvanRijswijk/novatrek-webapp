@@ -104,6 +104,7 @@ firebase deploy --only firestore:rules
 2. **Multi-Destination Support** - Trips can have multiple stops with individual dates
 3. **Vertex AI Integration** - Dual AI provider support with automatic fallback
 4. **Group Travel Architecture** - Documented plans for anonymous group planning features
+5. **Firebase AI SDK Migration** - New simplified Vertex AI integration using Firebase's native AI SDK
 
 ### Known Configuration Requirements
 
@@ -116,6 +117,8 @@ firebase deploy --only firestore:rules
    - For local dev: `gcloud auth application-default login`
    - For production: Service account JSON in environment variable
    - Falls back to OpenAI if not configured
+   - **NEW Firebase AI SDK**: No additional auth needed - uses Firebase credentials
+   - Enable Vertex AI API in Google Cloud Console
 
 3. **Stripe Webhooks**
    - Development: Use Stripe CLI for webhook forwarding
@@ -135,3 +138,30 @@ No testing framework is currently configured. All new features should be manuall
 - Travel preferences saving/loading
 - AI chat with different contexts
 - Subscription flows in Stripe test mode
+
+### Firebase AI SDK Integration
+
+The project now supports the new Firebase AI SDK for Vertex AI alongside the existing implementation:
+
+1. **New Implementation** (`lib/ai/vertex-firebase.ts`)
+   - Uses Firebase's native AI SDK with Vertex AI backend
+   - Simplified authentication (uses Firebase credentials)
+   - Structured output support for complex AI responses
+   - Helper functions for chat, group compromise, and itinerary optimization
+
+2. **Migration Status**
+   - Chat API: Supports both old and new implementations via `providerId`
+   - Group Compromise: Both implementations available with `useFirebaseSDK` flag
+   - Itinerary Optimization: Both implementations available with `useFirebaseSDK` flag
+   - Automatic fallback to OpenAI if Vertex AI fails
+
+3. **Using the New SDK**
+   - Chat: Pass `providerId: 'vertex-gemini-flash-firebase'` in the request
+   - Group/Itinerary APIs: Pass `useFirebaseSDK: true` in the request body
+   - No additional authentication setup required beyond Firebase
+
+4. **Benefits**
+   - Simpler authentication (no service accounts needed)
+   - Native Firebase integration
+   - Structured output for predictable AI responses
+   - Automatic model selection and fallback handling

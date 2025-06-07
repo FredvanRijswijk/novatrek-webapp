@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { optimizeItineraryFlow } from '@/lib/ai/genkit-setup'
+import { optimizeItinerary } from '@/lib/ai/vertex-firebase'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    const { activities, constraints, destination } = await req.json()
+    const { activities, constraints, destination, useFirebaseSDK = false } = await req.json()
 
     // Validate input
     if (!activities || !constraints || !destination) {
@@ -15,12 +16,33 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Run the itinerary optimization
-    const result = await optimizeItineraryFlow({
-      activities,
-      constraints,
-      destination,
-    })
+    let result;
+    
+    // Use Firebase SDK if requested
+    if (useFirebaseSDK) {
+      try {
+        result = await optimizeItinerary({
+          activities,
+          constraints,
+          destination,
+        })
+      } catch (firebaseError) {
+        console.error('Firebase SDK error, falling back to Genkit:', firebaseError)
+        // Fallback to Genkit if Firebase SDK fails
+        result = await optimizeItineraryFlow({
+          activities,
+          constraints,
+          destination,
+        })
+      }
+    } else {
+      // Use existing Genkit implementation
+      result = await optimizeItineraryFlow({
+        activities,
+        constraints,
+        destination,
+      })
+    }
 
     return NextResponse.json(result)
   } catch (error) {

@@ -2,6 +2,7 @@ import { streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
 import { createEnhancedContext } from '@/lib/ai/trip-context-analyzer'
+import { travelChat } from '@/lib/ai/vertex-firebase'
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,6 +84,8 @@ When responding, consider the user's planning stage and provide contextually rel
 
     // Select the model based on provider ID
     let model;
+    let useFirebaseSDK = false;
+    
     switch (providerId) {
       case 'openai-gpt4o':
         model = openai('gpt-4o')
@@ -91,21 +94,71 @@ When responding, consider the user's planning stage and provide contextually rel
       default:
         model = openai('gpt-4o-mini')
         break
-      // Future providers can be added here
-      // case 'vertex-gemini-flash':
-      //   model = vertex('gemini-2.0-flash-exp')
-      //   break
+      case 'vertex-gemini-flash':
+      case 'vertex-gemini-flash-firebase':
+        useFirebaseSDK = true
+        break
     }
 
-    const result = await streamText({
-      model,
-      system: systemPrompt,
-      messages: formattedMessages,
-      maxTokens: 1000,
-      temperature: 0.7,
-    })
+    // Use Firebase SDK for Vertex AI
+    if (useFirebaseSDK) {
+      try {
+        // Create a readable stream for the response
+        const encoder = new TextEncoder()
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              // Use the new Firebase AI SDK
+              const response = await travelChat(
+                formattedMessages,
+                tripContext,
+                userPreferences,
+                enhancedContext
+              )
+              
+              // For now, return the full response as we don't have streaming yet
+              // In the future, we can use firebaseStreamText for real streaming
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: response })}\n\n`))
+              controller.close()
+            } catch (error) {
+              controller.error(error)
+            }
+          }
+        })
+        
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        })
+      } catch (error) {
+        console.error('Firebase AI SDK error:', error)
+        // Fallback to OpenAI if Firebase SDK fails
+        model = openai('gpt-4o-mini')
+        useFirebaseSDK = false
+      }
+    }
+    
+    // Use AI SDK for OpenAI models
+    if (!useFirebaseSDK && model) {
+      const result = await streamText({
+        model,
+        system: systemPrompt,
+        messages: formattedMessages,
+        maxTokens: 1000,
+        temperature: 0.7,
+      })
 
-    return result.toDataStreamResponse()
+      return result.toDataStreamResponse()
+    }
+    
+    // Should never reach here, but return error if it does
+    return new Response(
+      JSON.stringify({ error: 'Invalid model configuration' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response(
