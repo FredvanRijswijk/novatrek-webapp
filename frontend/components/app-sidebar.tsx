@@ -14,6 +14,7 @@ import {
   Briefcase,
   Store,
   ShieldCheck,
+  Shield,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -177,6 +178,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Products",
             url: "/dashboard/admin/marketplace/products",
+          },
+        ],
+      }] : []),
+      // Show Test section in development
+      ...(process.env.NODE_ENV === 'development' ? [{
+        title: "Testing",
+        url: "/dashboard/test-subscription",
+        icon: Shield,
+        items: [
+          {
+            title: "Subscription Test",
+            url: "/dashboard/test-subscription",
+          },
+          {
+            title: "Expert Flow Test",
+            url: "/dashboard/test-expert-flow",
           },
         ],
       }] : []),

@@ -65,3 +65,17 @@ export const SUBSCRIPTION_PLANS = {
 
 export type SubscriptionPlan = keyof typeof SUBSCRIPTION_PLANS;
 export type SubscriptionStatus = 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid';
+
+// Export for webhook handler compatibility
+export const stripePlans = {
+  basic: {
+    name: 'Basic',
+    priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC_MONTHLY || '',
+    priceIdYearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC_YEARLY || '',
+  },
+  pro: {
+    name: 'Pro',
+    priceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY || '',
+    priceIdYearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY || '',
+  }
+};
