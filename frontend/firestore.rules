@@ -169,14 +169,13 @@ service cloud.firestore {
       // Allow public listing of products (for marketplace and expert profiles)
       allow list: if true;
       
-      // Allow experts to create products if they have an expert profile
+      // Allow experts to create products if they own the expert profile
       allow create: if request.auth != null && 
-        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) &&
-        request.auth.uid == request.resource.data.expertId;
+        get(/databases/$(database)/documents/marketplace_experts/$(request.resource.data.expertId)).data.userId == request.auth.uid;
       
       // Allow experts to update/delete their own products
       allow update, delete: if request.auth != null && 
-        request.auth.uid == resource.data.expertId;
+        get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid;
     }
     
     // Marketplace Transactions
@@ -245,6 +244,35 @@ service cloud.firestore {
     match /marketplace_config/{configId} {
       allow read: if request.auth != null;
       allow write: if false; // Admin only via server
+    }
+    
+    // Marketplace Payouts - track expert payouts
+    match /marketplace_payouts/{payoutId} {
+      // Allow experts to read their own payouts
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Only server can create/update payouts (via webhooks)
+      allow create, update: if false;
+      
+      // List own payouts
+      allow list: if request.auth != null;
+      
+      // No deletion of payout records
+      allow delete: if false;
+    }
+    
+    // Marketplace Transfers - track platform fee transfers
+    match /marketplace_transfers/{transferId} {
+      // Only admins can read transfer records
+      allow read, list: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // Only server can create/update transfers (via webhooks)
+      allow create, update: if false;
+      
+      // No deletion of transfer records
+      allow delete: if false;
     }
     
     // Admin Users - only admins can read, no client-side writes

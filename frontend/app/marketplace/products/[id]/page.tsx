@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFirebase } from '@/lib/firebase/context'
 import { MarketplaceModel, MarketplaceProduct, TravelExpert, ProductReview } from '@/lib/models/marketplace'
@@ -37,7 +37,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const INCLUDED_ICONS: Record<string, any> = {
@@ -50,6 +50,7 @@ const INCLUDED_ICONS: Record<string, any> = {
 }
 
 export default function ProductDetailPage({ params }: PageProps) {
+  const resolvedParams = use(params)
   const router = useRouter()
   const { user } = useFirebase()
   const [product, setProduct] = useState<MarketplaceProduct | null>(null)
@@ -61,12 +62,12 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     loadProductData()
-  }, [params.id])
+  }, [resolvedParams.id])
 
   const loadProductData = async () => {
     try {
       // Load product
-      const productData = await MarketplaceModel.getProduct(params.id)
+      const productData = await MarketplaceModel.getProduct(resolvedParams.id)
       if (!productData || productData.status !== 'active') {
         router.push('/marketplace')
         return
@@ -80,7 +81,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       }
 
       // Load reviews
-      const reviewsData = await MarketplaceModel.getReviewsByProduct(params.id)
+      const reviewsData = await MarketplaceModel.getReviewsByProduct(resolvedParams.id)
       setReviews(reviewsData)
     } catch (error) {
       console.error('Error loading product:', error)
@@ -97,7 +98,7 @@ export default function ProductDetailPage({ params }: PageProps) {
     }
 
     // Navigate to checkout
-    router.push(`/marketplace/checkout/${params.id}`)
+    router.push(`/marketplace/checkout/${resolvedParams.id}`)
   }
 
   const formatPrice = (cents: number) => {

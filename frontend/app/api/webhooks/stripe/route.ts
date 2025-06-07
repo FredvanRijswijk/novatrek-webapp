@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe/config';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc, collection, addDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, addDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
   sendSubscriptionConfirmationEmailServer,
   sendSubscriptionTrialEndingEmailServer,
@@ -54,6 +54,63 @@ export async function POST(req: NextRequest) {
         if (paymentIntent.metadata?.product_id) {
           await handleMarketplacePaymentFailed(paymentIntent);
         }
+        break;
+      }
+
+      // Stripe Connect Account Events
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account;
+        await handleAccountUpdated(account);
+        break;
+      }
+
+      case 'account.application.authorized': {
+        const account = event.data.object as Stripe.Account;
+        await handleAccountAuthorized(account);
+        break;
+      }
+
+      case 'account.application.deauthorized': {
+        const account = event.data.object as Stripe.Account;
+        await handleAccountDeauthorized(account);
+        break;
+      }
+
+      case 'capability.updated': {
+        const capability = event.data.object as Stripe.Capability;
+        await handleCapabilityUpdated(capability);
+        break;
+      }
+
+      // Payout Events
+      case 'payout.created': {
+        const payout = event.data.object as Stripe.Payout;
+        await handlePayoutCreated(payout);
+        break;
+      }
+
+      case 'payout.paid': {
+        const payout = event.data.object as Stripe.Payout;
+        await handlePayoutPaid(payout);
+        break;
+      }
+
+      case 'payout.failed': {
+        const payout = event.data.object as Stripe.Payout;
+        await handlePayoutFailed(payout);
+        break;
+      }
+
+      // Transfer Events
+      case 'transfer.created': {
+        const transfer = event.data.object as Stripe.Transfer;
+        await handleTransferCreated(transfer);
+        break;
+      }
+
+      case 'transfer.updated': {
+        const transfer = event.data.object as Stripe.Transfer;
+        await handleTransferUpdated(transfer);
         break;
       }
 
@@ -472,6 +529,226 @@ async function handleMarketplacePaymentFailed(paymentIntent: Stripe.PaymentInten
       updatedAt: new Date(),
       failureReason: paymentIntent.last_payment_error?.message,
     });
+  }
+}
+
+// Connect Account Event Handlers
+async function handleAccountUpdated(account: Stripe.Account) {
+  try {
+    // Find the expert by Stripe account ID
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', account.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      const expertData = expertDoc.data();
+      
+      // Update expert's account status
+      await updateDoc(expertDoc.ref, {
+        stripeAccountStatus: {
+          chargesEnabled: account.charges_enabled,
+          payoutsEnabled: account.payouts_enabled,
+          detailsSubmitted: account.details_submitted,
+          capabilities: account.capabilities,
+        },
+        updatedAt: new Date(),
+      });
+
+      // Log the update
+      console.log(`Updated Connect account status for expert ${expertData.userId}`);
+    }
+  } catch (error) {
+    console.error('Error handling account.updated:', error);
+  }
+}
+
+async function handleAccountAuthorized(account: Stripe.Account) {
+  try {
+    console.log(`Connect account ${account.id} authorized the application`);
+    // Additional logic for when an expert authorizes your platform
+  } catch (error) {
+    console.error('Error handling account.application.authorized:', error);
+  }
+}
+
+async function handleAccountDeauthorized(account: Stripe.Account) {
+  try {
+    // Find and deactivate the expert
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', account.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      
+      // Deactivate the expert account
+      await updateDoc(expertDoc.ref, {
+        status: 'inactive',
+        stripeAccountId: null,
+        stripeAccountStatus: null,
+        deactivatedAt: new Date(),
+        deactivationReason: 'stripe_deauthorized',
+        updatedAt: new Date(),
+      });
+
+      console.log(`Deactivated expert account due to Stripe deauthorization`);
+    }
+  } catch (error) {
+    console.error('Error handling account.application.deauthorized:', error);
+  }
+}
+
+async function handleCapabilityUpdated(capability: Stripe.Capability) {
+  try {
+    // Find the expert by account ID
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', capability.account));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      
+      // Update specific capability status
+      await updateDoc(expertDoc.ref, {
+        [`stripeAccountStatus.capabilities.${capability.id}`]: capability.status,
+        updatedAt: new Date(),
+      });
+
+      console.log(`Updated capability ${capability.id} to ${capability.status} for account ${capability.account}`);
+    }
+  } catch (error) {
+    console.error('Error handling capability.updated:', error);
+  }
+}
+
+// Payout Event Handlers
+async function handlePayoutCreated(payout: Stripe.Payout) {
+  try {
+    // Find the expert by Stripe account ID
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', payout.destination));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      const expertData = expertDoc.data();
+      
+      // Record the payout
+      const payoutsRef = collection(db, 'marketplace_payouts');
+      await addDoc(payoutsRef, {
+        expertId: expertDoc.id,
+        userId: expertData.userId,
+        stripePayoutId: payout.id,
+        amount: payout.amount,
+        currency: payout.currency,
+        status: payout.status,
+        type: payout.type,
+        method: payout.method,
+        arrivalDate: payout.arrival_date ? new Date(payout.arrival_date * 1000) : null,
+        createdAt: new Date(),
+      });
+
+      console.log(`Recorded payout ${payout.id} for expert ${expertData.userId}`);
+    }
+  } catch (error) {
+    console.error('Error handling payout.created:', error);
+  }
+}
+
+async function handlePayoutPaid(payout: Stripe.Payout) {
+  try {
+    // Update payout status to paid
+    const payoutsRef = collection(db, 'marketplace_payouts');
+    const q = query(payoutsRef, where('stripePayoutId', '==', payout.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const payoutDoc = querySnapshot.docs[0];
+      
+      await updateDoc(payoutDoc.ref, {
+        status: 'paid',
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // TODO: Send payout confirmation email to expert
+      console.log(`Payout ${payout.id} marked as paid`);
+    }
+  } catch (error) {
+    console.error('Error handling payout.paid:', error);
+  }
+}
+
+async function handlePayoutFailed(payout: Stripe.Payout) {
+  try {
+    // Update payout status to failed
+    const payoutsRef = collection(db, 'marketplace_payouts');
+    const q = query(payoutsRef, where('stripePayoutId', '==', payout.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const payoutDoc = querySnapshot.docs[0];
+      
+      await updateDoc(payoutDoc.ref, {
+        status: 'failed',
+        failureCode: payout.failure_code,
+        failureMessage: payout.failure_message,
+        failedAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // TODO: Send payout failure notification to expert
+      console.log(`Payout ${payout.id} failed: ${payout.failure_message}`);
+    }
+  } catch (error) {
+    console.error('Error handling payout.failed:', error);
+  }
+}
+
+// Transfer Event Handlers
+async function handleTransferCreated(transfer: Stripe.Transfer) {
+  try {
+    // Record the transfer (platform fee split)
+    const transfersRef = collection(db, 'marketplace_transfers');
+    await addDoc(transfersRef, {
+      stripeTransferId: transfer.id,
+      amount: transfer.amount,
+      currency: transfer.currency,
+      destination: transfer.destination,
+      sourceTransaction: transfer.source_transaction,
+      metadata: transfer.metadata,
+      createdAt: new Date(),
+    });
+
+    console.log(`Recorded transfer ${transfer.id} to ${transfer.destination}`);
+  } catch (error) {
+    console.error('Error handling transfer.created:', error);
+  }
+}
+
+async function handleTransferUpdated(transfer: Stripe.Transfer) {
+  try {
+    // Update transfer status
+    const transfersRef = collection(db, 'marketplace_transfers');
+    const q = query(transfersRef, where('stripeTransferId', '==', transfer.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const transferDoc = querySnapshot.docs[0];
+      
+      await updateDoc(transferDoc.ref, {
+        reversed: transfer.reversed,
+        reversals: transfer.reversals?.data || [],
+        updatedAt: new Date(),
+      });
+
+      if (transfer.reversed) {
+        console.log(`Transfer ${transfer.id} was reversed`);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling transfer.updated:', error);
   }
 }
 

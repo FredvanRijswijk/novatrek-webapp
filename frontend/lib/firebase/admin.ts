@@ -74,6 +74,9 @@ function initializeAdmin() {
 export function getAdminDb() {
   if (!adminDb) {
     adminDb = initializeAdmin();
+    if (!adminDb) {
+      throw new Error('Failed to initialize Firebase Admin SDK - check service account configuration');
+    }
   }
   return adminDb;
 }
@@ -98,10 +101,12 @@ export async function verifyIdToken(idToken: string) {
 export function getAdminAuth() {
   if (!getApps().length) {
     initializeAdmin();
+    if (!getApps().length) {
+      throw new Error('Failed to initialize Firebase Admin SDK for auth');
+    }
   }
   return getAuth();
 }
 
 export { initializeAdmin };
 export const auth = getAdminAuth();
-export const db = getAdminDb();

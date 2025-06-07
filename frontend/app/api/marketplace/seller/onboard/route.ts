@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/firebase/admin'
+import { auth, getAdminDb } from '@/lib/firebase/admin'
 import { createConnectAccount, createAccountLink } from '@/lib/stripe/connect'
 import { MarketplaceModel } from '@/lib/models/marketplace'
 
@@ -20,25 +20,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required for seller account' }, { status: 400 })
     }
 
-    // Check if user already has an expert profile
-    const existingExpert = await MarketplaceModel.getExpertByUserId(userId)
-    if (existingExpert && existingExpert.stripeConnectAccountId) {
-      // Generate new account link for existing account
-      const accountLink = await createAccountLink(
-        existingExpert.stripeConnectAccountId,
-        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding`,
-        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert`
-      )
+    // Check if user already has an expert profile using Admin SDK
+    const adminDb = getAdminDb()
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 })
+    }
+    const expertsRef = adminDb.collection('marketplace_experts')
+    const existingExpertQuery = await expertsRef.where('userId', '==', userId).limit(1).get()
+    
+    if (!existingExpertQuery.empty) {
+      const existingExpert = existingExpertQuery.docs[0].data()
+      if (existingExpert.stripeConnectAccountId) {
+        // Generate new account link for existing account
+        const accountLink = await createAccountLink(
+          existingExpert.stripeConnectAccountId,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding`,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert`
+        )
 
-      return NextResponse.json({
-        url: accountLink.url,
-        accountId: existingExpert.stripeConnectAccountId,
-        isExisting: true
-      })
+        return NextResponse.json({
+          url: accountLink.url,
+          accountId: existingExpert.stripeConnectAccountId,
+          isExisting: true
+        })
+      }
     }
 
-    // Check for approved application
-    const application = await MarketplaceModel.getApplicationByUserId(userId)
+    // Check for approved application using Admin SDK
+    const applicationsRef = adminDb.collection('marketplace_applications')
+    const applicationQuery = await applicationsRef.where('userId', '==', userId).limit(1).get()
+    
+    if (applicationQuery.empty) {
+      return NextResponse.json({ 
+        error: 'No application found. Please apply to become a travel expert first.' 
+      }, { status: 403 })
+    }
+    
+    const application = applicationQuery.docs[0].data()
     if (!application || application.status !== 'approved') {
       return NextResponse.json({ 
         error: 'Application not approved. Please apply to become a travel expert first.' 
@@ -48,8 +66,8 @@ export async function POST(request: NextRequest) {
     // Create new Connect account
     const account = await createConnectAccount(email, application.businessName)
 
-    // Create expert profile
-    await MarketplaceModel.createExpert({
+    // Create expert profile using Admin SDK
+    const expertData = {
       userId,
       stripeConnectAccountId: account.id,
       businessName: application.businessName,
@@ -60,7 +78,22 @@ export async function POST(request: NextRequest) {
       status: 'pending', // Will be 'active' after onboarding
       onboardingComplete: false,
       payoutSchedule: 'weekly', // Default
-      contactEmail: email
+      contactEmail: email,
+      stripeAccountId: account.id, // Add this field too
+      stripeAccountStatus: {
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    
+    // Use Admin SDK to create expert profile
+    const expertRef = adminDb.collection('marketplace_experts').doc()
+    await expertRef.set({
+      ...expertData,
+      id: expertRef.id
     })
 
     // Generate account link for onboarding
@@ -105,9 +138,22 @@ export async function GET(request: NextRequest) {
     const decodedToken = await auth.verifyIdToken(token)
     const userId = decodedToken.uid
 
-    // Get expert profile
-    const expert = await MarketplaceModel.getExpertByUserId(userId)
-    if (!expert || expert.stripeConnectAccountId !== accountId) {
+    // Get expert profile using Admin SDK
+    const adminDb = getAdminDb()
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 })
+    }
+    const expertsRef = adminDb.collection('marketplace_experts')
+    const expertQuery = await expertsRef.where('userId', '==', userId).limit(1).get()
+    
+    if (expertQuery.empty) {
+      return NextResponse.json({ error: 'Expert profile not found' }, { status: 404 })
+    }
+    
+    const expertDoc = expertQuery.docs[0]
+    const expert = expertDoc.data()
+    
+    if (expert.stripeConnectAccountId !== accountId) {
       return NextResponse.json({ error: 'Invalid account' }, { status: 403 })
     }
 
@@ -116,10 +162,11 @@ export async function GET(request: NextRequest) {
     const isComplete = await isAccountOnboarded(accountId)
 
     if (isComplete) {
-      // Update expert profile
-      await MarketplaceModel.updateExpert(expert.id, {
+      // Update expert profile using Admin SDK
+      await expertDoc.ref.update({
         onboardingComplete: true,
-        status: 'active'
+        status: 'active',
+        updatedAt: new Date()
       })
     }
 

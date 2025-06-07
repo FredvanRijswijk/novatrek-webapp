@@ -170,11 +170,22 @@ const COLLECTIONS = {
 } as const
 
 export class MarketplaceModel {
+  // Helper function to remove undefined values
+  private static cleanForFirestore(data: any): any {
+    return Object.entries(data).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = value
+      }
+      return acc
+    }, {} as any)
+  }
+
   // Travel Expert Methods
   static async createExpert(data: Omit<TravelExpert, 'id' | 'createdAt' | 'updatedAt'>): Promise<TravelExpert> {
     const docRef = doc(collection(db, COLLECTIONS.EXPERTS))
+    const cleanData = this.cleanForFirestore(data)
     const expert = {
-      ...data,
+      ...cleanData,
       id: docRef.id,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -233,13 +244,13 @@ export class MarketplaceModel {
     } as TravelExpert
   }
 
-  static async getActiveExperts(limit = 20): Promise<TravelExpert[]> {
+  static async getActiveExperts(limitCount = 20): Promise<TravelExpert[]> {
     const q = query(
       collection(db, COLLECTIONS.EXPERTS),
       where('status', '==', 'active'),
       orderBy('rating', 'desc'),
       orderBy('reviewCount', 'desc'),
-      limit
+      limit(limitCount)
     )
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => {
@@ -264,8 +275,9 @@ export class MarketplaceModel {
   // Product Methods
   static async createProduct(data: Omit<MarketplaceProduct, 'id' | 'createdAt' | 'updatedAt'>): Promise<MarketplaceProduct> {
     const docRef = doc(collection(db, COLLECTIONS.PRODUCTS))
+    const cleanData = this.cleanForFirestore(data)
     const product = {
-      ...data,
+      ...cleanData,
       id: docRef.id,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -288,17 +300,17 @@ export class MarketplaceModel {
   }
 
   static async getProductsByExpert(expertId: string, status?: 'draft' | 'active' | 'inactive'): Promise<MarketplaceProduct[]> {
-    let q = query(
-      collection(db, COLLECTIONS.PRODUCTS),
+    const constraints: any[] = [
       where('expertId', '==', expertId)
-    )
+    ]
     
     if (status) {
-      q = query(q, where('status', '==', status))
+      constraints.push(where('status', '==', status))
     }
     
-    q = query(q, orderBy('createdAt', 'desc'))
+    constraints.push(orderBy('createdAt', 'desc'))
     
+    const q = query(collection(db, COLLECTIONS.PRODUCTS), ...constraints)
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => {
       const data = doc.data()
@@ -313,8 +325,9 @@ export class MarketplaceModel {
 
   static async updateProduct(productId: string, data: Partial<MarketplaceProduct>): Promise<void> {
     const docRef = doc(db, COLLECTIONS.PRODUCTS, productId)
+    const cleanData = this.cleanForFirestore(data)
     await updateDoc(docRef, {
-      ...data,
+      ...cleanData,
       updatedAt: serverTimestamp()
     })
   }
@@ -345,12 +358,12 @@ export class MarketplaceModel {
     } as MarketplaceTransaction
   }
 
-  static async getTransactionsByBuyer(buyerId: string, limit = 10): Promise<MarketplaceTransaction[]> {
+  static async getTransactionsByBuyer(buyerId: string, limitCount = 10): Promise<MarketplaceTransaction[]> {
     const q = query(
       collection(db, COLLECTIONS.TRANSACTIONS),
       where('buyerId', '==', buyerId),
       orderBy('createdAt', 'desc'),
-      limit
+      limit(limitCount)
     )
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => {
@@ -365,12 +378,12 @@ export class MarketplaceModel {
     })
   }
 
-  static async getTransactionsBySeller(sellerId: string, limit = 10): Promise<MarketplaceTransaction[]> {
+  static async getTransactionsBySeller(sellerId: string, limitCount = 10): Promise<MarketplaceTransaction[]> {
     const q = query(
       collection(db, COLLECTIONS.TRANSACTIONS),
       where('sellerId', '==', sellerId),
       orderBy('createdAt', 'desc'),
-      limit
+      limit(limitCount)
     )
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => {
@@ -402,12 +415,12 @@ export class MarketplaceModel {
     return { ...review, createdAt: new Date() }
   }
 
-  static async getReviewsByProduct(productId: string, limit = 10): Promise<ProductReview[]> {
+  static async getReviewsByProduct(productId: string, limitCount = 10): Promise<ProductReview[]> {
     const q = query(
       collection(db, COLLECTIONS.REVIEWS),
       where('productId', '==', productId),
       orderBy('createdAt', 'desc'),
-      limit
+      limit(limitCount)
     )
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => {
