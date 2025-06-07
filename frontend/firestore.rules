@@ -103,6 +103,44 @@ service cloud.firestore {
         request.auth.uid == resource.data.ownerId;
     }
     
+    // Travel captures - universal inbox for travel content
+    match /captures/{captureId} {
+      // Allow authenticated users to create captures
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.keys().hasAll(['userId', 'content', 'source', 'capturedAt', 'createdAt', 'updatedAt']);
+      
+      // TEMPORARY: Allow API to create captures without auth
+      // This checks for our server validation flag
+      allow create: if request.resource.data._serverValidated == true &&
+        request.resource.data._apiVersion == '1.0' &&
+        request.resource.data.keys().hasAll(['userId', 'content', 'source']);
+      
+      // Allow users to read and update their own captures
+      allow read, update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to delete their own captures
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own captures
+      allow list: if request.auth != null;
+    }
+    
+    // API Keys - users can manage their own API keys
+    match /apiKeys/{keyId} {
+      // Allow users to create/read/update their own API keys
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      allow read, update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow listing user's own keys
+      allow list: if request.auth != null;
+    }
+    
     // Default rule - deny all other access
     match /{document=**} {
       allow read, write: if false;
