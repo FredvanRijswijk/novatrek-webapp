@@ -28,8 +28,8 @@ interface PlaceResult {
 }
 
 export class GooglePlacesClientV2 {
-  private autocompleteService: google.maps.places.AutocompleteService | null = null;
   private sessionToken: google.maps.places.AutocompleteSessionToken | null = null;
+  private placesLibrary: google.maps.PlacesLibrary | null = null;
 
   constructor() {
     if (typeof window !== 'undefined' && window.google) {
@@ -37,9 +37,11 @@ export class GooglePlacesClientV2 {
     }
   }
 
-  private initializeServices() {
+  private async initializeServices() {
     try {
-      this.autocompleteService = new google.maps.places.AutocompleteService();
+      // Load the Places library
+      const { Place } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
+      this.placesLibrary = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
       this.sessionToken = new google.maps.places.AutocompleteSessionToken();
     } catch (error) {
       console.error('Failed to initialize Google Places services:', error);
@@ -47,30 +49,42 @@ export class GooglePlacesClientV2 {
   }
 
   /**
-   * Search for destination suggestions
+   * Search for destination suggestions using the new AutocompleteSuggestion API
    */
-  async searchDestinations(input: string): Promise<google.maps.places.AutocompletePrediction[]> {
-    return new Promise((resolve, reject) => {
-      if (!this.autocompleteService) {
-        reject(new Error('Google Places service not initialized'));
-        return;
+  async searchDestinations(input: string): Promise<any[]> {
+    try {
+      if (!this.placesLibrary) {
+        await this.initializeServices();
       }
 
-      this.autocompleteService.getPlacePredictions(
-        {
-          input,
-          types: ['(cities)'], // Focus on cities for travel destinations
-          sessionToken: this.sessionToken,
+      const { AutocompleteSuggestion } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
+      
+      // Use the new fetchAutocompleteSuggestions method
+      const request = {
+        input,
+        includedPrimaryTypes: ['locality', 'administrative_area_level_1', 'country'], // Cities, regions, countries
+        sessionToken: this.sessionToken,
+        locationBias: null, // Can add location bias if needed
+        includedRegionCodes: [], // Can restrict to specific countries
+      };
+
+      const suggestions = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+      
+      // Convert to format similar to old predictions
+      return suggestions.suggestions.map(suggestion => ({
+        description: suggestion.placePrediction?.text?.text || '',
+        place_id: suggestion.placePrediction?.placeId || '',
+        structured_formatting: {
+          main_text: suggestion.placePrediction?.text?.text?.split(',')[0] || '',
+          main_text_matched_substrings: suggestion.placePrediction?.text?.matches || [],
+          secondary_text: suggestion.placePrediction?.text?.text?.split(',').slice(1).join(',') || '',
         },
-        (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-            resolve(predictions);
-          } else {
-            reject(new Error(`Places search failed: ${status}`));
-          }
-        }
-      );
-    });
+        types: suggestion.placePrediction?.types || [],
+      }));
+    } catch (error) {
+      console.error('Places search failed:', error);
+      throw error;
+    }
   }
 
   /**

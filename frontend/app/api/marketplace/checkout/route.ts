@@ -1,110 +1,130 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase/admin'
-import { createConnectPaymentIntent } from '@/lib/stripe/connect'
+import { auth, getAdminDb } from '@/lib/firebase/admin'
 import { stripe } from '@/lib/stripe/config'
-import { auth } from 'firebase-admin'
 import { MarketplaceModel } from '@/lib/models/marketplace'
-import logger from '@/lib/logging/logger'
+import { FieldValue } from 'firebase-admin/firestore'
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  
   try {
-    logger.info('marketplace', 'Checkout request initiated')
     // Verify authentication
     const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const token = authHeader.split('Bearer ')[1]
-    let decodedToken
-    try {
-      decodedToken = await auth().verifyIdToken(token)
-    } catch (error) {
-      console.error('Error verifying token:', error)
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
+    const decodedToken = await auth.verifyIdToken(token)
     const userId = decodedToken.uid
-    const { productId, quantity = 1 } = await request.json()
+    const userEmail = decodedToken.email
 
-    if (!productId) {
-      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
+    const { productId, expertId, customerDetails } = await request.json()
+
+    if (!productId || !expertId || !customerDetails) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Get product details
-    const product = await MarketplaceModel.getProduct(productId)
-    if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    // Verify product and expert
+    const [product, expert] = await Promise.all([
+      MarketplaceModel.getProduct(productId),
+      MarketplaceModel.getExpert(expertId)
+    ])
+
+    if (!product || product.status !== 'active') {
+      return NextResponse.json({ error: 'Product not found or not available' }, { status: 404 })
     }
 
-    if (product.status !== 'active') {
-      return NextResponse.json({ error: 'Product is not available' }, { status: 400 })
+    if (!expert || !expert.stripeConnectAccountId) {
+      return NextResponse.json({ error: 'Expert not found or not set up for payments' }, { status: 400 })
     }
 
-    // Get expert details to get their Stripe account
-    const expert = await MarketplaceModel.getExpert(product.expertId)
-    if (!expert || !expert.stripeAccountId) {
-      return NextResponse.json({ error: 'Expert not properly configured' }, { status: 400 })
-    }
+    // Calculate fees
+    const platformFeeAmount = Math.round(product.price * 0.15)
+    const expertEarnings = product.price - platformFeeAmount
 
-    // Calculate total amount
-    const amount = product.price * quantity
-
-    // Create payment intent with platform fee (but don't include transaction_id yet)
-    const paymentIntent = await createConnectPaymentIntent(
-      amount,
-      'usd',
-      expert.stripeAccountId,
-      {
-        product_id: productId,
-        product_title: product.title,
-        product_type: product.type,
-        quantity: quantity.toString(),
-        buyer_id: userId,
-        expert_id: expert.id,
-      }
-    )
-
-    // Create pending transaction record
-    const transaction = await MarketplaceModel.createTransaction({
-      productId,
-      productTitle: product.title,
-      productType: product.type,
-      buyerId: userId,
-      sellerId: expert.id,
-      sellerStripeAccountId: expert.stripeAccountId,
-      amount,
-      platformFee: parseInt(paymentIntent.metadata.platform_fee),
-      sellerEarnings: parseInt(paymentIntent.metadata.seller_earnings),
-      quantity,
-      status: 'pending',
-      paymentIntentId: paymentIntent.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    })
-
-    // Update payment intent with transaction ID
-    await stripe.paymentIntents.update(paymentIntent.id, {
+    // Create payment intent on the connected account with platform fee
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: product.price,
+      currency: product.currency || 'usd',
+      payment_method_types: ['card'],
       metadata: {
-        ...paymentIntent.metadata,
-        transaction_id: transaction.id,
-      }
+        product_id: productId,
+        buyer_id: userId,
+        expert_id: expertId,
+        product_type: product.type,
+        product_title: product.title,
+        customer_name: customerDetails.name,
+        customer_email: customerDetails.email || userEmail,
+        customer_phone: customerDetails.phone || '',
+        customer_message: customerDetails.message || ''
+      },
+      receipt_email: customerDetails.email || userEmail,
+      // Platform fee
+      application_fee_amount: platformFeeAmount,
+    }, {
+      // Create the payment intent on the connected account
+      stripeAccount: expert.stripeConnectAccountId,
     })
+
+    // Create transaction record using Admin SDK
+    const adminDb = getAdminDb()
+    if (!adminDb) {
+      console.error('Failed to get admin DB')
+      // Continue anyway - payment can still process
+    } else {
+      const transactionData = {
+        stripePaymentIntentId: paymentIntent.id,
+        buyerId: userId,
+        sellerId: expertId,
+        productId: productId,
+        productType: product.type,
+        productTitle: product.title,
+        amount: product.price,
+        platformFee: platformFeeAmount,
+        sellerEarnings: expertEarnings,
+        currency: product.currency || 'usd',
+        status: 'pending',
+        customerDetails: {
+          name: customerDetails.name,
+          email: customerDetails.email || userEmail,
+          phone: customerDetails.phone || null,
+          message: customerDetails.message || null
+        },
+        metadata: {
+          expertBusinessName: expert.businessName,
+          productDescription: product.description
+        },
+        createdAt: FieldValue.serverTimestamp()
+      }
+
+      try {
+        const transactionRef = adminDb.collection('marketplace_transactions').doc()
+        await transactionRef.set({
+          ...transactionData,
+          id: transactionRef.id
+        })
+
+        // Update payment intent with transaction ID
+        await stripe.paymentIntents.update(paymentIntent.id, {
+          metadata: {
+            ...paymentIntent.metadata,
+            transaction_id: transactionRef.id
+          }
+        })
+      } catch (dbError) {
+        console.error('Failed to create transaction record:', dbError)
+        // Continue - payment can still process
+      }
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      transactionId: transaction.id,
-      amount,
-      platformFee: parseInt(paymentIntent.metadata.platform_fee),
-      sellerEarnings: parseInt(paymentIntent.metadata.seller_earnings)
+      paymentIntentId: paymentIntent.id
     })
 
   } catch (error) {
     console.error('Checkout error:', error)
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: 'Failed to process checkout' },
       { status: 500 }
     )
   }
