@@ -30,13 +30,42 @@ export async function POST(request: NextRequest) {
     const userDoc = await adminDb.collection('users').doc(userId).get()
     const userData = userDoc.data()
 
-    if (!userData?.stripeCustomerId) {
-      return NextResponse.json({ error: 'No Stripe customer found' }, { status: 400 })
+    let stripeCustomerId = userData?.stripeCustomerId
+
+    // Create Stripe customer if doesn't exist
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: decodedToken.email || userData?.email,
+        name: decodedToken.name || userData?.displayName || undefined,
+        metadata: {
+          userId: userId,
+          firebaseUID: userId
+        }
+      })
+      
+      stripeCustomerId = customer.id
+      
+      // Save the Stripe customer ID to the user document
+      if (userDoc.exists) {
+        await adminDb.collection('users').doc(userId).update({
+          stripeCustomerId: customer.id,
+          updatedAt: FieldValue.serverTimestamp()
+        })
+      } else {
+        // Create user document if it doesn't exist
+        await adminDb.collection('users').doc(userId).set({
+          uid: userId,
+          email: decodedToken.email,
+          stripeCustomerId: customer.id,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        })
+      }
     }
 
     // Get current subscription
     const subscriptions = await stripe.subscriptions.list({
-      customer: userData.stripeCustomerId,
+      customer: stripeCustomerId,
       status: 'active',
       limit: 1
     })
@@ -44,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (subscriptions.data.length === 0) {
       // No active subscription - create new one
       const subscription = await stripe.subscriptions.create({
-        customer: userData.stripeCustomerId,
+        customer: stripeCustomerId,
         items: [{ price: priceId }],
         payment_behavior: 'default_incomplete',
         payment_settings: {
