@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Copy, Link, Mail, Check, Loader2, Shield, Globe, Eye, Send } from 'lucide-react'
+import { Copy, Link, Check, Loader2, Shield, Globe, Eye, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { createTripShare, getShareUrl } from '@/lib/firebase/sharing'
 import { useFeatureTracking } from '@/hooks/use-feature-flag'
@@ -83,14 +83,6 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
     }
   }
 
-  const handleEmailShare = () => {
-    const subject = encodeURIComponent(`Check out my trip: ${trip.name}`)
-    const body = encodeURIComponent(
-      `I'd like to share my trip itinerary with you!\n\n${trip.name}\n${trip.description || ''}\n\nView it here: ${shareUrl}`
-    )
-    window.open(`mailto:?subject=${subject}&body=${body}`)
-    trackUsage('share_emailed', { tripId: trip.id })
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -240,6 +232,7 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
                   size="icon"
                   variant="outline"
                   onClick={handleCopyLink}
+                  title="Copy link"
                 >
                   {copied ? (
                     <Check className="h-4 w-4 text-green-600" />
@@ -248,67 +241,66 @@ export function ShareTripDialog({ trip, open, onOpenChange }: ShareTripDialogPro
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Copy this link to share via WhatsApp, SMS, or any messaging app
+              </p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Send via email (optional)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="recipient@example.com"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                  />
-                  <Button
-                    variant="outline"
-                    disabled={!emailTo || sendingEmail}
-                    onClick={async () => {
-                      if (!emailTo || !user) return
-                      setSendingEmail(true)
-                      try {
-                        await sendTripSharedEmail(
-                          emailTo,
-                          trip.name,
-                          user.displayName || 'A friend',
-                          shareUrl
-                        )
-                        toast.success('Email sent successfully!')
-                        setEmailTo('')
-                        trackUsage('share_sent_email', { tripId: trip.id })
-                      } catch (error) {
-                        toast.error('Failed to send email')
-                      } finally {
-                        setSendingEmail(false)
-                      }
-                    }}
-                  >
-                    {sendingEmail ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+                <Label>Send via email</Label>
+                <Input
+                  type="email"
+                  placeholder="recipient@example.com"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                />
+                <Button
+                  className="w-full"
+                  disabled={!emailTo || sendingEmail}
+                  onClick={async () => {
+                    if (!emailTo || !user) return
+                    setSendingEmail(true)
+                    try {
+                      const senderName = user.displayName || user.email?.split('@')[0] || 'Someone'
+                      await sendTripSharedEmail(
+                        emailTo,
+                        trip.name,
+                        senderName,
+                        shareUrl
+                      )
+                      toast.success('Trip shared via email!')
+                      setEmailTo('')
+                      trackUsage('share_sent_email', { tripId: trip.id })
+                    } catch (error) {
+                      toast.error('Failed to send email')
+                    } finally {
+                      setSendingEmail(false)
+                    }
+                  }}
+                >
+                  {sendingEmail ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Email
+                    </>
+                  )}
+                </Button>
               </div>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={handleEmailShare}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Open Email Client
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
                   onClick={() => window.open(shareUrl, '_blank')}
                 >
                   <Eye className="mr-2 h-4 w-4" />
-                  Preview
+                  Preview Trip
                 </Button>
               </div>
             </div>
