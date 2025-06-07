@@ -292,29 +292,29 @@ export function DestinationDateStep({
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* Destination Section */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-6 lg:p-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <MapPin className="h-4 w-4 text-primary" />
+      {/* Destination Section - Single mode */}
+      {!isMultiDestination && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6 lg:p-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <MapPin className="h-4 w-4 text-primary" />
+                </div>
+                <h3 className="font-semibold">Destination</h3>
               </div>
-              <h3 className="font-semibold">Destination</h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={toggleMultiDestination}
+                className="text-xs"
+              >
+                Multi-stop →
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={toggleMultiDestination}
-              className="text-xs"
-            >
-              {isMultiDestination ? "← Single" : "Multi-stop →"}
-            </Button>
-          </div>
 
-          {!isMultiDestination ? (
-            // Single destination mode
+            {/* Single destination mode */}
             <div className="relative" ref={dropdownRef}>
               <Input
                 placeholder="Search cities, countries, or landmarks..."
@@ -377,34 +377,34 @@ export function DestinationDateStep({
                 </div>
               )}
             </div>
-          ) : null}
-          
-          {/* Display selected destination */}
-          {formData.destination && (
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                {formData.destination.imageUrl && (
-                  <img
-                    src={formData.destination.imageUrl}
-                    alt={formData.destination.name}
-                    className="w-12 h-12 rounded object-cover"
-                  />
-                )}
-                <div className="flex-1">
-                  <p className="font-medium">{formData.destination.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formData.destination.country}
-                  </p>
+            
+            {/* Display selected destination */}
+            {formData.destination && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {formData.destination.imageUrl && (
+                    <img
+                      src={formData.destination.imageUrl}
+                      alt={formData.destination.name}
+                      className="w-12 h-12 rounded object-cover"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium">{formData.destination.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formData.destination.country}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {errors.destination && (
-            <p className="text-xs text-destructive mt-1">{errors.destination}</p>
-          )}
-        </CardContent>
-      </Card>
+            )}
+            
+            {errors.destination && (
+              <p className="text-xs text-destructive mt-1">{errors.destination}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Multi-destination mode */}
       {isMultiDestination && (
