@@ -55,7 +55,8 @@ import {
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
-  BarChart
+  BarChart,
+  Sparkles
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -308,7 +309,7 @@ export default function MarketplaceAdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-6">
         <Button variant="outline" asChild>
           <Link href="/dashboard/admin/marketplace/analytics">
             <BarChart className="mr-2 h-4 w-4" />
@@ -331,6 +332,12 @@ export default function MarketplaceAdminDashboard() {
           <Link href="/dashboard/admin/marketplace/products">
             <Package className="mr-2 h-4 w-4" />
             Moderate Products
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/admin/recommendations">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Recommendations
           </Link>
         </Button>
         <Button variant="outline" asChild>
