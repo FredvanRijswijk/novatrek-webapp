@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { User, Shield, CreditCard, Smartphone, Plane, Trash2 } from 'lucide-react'
+import { User, Shield, CreditCard, Smartphone, Plane } from 'lucide-react'
 
 const settingsTabs = [
   {
@@ -41,12 +41,6 @@ const settingsTabs = [
     href: '/dashboard/settings/pricing',
     icon: CreditCard,
     description: 'View all plans and pricing'
-  },
-  {
-    title: 'Delete Account',
-    href: '/dashboard/settings/delete-account',
-    icon: Trash2,
-    description: 'Permanently delete your account'
   }
 ]
 

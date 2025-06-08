@@ -25,6 +25,7 @@ export default function Home() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [checkingSubscription, setCheckingSubscription] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (isAuthenticated && !checkingSubscription && !subLoading) {
@@ -72,10 +73,21 @@ export default function Home() {
     }
   }
 
-  const handleEmailSignUp = (e: React.FormEvent) => {
+  const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement email sign up
-    console.log('Email sign up:', email)
+    setIsLoading(true)
+    setError('')
+    
+    try {
+      // For now, redirect to a proper signup page
+      // We'll create this page next
+      router.push(`/signup?email=${encodeURIComponent(email)}`)
+    } catch (error: any) {
+      console.error('Sign up error:', error)
+      setError(error.message || 'Failed to sign up')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -1,4 +1,4 @@
-import { auth } from './auth'
+import { auth } from './config'
 import { deleteUser as deleteAuthUser } from 'firebase/auth'
 import { 
   collection, 
