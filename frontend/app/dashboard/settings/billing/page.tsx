@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSubscription } from '@/hooks/use-subscription'
 import { useFirebase } from '@/lib/firebase/context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
@@ -131,12 +132,14 @@ function PlanCard({ plan, planKey, isCurrentPlan, isYearly, onSelectPlan, loadin
 export default function EnhancedBillingPage() {
   const { user } = useFirebase()
   const { subscription, currentPlan, limits, loading: subscriptionLoading } = useSubscription()
+  const searchParams = useSearchParams()
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [isYearly, setIsYearly] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [updateLoading, setUpdateLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showCanceledAlert, setShowCanceledAlert] = useState(false)
 
   // Determine if current subscription is yearly
   useEffect(() => {
@@ -147,6 +150,17 @@ export default function EnhancedBillingPage() {
       setIsYearly(isYearlyPrice)
     }
   }, [subscription])
+
+  // Check if user canceled the checkout
+  useEffect(() => {
+    if (searchParams.get('canceled') === 'true') {
+      setShowCanceledAlert(true)
+      // Remove the query parameter
+      window.history.replaceState({}, '', '/dashboard/settings/billing')
+      // Auto-hide after 5 seconds
+      setTimeout(() => setShowCanceledAlert(false), 5000)
+    }
+  }, [searchParams])
 
   const handleManageSubscription = async () => {
     if (!user) return
@@ -285,6 +299,15 @@ export default function EnhancedBillingPage() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {showCanceledAlert && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Your upgrade was canceled. You can try again anytime or choose a different plan.
+          </AlertDescription>
         </Alert>
       )}
 
