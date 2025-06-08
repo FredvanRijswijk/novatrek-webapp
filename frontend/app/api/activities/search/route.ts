@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
             ...(place.types?.slice(0, 3).map((t: string) => t.replace(/_/g, ' ')) || [])
           ].filter(Boolean),
           images: place.photos?.map((photo: any) => ({
-            url: `/api/places/photo?photo_reference=${photo.photo_reference}&maxwidth=800`,
+            url: `/api/places/photo?name=${photo.photo_reference}&maxWidth=800`,
             caption: place.name
           })) || []
         }
