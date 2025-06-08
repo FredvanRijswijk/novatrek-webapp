@@ -399,6 +399,51 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
+
+    // Place recommendations - public read, expert/admin write
+    match /place_recommendations/{recommendationId} {
+      allow read: if true;
+      allow create: if request.auth != null && (
+        // Experts can create recommendations
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) ||
+        // Admins can create recommendations
+        request.auth.token.admin == true
+      );
+      allow update: if request.auth != null && (
+        // Experts can update their own recommendations
+        resource.data.recommendedBy.id == request.auth.uid ||
+        // Admins can update any recommendation
+        request.auth.token.admin == true
+      );
+      allow delete: if request.auth.token.admin == true;
+    }
+
+    // Expert saved places - private to experts
+    match /expert_saved_places/{placeId} {
+      allow read: if request.auth != null && (
+        resource.data.expertId == request.auth.uid ||
+        request.auth.token.admin == true
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.expertId &&
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid));
+      allow update: if request.auth != null && 
+        resource.data.expertId == request.auth.uid;
+      allow delete: if request.auth != null && 
+        resource.data.expertId == request.auth.uid;
+    }
+
+    // User saved recommendations
+    match /user_saved_recommendations/{savedId} {
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
     
     // Default rule - deny all other access
     match /{document=**} {

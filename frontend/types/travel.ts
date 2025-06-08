@@ -177,9 +177,27 @@ export interface Activity {
   }
   bookingUrl?: string
   rating?: number
+  reviewCount?: number
   reviews?: Review[]
+  openingHours?: string[]
+  phone?: string
+  website?: string
+  images?: { url: string; caption?: string }[]
+  tags?: string[]
   aiGenerated: boolean
   userAdded: boolean
+  googlePlaceId?: string
+  // Recommendation fields
+  isRecommended?: boolean
+  recommendedBy?: {
+    type: 'expert' | 'novatrek' | 'community'
+    id: string
+    name: string
+    profileUrl?: string
+  }
+  recommendationReason?: string
+  tips?: string[]
+  highlights?: string[]
 }
 
 export interface Location {

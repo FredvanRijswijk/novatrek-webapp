@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2, CloudRain, Sun, Cloud, Umbrella } from 'lucide-react';
+import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2, CloudRain, Sun, Cloud, Umbrella, Trees, Home, Baby, Users, ChevronRight, Award, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ import {
 import { Activity, ActivityType } from '@/types/travel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ActivityDetailsModal } from './ActivityDetailsModal';
 
 interface ActivitySearchModalProps {
   isOpen: boolean;
@@ -64,8 +66,11 @@ export function ActivitySearchModal({
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [preferIndoor, setPreferIndoor] = useState(false);
+  const [locationPreference, setLocationPreference] = useState<'all' | 'indoor' | 'outdoor'>('all');
+  const [familyPreference, setFamilyPreference] = useState<'all' | 'family' | 'adults'>('all');
   const [weather, setWeather] = useState<any>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [hasRecommendations, setHasRecommendations] = useState(false);
 
   // Calculate budget limit based on price range
   const getBudgetLimit = () => {
@@ -117,7 +122,9 @@ export function ActivitySearchModal({
           budget: getBudgetLimit(),
           date: date.toISOString(),
           timeOfDay: getTimeOfDay(),
-          preferIndoorActivities: preferIndoor
+          preferIndoorActivities: locationPreference === 'indoor',
+          preferOutdoorActivities: locationPreference === 'outdoor',
+          familyFriendly: familyPreference === 'family' ? true : familyPreference === 'adults' ? false : null
         }),
       });
 
@@ -127,22 +134,30 @@ export function ActivitySearchModal({
 
       const data = await response.json();
       setActivities(data.activities || []);
+      setHasRecommendations(data.hasRecommendations || false);
       
       // Set weather data if available
       if (data.weather) {
         setWeather(data.weather);
         
-        // Auto-enable indoor preference if weather is bad
-        if (data.weather.recommendation?.preferIndoor && 
-            data.weather.recommendation.severity === 'high' &&
-            !preferIndoor) {
-          setPreferIndoor(true);
-          toast.info(`${data.weather.recommendation.reason} - showing indoor activities first`);
+        // Auto-set preference based on weather if not already set
+        if (locationPreference === 'all') {
+          if (data.weather.recommendation?.preferIndoor && 
+              data.weather.recommendation.severity === 'high') {
+            setLocationPreference('indoor');
+            toast.info(`${data.weather.recommendation.reason} - showing indoor activities first`);
+          } else if (!data.weather.recommendation?.preferIndoor && 
+                     data.weather.condition === 'clear') {
+            // Suggest outdoor activities on nice days
+            toast.info('Perfect weather for outdoor activities!');
+          }
         }
       }
 
       if (data.activities.length === 0) {
         toast.info('No activities found. Try adjusting your filters.');
+      } else if (data.hasRecommendations) {
+        toast.success('Showing expert and NovaTrek recommendations first!');
       }
     } catch (error) {
       console.error('Activity search error:', error);
@@ -158,7 +173,7 @@ export function ActivitySearchModal({
     if (hasSearched && isOpen) {
       searchActivities();
     }
-  }, [selectedType, priceRange, preferIndoor]);
+  }, [selectedType, priceRange, locationPreference, familyPreference]);
 
   // Reset when modal closes
   useEffect(() => {
@@ -168,8 +183,10 @@ export function ActivitySearchModal({
       setPriceRange('all');
       setActivities([]);
       setHasSearched(false);
-      setPreferIndoor(false);
+      setLocationPreference('all');
+      setFamilyPreference('all');
       setWeather(null);
+      setSelectedActivity(null);
     }
   }, [isOpen]);
 
@@ -212,19 +229,52 @@ export function ActivitySearchModal({
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Add Activity</DialogTitle>
-          <DialogDescription>
-            Search and add activities for {destination} on {date.toLocaleDateString()}
-          </DialogDescription>
-        </DialogHeader>
+  const getLocationIcon = (pref: string) => {
+    switch (pref) {
+      case 'indoor':
+        return <Home className="h-4 w-4" />;
+      case 'outdoor':
+        return <Trees className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
 
-        <div className="space-y-4">
-          {/* Search Bar */}
-          <div className="flex gap-2">
+  const getWeatherBasedSuggestion = () => {
+    if (!weather) return null;
+    
+    if (weather.recommendation?.preferIndoor && weather.recommendation.severity === 'high') {
+      return 'indoor';
+    } else if (weather.condition === 'clear' || weather.condition === 'clouds') {
+      return 'outdoor';
+    }
+    return null;
+  };
+
+  const handleActivitySelect = (activity: Activity) => {
+    setSelectedActivity(activity);
+  };
+
+  const handleAddActivity = (activity: Activity) => {
+    onSelect(activity);
+    setSelectedActivity(null);
+  };
+
+  return (
+    <>
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col">
+          <SheetHeader className="pb-4">
+            <SheetTitle>Add Activity</SheetTitle>
+            <SheetDescription>
+              Search and add activities for {destination} on {date.toLocaleDateString()}
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* Fixed search and filters section */}
+          <div className="space-y-4 pb-4">
+            {/* Search Bar */}
+            <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -287,7 +337,8 @@ export function ActivitySearchModal({
                 setSearchQuery('');
                 setSelectedType('all');
                 setPriceRange('all');
-                setPreferIndoor(false);
+                setLocationPreference('all');
+                setFamilyPreference('all');
                 if (hasSearched) {
                   searchActivities();
                 }
@@ -297,12 +348,39 @@ export function ActivitySearchModal({
             </Button>
           </div>
 
-          {/* Weather Alert and Indoor Toggle */}
+          {/* Family Preference */}
+          <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+            <Label className="text-sm font-medium">Suitable For</Label>
+            <RadioGroup value={familyPreference} onValueChange={(value: any) => setFamilyPreference(value)}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="all" id="all-ages" />
+                <Label htmlFor="all-ages" className="font-normal cursor-pointer">
+                  All Ages
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="family" id="family" />
+                <Label htmlFor="family" className="font-normal cursor-pointer flex items-center gap-2">
+                  <Baby className="h-4 w-4" />
+                  Family with Children
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="adults" id="adults" />
+                <Label htmlFor="adults" className="font-normal cursor-pointer flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Adults Only
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Weather Alert and Location Preference */}
           {weather && (
             <div className="space-y-3">
               <Alert className={cn(
                 "py-2",
-                weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"
+                weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
               )}>
                 <div className="flex items-center gap-2">
                   {getWeatherIcon()}
@@ -317,15 +395,36 @@ export function ActivitySearchModal({
                 </div>
               </Alert>
 
-              <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg">
-                <Label htmlFor="indoor-toggle" className="text-sm font-medium cursor-pointer">
-                  Prefer indoor activities
-                </Label>
-                <Switch
-                  id="indoor-toggle"
-                  checked={preferIndoor}
-                  onCheckedChange={setPreferIndoor}
-                />
+              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                <Label className="text-sm font-medium">Activity Location Preference</Label>
+                <RadioGroup value={locationPreference} onValueChange={(value: any) => setLocationPreference(value)}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="all" />
+                    <Label htmlFor="all" className="font-normal cursor-pointer flex items-center gap-2">
+                      All Activities
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="indoor" id="indoor" />
+                    <Label htmlFor="indoor" className="font-normal cursor-pointer flex items-center gap-2">
+                      <Home className="h-4 w-4" />
+                      Indoor Activities
+                      {getWeatherBasedSuggestion() === 'indoor' && (
+                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                      )}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="outdoor" id="outdoor" />
+                    <Label htmlFor="outdoor" className="font-normal cursor-pointer flex items-center gap-2">
+                      <Trees className="h-4 w-4" />
+                      Outdoor Activities
+                      {getWeatherBasedSuggestion() === 'outdoor' && (
+                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                      )}
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
           )}
@@ -362,9 +461,32 @@ export function ActivitySearchModal({
               activities.map((activity) => (
                 <div
                   key={activity.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onSelect(activity)}
+                  className={cn(
+                    "border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer",
+                    activity.isRecommended && "border-primary/50 bg-primary/5"
+                  )}
+                  onClick={() => handleActivitySelect(activity)}
                 >
+                  {/* Recommendation banner */}
+                  {activity.isRecommended && (
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                      {activity.recommendedBy?.type === 'expert' ? (
+                        <Badge className="bg-purple-500 hover:bg-purple-600">
+                          <Award className="h-3 w-3 mr-1" />
+                          Expert Pick
+                        </Badge>
+                      ) : activity.recommendedBy?.type === 'novatrek' ? (
+                        <Badge className="bg-blue-500 hover:bg-blue-600">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          NovaTrek Pick
+                        </Badge>
+                      ) : null}
+                      <span className="text-xs text-muted-foreground">
+                        {activity.recommendedBy?.name}
+                      </span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -375,6 +497,32 @@ export function ActivitySearchModal({
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             <span>{activity.rating}</span>
                           </div>
+                        )}
+                        {/* Indoor/Outdoor indicator */}
+                        {activity.tags?.some(tag => tag.includes('indoor')) && (
+                          <Badge variant="outline" className="text-xs">
+                            <Home className="h-3 w-3 mr-1" />
+                            Indoor
+                          </Badge>
+                        )}
+                        {(activity.type === 'outdoor' || activity.tags?.some(tag => 
+                          ['park', 'beach', 'hiking', 'trail', 'garden'].some(outdoor => tag.includes(outdoor))
+                        )) && (
+                          <Badge variant="outline" className="text-xs">
+                            <Trees className="h-3 w-3 mr-1" />
+                            Outdoor
+                          </Badge>
+                        )}
+                        {/* Family friendly indicator */}
+                        {activity.tags?.some(tag => 
+                          ['family', 'kids', 'children', 'playground', 'family-friendly'].some(family => 
+                            tag.toLowerCase().includes(family)
+                          )
+                        ) && (
+                          <Badge variant="outline" className="text-xs">
+                            <Baby className="h-3 w-3 mr-1" />
+                            Family
+                          </Badge>
                         )}
                       </div>
 
@@ -398,44 +546,33 @@ export function ActivitySearchModal({
                           </div>
                         )}
                         {activity.cost && (
-                          <div className="flex items-center gap-1 font-medium">
+                          <div className="flex items-center gap-1 text-muted-foreground">
                             <DollarSign className="h-3 w-3" />
                             <span>
-                              ${activity.cost.amount}
-                              {activity.cost.perPerson && ' pp'}
+                              {activity.cost.currency} {activity.cost.amount}
+                              {activity.cost.perPerson && ' per person'}
                             </span>
                           </div>
                         )}
                       </div>
-
-                      {activity.tags && activity.tags.length > 0 && (
-                        <div className="flex gap-2 mt-3">
-                          {activity.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
                     </div>
-
-                    {activity.images && activity.images[0] && (
-                      <img
-                        src={typeof activity.images[0] === 'string' 
-                          ? activity.images[0] 
-                          : activity.images[0].url
-                        }
-                        alt={activity.name}
-                        className="w-24 h-24 object-cover rounded-lg ml-4"
-                      />
-                    )}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                   </div>
                 </div>
               ))
             )}
           </div>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </SheetContent>
+      </Sheet>
+      
+      {/* Activity Details Modal */}
+      <ActivityDetailsModal
+        activity={selectedActivity}
+        isOpen={!!selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+        onAdd={handleAddActivity}
+      />
+    </>
   );
 }
