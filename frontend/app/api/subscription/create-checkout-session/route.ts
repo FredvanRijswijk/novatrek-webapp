@@ -1,24 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/config';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, getAdminDb } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await auth.verifyIdToken(token);
+    const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
+
     console.log('Create checkout session called');
-    const { priceId, userId, userEmail, trial_period_days } = await req.json();
+    const { priceId, trial_period_days } = await req.json();
     
     console.log('Request data:', { priceId, userId, userEmail, trial_period_days });
 
-    if (!priceId || !userId || !userEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!priceId) {
+      return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
+    }
+
+    // Get admin database
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 });
     }
 
     // Check if user already has a Stripe customer ID
     console.log('Checking Firebase for existing customer...');
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    let stripeCustomerId = userDoc.data()?.stripeCustomerId;
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    let stripeCustomerId = userData?.stripeCustomerId;
     console.log('Existing Stripe customer ID:', stripeCustomerId);
 
     // Create or retrieve Stripe customer
@@ -26,13 +43,27 @@ export async function POST(req: NextRequest) {
       const customer = await stripe.customers.create({
         email: userEmail,
         metadata: {
-          firebaseUid: userId,
+          userId: userId,
+          firebaseUID: userId,
         },
       });
       stripeCustomerId = customer.id;
 
       // Save Stripe customer ID to Firestore
-      await setDoc(userRef, { stripeCustomerId }, { merge: true });
+      if (userDoc.exists) {
+        await adminDb.collection('users').doc(userId).update({
+          stripeCustomerId: customer.id,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      } else {
+        await adminDb.collection('users').doc(userId).set({
+          uid: userId,
+          email: userEmail,
+          stripeCustomerId: customer.id,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      }
     }
 
     // Create checkout session
