@@ -37,18 +37,29 @@ interface PlanCardProps {
   }
   planKey: string
   isCurrentPlan: boolean
+  currentPlan: string
   isYearly: boolean
   onSelectPlan: () => void
   loading?: boolean
   recommended?: boolean
 }
 
-function PlanCard({ plan, planKey, isCurrentPlan, isYearly, onSelectPlan, loading, recommended }: PlanCardProps) {
+function PlanCard({ plan, planKey, isCurrentPlan, currentPlan, isYearly, onSelectPlan, loading, recommended }: PlanCardProps) {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
   const monthlyEquivalent = plan.yearlyPrice ? plan.yearlyPrice / 12 : 0
   const savings = plan.monthlyPrice && plan.yearlyPrice 
     ? (plan.monthlyPrice * 12 - plan.yearlyPrice) 
     : 0
+  
+  // Helper to get plan hierarchy
+  const getPlanHierarchy = (plan: string): number => {
+    switch(plan) {
+      case 'free': return 0
+      case 'basic': return 1
+      case 'pro': return 2
+      default: return 0
+    }
+  }
 
   return (
     <Card className={`relative ${isCurrentPlan ? 'border-primary' : ''} ${recommended ? 'border-2' : ''}`}>
@@ -115,8 +126,11 @@ function PlanCard({ plan, planKey, isCurrentPlan, isYearly, onSelectPlan, loadin
             </>
           ) : isCurrentPlan ? (
             'Current Plan'
-          ) : planKey === 'free' ? (
-            'Downgrade'
+          ) : getPlanHierarchy(planKey) < getPlanHierarchy(currentPlan) ? (
+            <>
+              <ArrowDown className="mr-2 h-4 w-4" />
+              Downgrade to {plan.name}
+            </>
           ) : (
             <>
               Upgrade to {plan.name}
@@ -338,6 +352,7 @@ export default function EnhancedBillingPage() {
           plan={SUBSCRIPTION_PLANS.free}
           planKey="free"
           isCurrentPlan={currentPlan === 'free'}
+          currentPlan={currentPlan}
           isYearly={isYearly}
           onSelectPlan={() => handlePlanChange('free')}
           loading={updateLoading && selectedPlan === 'free'}
@@ -347,6 +362,7 @@ export default function EnhancedBillingPage() {
           plan={SUBSCRIPTION_PLANS.basic}
           planKey="basic"
           isCurrentPlan={currentPlan === 'basic'}
+          currentPlan={currentPlan}
           isYearly={isYearly}
           onSelectPlan={() => handlePlanChange('basic')}
           loading={updateLoading && selectedPlan === 'basic'}
@@ -356,6 +372,7 @@ export default function EnhancedBillingPage() {
           plan={SUBSCRIPTION_PLANS.pro}
           planKey="pro"
           isCurrentPlan={currentPlan === 'pro'}
+          currentPlan={currentPlan}
           isYearly={isYearly}
           onSelectPlan={() => handlePlanChange('pro')}
           loading={updateLoading && selectedPlan === 'pro'}

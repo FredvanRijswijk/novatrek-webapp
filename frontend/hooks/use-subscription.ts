@@ -38,7 +38,16 @@ export function useSubscription() {
     const startTime = Date.now();
     
     try {
-      const response = await fetch(`/api/subscription/status?userId=${user?.uid}`);
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const token = await user.getIdToken();
+      const response = await fetch('/api/subscription/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       // Check if response is ok
       if (!response.ok) {
