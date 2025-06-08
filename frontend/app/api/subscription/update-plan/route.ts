@@ -71,7 +71,31 @@ export async function POST(request: NextRequest) {
     })
 
     if (subscriptions.data.length === 0) {
-      // No active subscription - create new one
+      // Check if customer has a default payment method
+      const customer = await stripe.customers.retrieve(stripeCustomerId)
+      const hasPaymentMethod = !!(customer as any).default_source || !!(customer as any).invoice_settings?.default_payment_method
+      
+      if (!hasPaymentMethod) {
+        // No payment method - need to collect one first
+        // Create a setup intent to collect payment method
+        const setupIntent = await stripe.setupIntents.create({
+          customer: stripeCustomerId,
+          payment_method_types: ['card'],
+          usage: 'off_session',
+          metadata: {
+            priceId: priceId,
+            isYearly: isYearly ? 'true' : 'false'
+          }
+        })
+        
+        return NextResponse.json({
+          type: 'setup_required',
+          clientSecret: setupIntent.client_secret,
+          priceId: priceId
+        })
+      }
+      
+      // Has payment method - create subscription
       const subscription = await stripe.subscriptions.create({
         customer: stripeCustomerId,
         items: [{ price: priceId }],

@@ -216,8 +216,28 @@ export default function EnhancedBillingPage() {
       }
 
       // Handle different response types
-      if (data.type === 'new_subscription' || data.type === 'payment_required') {
-        // Need to collect payment
+      if (data.type === 'setup_required') {
+        // Need to collect payment method first
+        const stripe = await stripePromise
+        if (!stripe) throw new Error('Failed to load Stripe')
+        
+        // Redirect to Stripe Checkout or payment method collection
+        const checkoutSession = await fetch('/api/subscription/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ priceId })
+        }).then(res => res.json())
+        
+        if (checkoutSession.url) {
+          window.location.href = checkoutSession.url
+        } else {
+          throw new Error('Failed to create checkout session')
+        }
+      } else if (data.type === 'new_subscription' || data.type === 'payment_required') {
+        // Need to confirm payment
         const stripe = await stripePromise
         if (!stripe) throw new Error('Failed to load Stripe')
 
