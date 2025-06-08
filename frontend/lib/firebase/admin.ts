@@ -7,8 +7,12 @@ import { join } from 'path';
 let adminDb: ReturnType<typeof getFirestore> | null = null;
 
 function initializeAdmin() {
-  // Check if already successfully initialized
-  if (adminDb && getApps().length > 0) {
+  // Check if app already exists
+  if (getApps().length > 0) {
+    // App exists, just get the Firestore instance
+    if (!adminDb) {
+      adminDb = getFirestore();
+    }
     return adminDb;
   }
 
@@ -105,9 +109,6 @@ export async function verifyIdToken(idToken: string) {
 export function getAdminAuth() {
   if (!getApps().length) {
     initializeAdmin();
-    if (!getApps().length) {
-      throw new Error('Failed to initialize Firebase Admin SDK for auth');
-    }
   }
   return getAuth();
 }
