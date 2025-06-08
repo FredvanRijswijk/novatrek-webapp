@@ -23,7 +23,8 @@ import {
   Eye,
   Edit,
   MoreVertical,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -354,6 +355,12 @@ export default function ExpertDashboardPage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <Button variant="outline" className="justify-start" asChild>
+              <Link href="/dashboard/expert/recommendations">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Manage Recommendations
+              </Link>
+            </Button>
+            <Button variant="outline" className="justify-start" asChild>
               <Link href="/dashboard/expert/payouts">
                 <DollarSign className="mr-2 h-4 w-4" />
                 Manage Payouts
@@ -363,12 +370,6 @@ export default function ExpertDashboardPage() {
               <Link href="/dashboard/expert/profile">
                 <Users className="mr-2 h-4 w-4" />
                 Edit Profile
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start" asChild>
-              <Link href="/dashboard/expert/availability">
-                <Calendar className="mr-2 h-4 w-4" />
-                Set Availability
               </Link>
             </Button>
           </div>

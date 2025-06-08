@@ -6,6 +6,7 @@ import {
   getDocs, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   query, 
   where, 
   orderBy,
@@ -383,6 +384,23 @@ export class RecommendationModel {
     
     // Increment used in trips count
     await this.incrementRecommendationStat(recommendationId, 'usedInTrips')
+  }
+
+  // Update recommendation status
+  static async updateRecommendationStatus(
+    recommendationId: string,
+    status: 'active' | 'inactive'
+  ): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.RECOMMENDATIONS, recommendationId)
+    await updateDoc(docRef, {
+      status,
+      updatedAt: serverTimestamp()
+    })
+  }
+
+  // Delete expert saved place
+  static async deleteExpertSavedPlace(placeId: string): Promise<void> {
+    await deleteDoc(doc(db, COLLECTIONS.EXPERT_SAVED_PLACES, placeId))
   }
 
   // Convert expert saved place to public recommendation
