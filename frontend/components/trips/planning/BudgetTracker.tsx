@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, DollarSign, TrendingUp, PieChart, Wallet } from 'lucide-react';
+import { Plus, DollarSign, TrendingUp, PieChart, Wallet, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -23,21 +23,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Trip, Budget } from '@/types/travel';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Trip, Budget, Expense } from '@/types/travel';
 import { TripModel } from '@/lib/models/trip';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { useFirebase } from '@/lib/firebase/context';
 
 interface BudgetTrackerProps {
   trip: Trip;
   onUpdate: (trip: Trip) => void;
-}
-
-interface Expense {
-  id: string;
-  category: keyof Budget['breakdown'];
-  amount: number;
-  description: string;
-  date: Date;
 }
 
 const categoryIcons: Record<keyof Budget['breakdown'], string> = {
@@ -57,14 +59,18 @@ const categoryColors: Record<keyof Budget['breakdown'], string> = {
 };
 
 export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
+  const { user } = useFirebase();
   const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [savingExpense, setSavingExpense] = useState(false);
   const [newExpense, setNewExpense] = useState({
     category: 'food' as keyof Budget['breakdown'],
     amount: 0,
-    description: ''
+    description: '',
+    date: new Date()
   });
 
-  // Calculate total spent from activities in itinerary
+  // Calculate total spent from activities and manual expenses
   const calculateSpent = () => {
     let totalSpent = 0;
     const categorySpent: Budget['breakdown'] = {
@@ -107,18 +113,93 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
       });
     });
 
+    // Add manual expenses
+    trip.expenses?.forEach(expense => {
+      totalSpent += expense.amount;
+      categorySpent[expense.category] += expense.amount;
+    });
+
     return { totalSpent, categorySpent };
   };
 
   const { totalSpent, categorySpent } = calculateSpent();
-  const budget = trip.budget || { total: 0, currency: 'USD', breakdown: categorySpent };
+  const budget = trip.budget || { 
+    total: 0, 
+    currency: 'USD', 
+    breakdown: {
+      accommodation: 0,
+      transportation: 0,
+      food: 0,
+      activities: 0,
+      miscellaneous: 0
+    }
+  };
   const percentageUsed = budget.total > 0 ? (totalSpent / budget.total) * 100 : 0;
 
   const handleAddExpense = async () => {
-    // In a real app, this would add a manual expense entry
-    // For now, we'll just show the dialog
-    setIsAddingExpense(false);
-    setNewExpense({ category: 'food', amount: 0, description: '' });
+    if (!user || !newExpense.amount || !newExpense.description) return;
+    
+    setSavingExpense(true);
+    try {
+      await TripModel.addExpense(trip.id, {
+        ...newExpense,
+        createdBy: user.uid
+      });
+      
+      // Reload trip data
+      const updatedTrip = await TripModel.getById(trip.id);
+      if (updatedTrip) {
+        onUpdate(updatedTrip);
+      }
+      
+      // Reset form
+      setIsAddingExpense(false);
+      setNewExpense({ category: 'food', amount: 0, description: '', date: new Date() });
+    } catch (error) {
+      console.error('Error adding expense:', error);
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!editingExpense || !user) return;
+    
+    setSavingExpense(true);
+    try {
+      await TripModel.updateExpense(trip.id, editingExpense.id, {
+        category: editingExpense.category,
+        amount: editingExpense.amount,
+        description: editingExpense.description,
+        date: editingExpense.date
+      });
+      
+      // Reload trip data
+      const updatedTrip = await TripModel.getById(trip.id);
+      if (updatedTrip) {
+        onUpdate(updatedTrip);
+      }
+      
+      setEditingExpense(null);
+    } catch (error) {
+      console.error('Error updating expense:', error);
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      await TripModel.removeExpense(trip.id, expenseId);
+      
+      // Reload trip data
+      const updatedTrip = await TripModel.getById(trip.id);
+      if (updatedTrip) {
+        onUpdate(updatedTrip);
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
   };
 
   const getBudgetStatus = () => {
@@ -129,6 +210,7 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
   };
 
   const status = getBudgetStatus();
+  const tripDuration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
   return (
     <div className="space-y-6">
@@ -161,7 +243,7 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
               </div>
               <p className="text-lg font-medium">{Math.round(percentageUsed)}%</p>
             </div>
-            <Progress value={percentageUsed} className="h-3" />
+            <Progress value={Math.min(100, percentageUsed)} className="h-3" />
           </div>
 
           {/* Quick Stats */}
@@ -184,7 +266,7 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
                   <p className="text-sm font-medium">Daily Avg</p>
                 </div>
                 <p className="text-xl font-bold mt-1">
-                  {budget.currency} {Math.round(totalSpent / (trip.itinerary?.length || 1))}
+                  {budget.currency} {Math.round(totalSpent / tripDuration)}
                 </p>
               </CardContent>
             </Card>
@@ -231,7 +313,7 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
                     </div>
                     <div className="text-right">
                       <p className="font-medium">
-                        {budget.currency} {spent} / {allocated}
+                        {budget.currency} {spent.toFixed(2)} / {allocated}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {Math.round(percentage)}% used
@@ -254,6 +336,68 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Manual Expenses */}
+      {trip.expenses && trip.expenses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Manual Expenses</CardTitle>
+            <CardDescription>
+              Expenses not tied to specific activities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {trip.expenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>{format(new Date(expense.date), 'MMM d')}</TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-1">
+                        {categoryIcons[expense.category]}
+                        <span className="capitalize">{expense.category}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell>{expense.description}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {budget.currency} {expense.amount.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditingExpense(expense)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDeleteExpense(expense.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Expense Dialog */}
       <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
@@ -305,12 +449,96 @@ export function BudgetTracker({ trip, onUpdate }: BudgetTrackerProps) {
                 onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
               />
             </div>
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={format(newExpense.date, 'yyyy-MM-dd')}
+                onChange={(e) => setNewExpense({ ...newExpense, date: new Date(e.target.value) })}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddingExpense(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddExpense}>Add Expense</Button>
+            <Button onClick={handleAddExpense} disabled={savingExpense}>
+              {savingExpense ? 'Saving...' : 'Add Expense'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Expense Dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Expense</DialogTitle>
+            <DialogDescription>
+              Update the expense details
+            </DialogDescription>
+          </DialogHeader>
+          {editingExpense && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-category">Category</Label>
+                <Select
+                  value={editingExpense.category}
+                  onValueChange={(value) => setEditingExpense({ ...editingExpense, category: value as keyof Budget['breakdown'] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryIcons).map(([key, icon]) => (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          <span>{icon}</span>
+                          <span className="capitalize">{key}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-amount">Amount ({budget.currency})</Label>
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={editingExpense.amount || ''}
+                  onChange={(e) => setEditingExpense({ ...editingExpense, amount: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  placeholder="What was this expense for?"
+                  value={editingExpense.description}
+                  onChange={(e) => setEditingExpense({ ...editingExpense, description: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-date">Date</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={format(new Date(editingExpense.date), 'yyyy-MM-dd')}
+                  onChange={(e) => setEditingExpense({ ...editingExpense, date: new Date(e.target.value) })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingExpense(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateExpense} disabled={savingExpense}>
+              {savingExpense ? 'Saving...' : 'Update Expense'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { User, Shield, CreditCard, Smartphone, Plane } from 'lucide-react'
+import { User, Shield, CreditCard, Smartphone, Plane, Trash2 } from 'lucide-react'
 
 const settingsTabs = [
   {
@@ -35,6 +35,18 @@ const settingsTabs = [
     href: '/dashboard/settings/billing',
     icon: CreditCard,
     description: 'Subscription and payment methods'
+  },
+  {
+    title: 'Pricing',
+    href: '/dashboard/settings/pricing',
+    icon: CreditCard,
+    description: 'View all plans and pricing'
+  },
+  {
+    title: 'Delete Account',
+    href: '/dashboard/settings/delete-account',
+    icon: Trash2,
+    description: 'Permanently delete your account'
   }
 ]
 
@@ -44,6 +56,18 @@ export default function SettingsLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  
+  // Check if we're on the pricing page
+  const isPricingPage = pathname === '/dashboard/settings/pricing'
+
+  // For pricing page, use full width layout
+  if (isPricingPage) {
+    return (
+      <div className="flex-1">
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-6">

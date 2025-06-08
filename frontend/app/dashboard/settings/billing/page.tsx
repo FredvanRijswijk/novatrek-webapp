@@ -1,169 +1,50 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useSubscription } from '@/hooks/use-subscription'
 import { useFirebase } from '@/lib/firebase/context'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { loadStripe } from '@stripe/stripe-js'
 import { 
   CreditCard, 
   CheckCircle, 
-  Zap, 
   Loader2, 
-  ArrowUp, 
-  ArrowDown,
   Info,
-  X
+  ArrowRight,
+  Sparkles,
+  Calendar,
+  Activity
 } from 'lucide-react'
 import { SUBSCRIPTION_PLANS, stripePlans } from '@/lib/stripe/plans'
+import Link from 'next/link'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-interface PlanCardProps {
-  plan: {
-    name: string
-    description: string
-    monthlyPrice?: number
-    yearlyPrice?: number
-    features: string[]
-  }
-  planKey: string
-  isCurrentPlan: boolean
-  currentPlan: string
-  isYearly: boolean
-  onSelectPlan: () => void
-  loading?: boolean
-  recommended?: boolean
-}
-
-function PlanCard({ plan, planKey, isCurrentPlan, currentPlan, isYearly, onSelectPlan, loading, recommended }: PlanCardProps) {
-  const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
-  const monthlyEquivalent = plan.yearlyPrice ? plan.yearlyPrice / 12 : 0
-  const savings = plan.monthlyPrice && plan.yearlyPrice 
-    ? (plan.monthlyPrice * 12 - plan.yearlyPrice) 
-    : 0
-  
-  // Helper to get plan hierarchy
-  const getPlanHierarchy = (plan: string): number => {
-    switch(plan) {
-      case 'free': return 0
-      case 'basic': return 1
-      case 'pro': return 2
-      default: return 0
-    }
-  }
-
-  return (
-    <Card className={`relative ${isCurrentPlan ? 'border-primary' : ''} ${recommended ? 'border-2' : ''}`}>
-      {recommended && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <Badge variant="default" className="px-3">
-            Recommended
-          </Badge>
-        </div>
-      )}
-      
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl">{plan.name}</CardTitle>
-            <CardDescription>{plan.description}</CardDescription>
-          </div>
-          {isCurrentPlan && (
-            <Badge variant="secondary">Current</Badge>
-          )}
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="mb-6">
-          {price !== undefined ? (
-            <>
-              <div className="flex items-baseline">
-                <span className="text-3xl font-bold">${isYearly ? monthlyEquivalent.toFixed(2) : price.toFixed(2)}</span>
-                <span className="text-muted-foreground ml-1">/month</span>
-              </div>
-              {isYearly && savings > 0 && (
-                <p className="text-sm text-green-600 mt-1">
-                  Save ${savings.toFixed(0)}/year
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="text-3xl font-bold">Free</div>
-          )}
-        </div>
-        
-        <div className="space-y-3 mb-6">
-          {plan.features.map((feature, index) => (
-            <div key={index} className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm">{feature}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-      
-      <CardFooter>
-        <Button 
-          className="w-full" 
-          variant={isCurrentPlan ? "outline" : "default"}
-          onClick={onSelectPlan}
-          disabled={loading || (planKey === 'free' && isCurrentPlan)}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : isCurrentPlan ? (
-            'Current Plan'
-          ) : getPlanHierarchy(planKey) < getPlanHierarchy(currentPlan) ? (
-            <>
-              <ArrowDown className="mr-2 h-4 w-4" />
-              Downgrade to {plan.name}
-            </>
-          ) : (
-            <>
-              Upgrade to {plan.name}
-              <ArrowUp className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
-  )
-}
-
-export default function EnhancedBillingPage() {
+export default function BillingPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useFirebase()
   const { subscription, currentPlan, limits, loading: subscriptionLoading } = useSubscription()
-  const searchParams = useSearchParams()
   const [loadingPortal, setLoadingPortal] = useState(false)
-  const [isYearly, setIsYearly] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [updateLoading, setUpdateLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showCanceledAlert, setShowCanceledAlert] = useState(false)
 
-  // Determine if current subscription is yearly
+  // Check for plan change request from pricing page
   useEffect(() => {
-    if (subscription?.priceId) {
-      const isYearlyPrice = Object.values(stripePlans).some(
-        plan => plan.priceIdYearly === subscription.priceId
-      )
-      setIsYearly(isYearlyPrice)
+    const planParam = searchParams.get('plan')
+    const billingParam = searchParams.get('billing')
+    
+    if (planParam && planParam !== currentPlan && !subscriptionLoading) {
+      // Automatically initiate plan change
+      handlePlanChange(planParam, billingParam === 'yearly')
     }
-  }, [subscription])
+  }, [searchParams, currentPlan, subscriptionLoading])
 
   // Check if user canceled the checkout
   useEffect(() => {
@@ -202,10 +83,9 @@ export default function EnhancedBillingPage() {
     }
   }
 
-  const handlePlanChange = async (planKey: string) => {
+  const handlePlanChange = async (planKey: string, isYearly: boolean = false) => {
     if (!user || planKey === currentPlan) return
 
-    setSelectedPlan(planKey)
     setError(null)
     setUpdateLoading(true)
 
@@ -289,7 +169,8 @@ export default function EnhancedBillingPage() {
       setError(err.message || 'Failed to update subscription')
     } finally {
       setUpdateLoading(false)
-      setSelectedPlan(null)
+      // Clear URL params
+      router.replace('/dashboard/settings/billing')
     }
   }
 
@@ -301,12 +182,17 @@ export default function EnhancedBillingPage() {
     )
   }
 
+  const plan = SUBSCRIPTION_PLANS[currentPlan as keyof typeof SUBSCRIPTION_PLANS]
+  const nextBillingDate = subscription?.currentPeriodEnd 
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+    : null
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Billing & Subscription</h2>
         <p className="text-muted-foreground">
-          Manage your subscription plan and billing information
+          Manage your subscription and billing details
         </p>
       </div>
 
@@ -325,137 +211,193 @@ export default function EnhancedBillingPage() {
         </Alert>
       )}
 
-      {/* Billing Period Toggle */}
+      {updateLoading && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Processing your plan change...
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Current Plan Card */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center space-x-3">
-            <Label htmlFor="billing-period" className={!isYearly ? 'font-semibold' : ''}>
-              Monthly
-            </Label>
-            <Switch
-              id="billing-period"
-              checked={isYearly}
-              onCheckedChange={setIsYearly}
-              disabled={updateLoading}
-            />
-            <Label htmlFor="billing-period" className={isYearly ? 'font-semibold' : ''}>
-              Yearly
-              <Badge variant="secondary" className="ml-2">Save 20%</Badge>
-            </Label>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Current Plan</CardTitle>
+              <CardDescription>
+                Your active subscription details
+              </CardDescription>
+            </div>
+            <Badge variant={currentPlan === 'pro' ? 'default' : 'secondary'} className="text-lg px-3 py-1">
+              {plan.name}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="font-medium">{plan.description}</span>
+            </div>
+            
+            {currentPlan !== 'free' && (
+              <>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CreditCard className="h-5 w-5" />
+                  <span>
+                    ${subscription?.priceId?.includes('yearly') 
+                      ? `${(plan.yearlyPrice! / 12).toFixed(2)}/month (billed annually)`
+                      : `${plan.monthlyPrice}/month`
+                    }
+                  </span>
+                </div>
+                
+                {nextBillingDate && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-5 w-5" />
+                    <span>Next billing date: {nextBillingDate}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="pt-4 flex gap-3">
+              <Button asChild>
+                <Link href="/dashboard/settings/pricing">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  View All Plans
+                </Link>
+              </Button>
+              
+              {currentPlan !== 'free' && (
+                <Button 
+                  variant="outline"
+                  onClick={handleManageSubscription}
+                  disabled={loadingPortal}
+                >
+                  {loadingPortal ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Manage Billing
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Plans Grid */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <PlanCard
-          plan={SUBSCRIPTION_PLANS.free}
-          planKey="free"
-          isCurrentPlan={currentPlan === 'free'}
-          currentPlan={currentPlan}
-          isYearly={isYearly}
-          onSelectPlan={() => handlePlanChange('free')}
-          loading={updateLoading && selectedPlan === 'free'}
-        />
-        
-        <PlanCard
-          plan={SUBSCRIPTION_PLANS.basic}
-          planKey="basic"
-          isCurrentPlan={currentPlan === 'basic'}
-          currentPlan={currentPlan}
-          isYearly={isYearly}
-          onSelectPlan={() => handlePlanChange('basic')}
-          loading={updateLoading && selectedPlan === 'basic'}
-        />
-        
-        <PlanCard
-          plan={SUBSCRIPTION_PLANS.pro}
-          planKey="pro"
-          isCurrentPlan={currentPlan === 'pro'}
-          currentPlan={currentPlan}
-          isYearly={isYearly}
-          onSelectPlan={() => handlePlanChange('pro')}
-          loading={updateLoading && selectedPlan === 'pro'}
-          recommended
-        />
-      </div>
-
-      {/* Current Usage */}
-      {currentPlan !== 'free' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Usage</CardTitle>
-            <CardDescription>
-              Track your usage against your plan limits
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>AI Requests</span>
-                <span className="text-muted-foreground">
+      {/* Usage Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Usage This Month</CardTitle>
+          <CardDescription>
+            Track your usage against your plan limits
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* AI Requests */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">AI Requests</span>
+                <span className="text-sm text-muted-foreground">
                   0 / {limits.aiRequestsPerMonth === -1 ? 'Unlimited' : limits.aiRequestsPerMonth}
                 </span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress 
+                value={limits.aiRequestsPerMonth === -1 ? 0 : 0} 
+                className="h-2" 
+              />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Active Trips</span>
-                <span className="text-muted-foreground">
+            {/* Active Trips */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">Active Trips</span>
+                <span className="text-sm text-muted-foreground">
                   0 / {limits.activeTrips === -1 ? 'Unlimited' : limits.activeTrips}
                 </span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress 
+                value={limits.activeTrips === -1 ? 0 : 0} 
+                className="h-2" 
+              />
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Billing Management */}
-      {currentPlan !== 'free' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Management</CardTitle>
-            <CardDescription>
-              Access the Stripe customer portal to manage payment methods, download invoices, and cancel subscription
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              variant="outline"
-              onClick={handleManageSubscription}
-              disabled={loadingPortal}
-            >
-              {loadingPortal ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Open Billing Portal
-                </>
+            {/* Itinerary Days */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium">Max Itinerary Length</span>
+                <span className="text-sm text-muted-foreground">
+                  {limits.itineraryDays === -1 ? 'Unlimited' : `${limits.itineraryDays} days`}
+                </span>
+              </div>
+              {limits.itineraryDays !== -1 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    Per trip limit
+                  </span>
+                </div>
               )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Features List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Plan Features</CardTitle>
+          <CardDescription>
+            Everything included in your {plan.name} plan
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {plan.features.map((feature, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <span className="text-sm">{feature}</span>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-6 pt-6 border-t">
+            <Link 
+              href="/dashboard/settings/pricing" 
+              className="inline-flex items-center text-sm text-primary hover:underline"
+            >
+              Compare all plans and features
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Test Cards Info */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Test Mode:</strong> Use Stripe test cards to test subscription upgrades:
-          <ul className="mt-2 space-y-1 text-sm">
-            <li>• Success: <code>4242 4242 4242 4242</code></li>
-            <li>• Requires authentication: <code>4000 0027 6000 3184</code></li>
-            <li>• Insufficient funds: <code>4000 0000 0000 9995</code></li>
-          </ul>
-        </AlertDescription>
-      </Alert>
+      {process.env.NODE_ENV === 'development' && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Test Mode:</strong> Use Stripe test cards to test subscription upgrades:
+            <ul className="mt-2 space-y-1 text-sm">
+              <li>• Success: <code>4242 4242 4242 4242</code></li>
+              <li>• Requires authentication: <code>4000 0027 6000 3184</code></li>
+              <li>• Insufficient funds: <code>4000 0000 0000 9995</code></li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   )
 }

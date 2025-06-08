@@ -259,7 +259,22 @@ export default function TripPlanningPage() {
                 <CardHeader className="pb-2">
                   <CardDescription>Budget Used</CardDescription>
                   <CardTitle className="text-2xl">
-                    {trip.budget ? `${Math.round((0 / trip.budget.total) * 100)}%` : 'N/A'}
+                    {trip.budget ? (() => {
+                      let totalSpent = 0;
+                      // Calculate from activities
+                      trip.itinerary?.forEach(day => {
+                        day.activities?.forEach(activity => {
+                          if (activity.cost) {
+                            totalSpent += activity.cost.amount * (activity.cost.perPerson ? trip.travelers.length : 1);
+                          }
+                        });
+                      });
+                      // Add manual expenses
+                      trip.expenses?.forEach(expense => {
+                        totalSpent += expense.amount;
+                      });
+                      return `${Math.round((totalSpent / trip.budget.total) * 100)}%`;
+                    })() : 'N/A'}
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -373,7 +388,12 @@ export default function TripPlanningPage() {
                   <Calendar className="mr-2 h-4 w-4" />
                   Add Activity
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  size="sm"
+                  onClick={() => setActiveTab('budget')}
+                >
                   <DollarSign className="mr-2 h-4 w-4" />
                   Add Expense
                 </Button>

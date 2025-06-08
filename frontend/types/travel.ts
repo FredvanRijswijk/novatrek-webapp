@@ -87,6 +87,7 @@ export interface Trip {
   budget?: Budget
   travelers: Traveler[]
   itinerary: DayItinerary[]
+  expenses?: Expense[] // Manual expenses not tied to activities
   status: 'planning' | 'booked' | 'active' | 'completed' | 'cancelled'
   aiRecommendations?: AIRecommendation[]
   weatherData?: WeatherData[]
@@ -124,6 +125,17 @@ export interface Budget {
     miscellaneous: number
   }
   spent?: number
+}
+
+export interface Expense {
+  id: string
+  tripId: string
+  category: keyof Budget['breakdown']
+  amount: number
+  description: string
+  date: Date
+  createdBy: string
+  createdAt: Date
 }
 
 export interface Traveler {

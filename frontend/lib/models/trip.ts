@@ -10,7 +10,7 @@ import {
   orderBy,
   limit
 } from '@/lib/firebase'
-import { Trip, DayItinerary, Activity } from '@/types/travel'
+import { Trip, DayItinerary, Activity, Expense } from '@/types/travel'
 import { cleanFirestoreData, convertTimestampsToDates } from '@/lib/utils/firebase-helpers'
 
 export class TripModel {
@@ -164,5 +164,46 @@ export class TripModel {
     const daysPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     
     return Math.round((daysPassed / totalDays) * 100)
+  }
+
+  // Add expense to trip
+  static async addExpense(tripId: string, expense: Omit<Expense, 'id' | 'tripId' | 'createdAt'>): Promise<void> {
+    const trip = await this.getById(tripId)
+    if (!trip) throw new Error('Trip not found')
+
+    const newExpense: Expense = {
+      ...expense,
+      id: `expense-${Date.now()}`,
+      tripId,
+      createdAt: new Date()
+    }
+
+    const expenses = trip.expenses || []
+    expenses.push(newExpense)
+
+    await this.update(tripId, { expenses })
+  }
+
+  // Remove expense from trip
+  static async removeExpense(tripId: string, expenseId: string): Promise<void> {
+    const trip = await this.getById(tripId)
+    if (!trip) throw new Error('Trip not found')
+
+    const expenses = (trip.expenses || []).filter(expense => expense.id !== expenseId)
+    await this.update(tripId, { expenses })
+  }
+
+  // Update expense
+  static async updateExpense(tripId: string, expenseId: string, updates: Partial<Expense>): Promise<void> {
+    const trip = await this.getById(tripId)
+    if (!trip) throw new Error('Trip not found')
+
+    const expenses = trip.expenses || []
+    const expenseIndex = expenses.findIndex(e => e.id === expenseId)
+    
+    if (expenseIndex === -1) throw new Error('Expense not found')
+    
+    expenses[expenseIndex] = { ...expenses[expenseIndex], ...updates }
+    await this.update(tripId, { expenses })
   }
 }

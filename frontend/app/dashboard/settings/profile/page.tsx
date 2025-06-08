@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { uploadProfilePhoto, validateImageFile, resizeImage } from '@/lib/firebase/storage'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useTheme } from 'next-themes'
+import { useSubscription } from '@/hooks/use-subscription'
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans'
 
 interface UserProfile {
   displayName: string
@@ -39,6 +41,7 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user } = useFirebase()
   const { theme } = useTheme()
+  const { currentPlan, subscription } = useSubscription()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -422,7 +425,9 @@ export default function ProfilePage() {
               <Trophy className="h-4 w-4" />
               <span>Member since {user?.metadata.creationTime ? new Date(user.metadata.creationTime).getFullYear() : 'N/A'}</span>
             </div>
-            <Badge variant="secondary">Free Plan</Badge>
+            <Badge variant={currentPlan === 'pro' ? 'default' : 'secondary'}>
+              {SUBSCRIPTION_PLANS[currentPlan as keyof typeof SUBSCRIPTION_PLANS]?.name || 'Free'} Plan
+            </Badge>
           </div>
         </CardContent>
       </Card>
