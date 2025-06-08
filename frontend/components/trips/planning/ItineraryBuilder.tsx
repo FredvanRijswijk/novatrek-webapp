@@ -786,6 +786,11 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
             : trip.destination?.name || 'Unknown location'
         }
         date={selectedDay}
+        location={
+          trip.destinations && trip.destinations.length > 0 && trip.destinations[0].destination?.coordinates
+            ? trip.destinations[0].destination.coordinates
+            : trip.destination?.coordinates
+        }
       />
     )}
 

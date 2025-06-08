@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, MapPin, Clock, DollarSign, Star, Filter, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Activity, ActivityType } from '@/types/travel';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ActivitySearchModalProps {
   isOpen: boolean;
@@ -31,57 +32,8 @@ interface ActivitySearchModalProps {
   onSelect: (activity: Activity) => void;
   destination: string;
   date: Date;
+  location?: { lat: number; lng: number };
 }
-
-// Mock activities data - will be replaced with API calls
-const mockActivities: Activity[] = [
-  {
-    id: 'act_1',
-    name: 'Eiffel Tower Visit',
-    type: 'sightseeing',
-    description: 'Iconic iron lattice tower with stunning city views',
-    location: {
-      name: 'Eiffel Tower',
-      address: 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris',
-      coordinates: { lat: 48.8584, lng: 2.2945 }
-    },
-    duration: 120,
-    cost: { amount: 25, currency: 'EUR', perPerson: true },
-    rating: 4.8,
-    images: ['https://images.unsplash.com/photo-1511739001486-6bfe10ce785f'],
-    tags: ['landmark', 'views', 'photography']
-  },
-  {
-    id: 'act_2',
-    name: 'Seine River Cruise',
-    type: 'activity',
-    description: 'Romantic cruise along the Seine with commentary',
-    location: {
-      name: 'Port de la Bourdonnais',
-      address: 'Port de la Bourdonnais, 75007 Paris',
-      coordinates: { lat: 48.8608, lng: 2.2926 }
-    },
-    duration: 60,
-    cost: { amount: 15, currency: 'EUR', perPerson: true },
-    rating: 4.5,
-    tags: ['cruise', 'romantic', 'sightseeing']
-  },
-  {
-    id: 'act_3',
-    name: 'Le Marais Food Tour',
-    type: 'dining',
-    description: 'Guided food tour through the historic Marais district',
-    location: {
-      name: 'Le Marais',
-      address: 'Le Marais, Paris',
-      coordinates: { lat: 48.8566, lng: 2.3522 }
-    },
-    duration: 180,
-    cost: { amount: 85, currency: 'EUR', perPerson: true },
-    rating: 4.9,
-    tags: ['food', 'walking', 'cultural']
-  }
-];
 
 const activityTypes: { value: ActivityType; label: string }[] = [
   { value: 'sightseeing', label: 'Sightseeing' },
@@ -101,50 +53,105 @@ export function ActivitySearchModal({
   onClose,
   onSelect,
   destination,
-  date
+  date,
+  location
 }: ActivitySearchModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ActivityType | 'all'>('all');
   const [priceRange, setPriceRange] = useState<'all' | 'budget' | 'moderate' | 'expensive'>('all');
-  const [filteredActivities, setFilteredActivities] = useState(mockActivities);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = () => {
-    let filtered = mockActivities;
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(activity =>
-        activity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+  // Calculate budget limit based on price range
+  const getBudgetLimit = () => {
+    switch (priceRange) {
+      case 'budget':
+        return 30;
+      case 'moderate':
+        return 100;
+      case 'expensive':
+        return 500;
+      default:
+        return undefined;
     }
-
-    // Filter by type
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(activity => activity.type === selectedType);
-    }
-
-    // Filter by price range
-    if (priceRange !== 'all' && filtered.length > 0) {
-      filtered = filtered.filter(activity => {
-        if (!activity.cost) return true;
-        const price = activity.cost.amount;
-        switch (priceRange) {
-          case 'budget':
-            return price <= 30;
-          case 'moderate':
-            return price > 30 && price <= 100;
-          case 'expensive':
-            return price > 100;
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredActivities(filtered);
   };
+
+  // Calculate time of day based on the date
+  const getTimeOfDay = () => {
+    const hour = date.getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  };
+
+  const searchActivities = async () => {
+    if (!location) {
+      toast.error('Unable to search without location coordinates');
+      return;
+    }
+
+    setLoading(true);
+    setHasSearched(true);
+
+    try {
+      // Get auth token from Firebase
+      const auth = await import('firebase/auth');
+      const currentUser = auth.getAuth().currentUser;
+      const token = currentUser ? await currentUser.getIdToken() : null;
+
+      const response = await fetch('/api/activities/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          location,
+          activityType: selectedType === 'all' ? undefined : selectedType,
+          searchQuery: searchQuery || undefined,
+          budget: getBudgetLimit(),
+          date: date.toISOString(),
+          timeOfDay: getTimeOfDay()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to search activities');
+      }
+
+      const data = await response.json();
+      setActivities(data.activities || []);
+
+      if (data.activities.length === 0) {
+        toast.info('No activities found. Try adjusting your filters.');
+      }
+    } catch (error) {
+      console.error('Activity search error:', error);
+      toast.error('Failed to search activities');
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search on filter changes (after initial search)
+  useEffect(() => {
+    if (hasSearched && isOpen) {
+      searchActivities();
+    }
+  }, [selectedType, priceRange]);
+
+  // Reset when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+      setSelectedType('all');
+      setPriceRange('all');
+      setActivities([]);
+      setHasSearched(false);
+    }
+  }, [isOpen]);
 
   const getActivityIcon = (type: ActivityType) => {
     switch (type) {
@@ -188,11 +195,20 @@ export function ActivitySearchModal({
                 placeholder="Search activities, attractions, restaurants..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && searchActivities()}
                 className="pl-9"
               />
             </div>
-            <Button onClick={handleSearch}>Search</Button>
+            <Button onClick={searchActivities} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                'Search'
+              )}
+            </Button>
           </div>
 
           {/* Filters */}
@@ -222,9 +238,9 @@ export function ActivitySearchModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Prices</SelectItem>
-                <SelectItem value="budget">💵 Budget (&lt; €30)</SelectItem>
-                <SelectItem value="moderate">💵💵 Moderate (€30-100)</SelectItem>
-                <SelectItem value="expensive">💵💵💵 Expensive (&gt; €100)</SelectItem>
+                <SelectItem value="budget">💵 Budget (&lt; $30)</SelectItem>
+                <SelectItem value="moderate">💵💵 Moderate ($30-100)</SelectItem>
+                <SelectItem value="expensive">💵💵💵 Expensive (&gt; $100)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -235,7 +251,9 @@ export function ActivitySearchModal({
                 setSearchQuery('');
                 setSelectedType('all');
                 setPriceRange('all');
-                setFilteredActivities(mockActivities);
+                if (hasSearched) {
+                  searchActivities();
+                }
               }}
             >
               Clear Filters
@@ -248,14 +266,30 @@ export function ActivitySearchModal({
         {/* Results */}
         <ScrollArea className="flex-1">
           <div className="space-y-3 pr-4">
-            {filteredActivities.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-12 w-12 mx-auto mb-3 animate-spin text-primary" />
+                <p className="text-muted-foreground">Searching for activities in {destination}...</p>
+              </div>
+            ) : !hasSearched ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-lg font-medium">Find Amazing Activities</p>
+                <p className="text-sm mt-1">Search for attractions, restaurants, and experiences</p>
+                {!location && (
+                  <p className="text-sm mt-2 text-amber-600">
+                    ⚠️ Location coordinates needed for accurate results
+                  </p>
+                )}
+              </div>
+            ) : activities.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No activities found</p>
                 <p className="text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : (
-              filteredActivities.map((activity) => (
+              activities.map((activity) => (
                 <div
                   key={activity.id}
                   className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
@@ -297,7 +331,7 @@ export function ActivitySearchModal({
                           <div className="flex items-center gap-1 font-medium">
                             <DollarSign className="h-3 w-3" />
                             <span>
-                              {activity.cost.currency} {activity.cost.amount}
+                              ${activity.cost.amount}
                               {activity.cost.perPerson && ' pp'}
                             </span>
                           </div>
@@ -317,7 +351,10 @@ export function ActivitySearchModal({
 
                     {activity.images && activity.images[0] && (
                       <img
-                        src={activity.images[0]}
+                        src={typeof activity.images[0] === 'string' 
+                          ? activity.images[0] 
+                          : activity.images[0].url
+                        }
                         alt={activity.name}
                         className="w-24 h-24 object-cover rounded-lg ml-4"
                       />
