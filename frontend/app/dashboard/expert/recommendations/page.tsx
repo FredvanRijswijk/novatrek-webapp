@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { auth } from '@/lib/firebase';
 import { MarketplaceModel } from '@/lib/models/marketplace';
 import { RecommendationModel, ExpertSavedPlace, PlaceRecommendation } from '@/lib/models/recommendations';
-import { useGooglePlaces } from '@/hooks/use-google-places';
+import { useGooglePlacesSearch } from '@/hooks/use-google-places-search';
 
 interface PublishDialogProps {
   place: ExpertSavedPlace;
@@ -173,7 +173,7 @@ export default function ExpertRecommendationsPage() {
   const [selectedPlace, setSelectedPlace] = useState<ExpertSavedPlace | null>(null);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   
-  const { searchPlaces, loading: searchLoading } = useGooglePlaces();
+  const { searchPlaces, loading: searchLoading } = useGooglePlacesSearch();
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
@@ -244,8 +244,12 @@ export default function ExpertRecommendationsPage() {
           location: {
             address: place.formatted_address || place.vicinity,
             coordinates: {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
+              lat: typeof place.geometry.location.lat === 'function' 
+                ? place.geometry.location.lat() 
+                : place.geometry.location.lat,
+              lng: typeof place.geometry.location.lng === 'function'
+                ? place.geometry.location.lng()
+                : place.geometry.location.lng
             },
             city: place.address_components?.find((c: any) => 
               c.types.includes('locality')

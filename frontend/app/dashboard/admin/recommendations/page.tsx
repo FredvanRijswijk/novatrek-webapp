@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { auth } from '@/lib/firebase';
 import { useAdmin } from '@/hooks/use-admin';
 import { RecommendationModel, PlaceRecommendation } from '@/lib/models/recommendations';
-import { useGooglePlaces } from '@/hooks/use-google-places';
+import { useGooglePlacesSearch } from '@/hooks/use-google-places-search';
 
 interface CreateRecommendationDialogProps {
   place: any;
@@ -207,7 +207,7 @@ export default function AdminRecommendationsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('novatrek');
   
-  const { searchPlaces, loading: searchLoading } = useGooglePlaces();
+  const { searchPlaces, loading: searchLoading } = useGooglePlacesSearch();
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
 

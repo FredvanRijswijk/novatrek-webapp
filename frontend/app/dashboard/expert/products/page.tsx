@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export default function ExpertProductsPage() {
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
@@ -46,7 +46,6 @@ export default function ExpertProductsPage() {
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const { user } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -75,11 +74,7 @@ export default function ExpertProductsPage() {
       setProducts(productsData);
     } catch (error) {
       console.error('Error fetching products:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load your products',
-        variant: 'destructive',
-      });
+      toast.error('Failed to load your products');
     } finally {
       setLoading(false);
     }
@@ -99,17 +94,10 @@ export default function ExpertProductsPage() {
         )
       );
       
-      toast({
-        title: 'Success',
-        description: `Product ${newStatus === 'active' ? 'activated' : 'deactivated'}`,
-      });
+      toast.success(`Product ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error updating product status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update product status',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update product status');
     }
   };
 
@@ -121,17 +109,10 @@ export default function ExpertProductsPage() {
       setProducts(prev => prev.filter(p => p.id !== deleteProductId));
       setDeleteProductId(null);
       
-      toast({
-        title: 'Success',
-        description: 'Product deleted successfully',
-      });
+      toast.success('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete product',
-        variant: 'destructive',
-      });
+      toast.error('Failed to delete product');
     }
   };
 
