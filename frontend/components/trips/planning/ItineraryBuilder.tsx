@@ -36,6 +36,7 @@ import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActivitySearchModal } from './ActivitySearchModal';
 import { TripModel } from '@/lib/models/trip';
+import { WeatherDisplay } from '../WeatherDisplay';
 
 interface ItineraryBuilderProps {
   trip: Trip;
@@ -578,7 +579,7 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
                     )}
                   >
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">
                           Day {dayInfo.dayNumber}
                           {isTravel && ' - Travel'}
@@ -608,14 +609,26 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
                           </p>
                         )}
                       </div>
-                      {activityCount > 0 && (
-                        <Badge 
-                          variant={isSelected ? 'secondary' : 'outline'}
-                          className="ml-2"
-                        >
-                          {activityCount}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {dayInfo.date && !isTravel && (
+                          <WeatherDisplay
+                            date={dayInfo.date}
+                            location={
+                              trip.destinations?.find(d => d.destination?.name === dayInfo.destinationName)?.destination?.coordinates ||
+                              trip.destination?.coordinates
+                            }
+                            className="ml-2"
+                          />
+                        )}
+                        {activityCount > 0 && (
+                          <Badge 
+                            variant={isSelected ? 'secondary' : 'outline'}
+                            className="ml-2"
+                          >
+                            {activityCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );

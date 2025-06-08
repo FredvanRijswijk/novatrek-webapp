@@ -30,7 +30,10 @@ export class WeatherClient {
   private cacheHours = 6 // Cache weather data for 6 hours
 
   private constructor() {
-    this.apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || ''
+    // Use server-side env var when running on server, client-side when in browser
+    this.apiKey = typeof window === 'undefined' 
+      ? process.env.OPENWEATHER_API_KEY || process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || ''
+      : process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || ''
   }
 
   static getInstance(): WeatherClient {
@@ -44,11 +47,19 @@ export class WeatherClient {
    * Get weather for a location with caching
    */
   async getWeather(lat: number, lng: number, date: Date): Promise<WeatherData | null> {
+    console.log('WeatherClient.getWeather called with:', { lat, lng, date, apiKey: !!this.apiKey })
+    
+    if (!this.apiKey) {
+      console.error('No OpenWeatherMap API key configured')
+      return null
+    }
+    
     const locationKey = `${lat.toFixed(2)}_${lng.toFixed(2)}`
     
     // Try cache first
     const cached = await this.getCachedWeather(locationKey)
     if (cached) {
+      console.log('Found cached weather data')
       // Find the weather for the requested date
       const targetDate = date.toISOString().split('T')[0]
       const weather = cached.forecast.find(w => 
@@ -62,6 +73,7 @@ export class WeatherClient {
       }
     }
 
+    console.log('No cached data, fetching fresh weather')
     // Fetch fresh data
     return this.fetchAndCacheWeather(lat, lng, locationKey, date)
   }
@@ -166,9 +178,11 @@ export class WeatherClient {
     requestedDate: Date
   ): Promise<WeatherData | null> {
     if (!this.apiKey) {
-      console.error('OpenWeather API key not configured')
+      console.error('OpenWeather API key not configured. Expected OPENWEATHER_API_KEY or NEXT_PUBLIC_OPENWEATHER_API_KEY')
       return null
     }
+    
+    console.log('Fetching weather for location:', { lat, lng, locationKey })
 
     try {
       // Fetch 5-day forecast (includes today)

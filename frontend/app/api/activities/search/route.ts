@@ -125,17 +125,28 @@ export async function POST(request: NextRequest) {
     let weatherData = null
     let weatherRecommendation = null
     
+    console.log('Weather fetch conditions:', { date, preferIndoorActivities, shouldFetchWeather: date && !preferIndoorActivities })
+    
     if (date && !preferIndoorActivities) {
       // Only fetch weather if not already preferring indoor
-      const weatherClient = WeatherClient.getInstance()
-      weatherData = await weatherClient.getWeather(
-        location.lat,
-        location.lng,
-        new Date(date)
-      )
-      
-      if (weatherData) {
-        weatherRecommendation = WeatherClient.getActivityRecommendation(weatherData)
+      try {
+        console.log('Attempting to fetch weather data for date:', date)
+        const weatherClient = WeatherClient.getInstance()
+        weatherData = await weatherClient.getWeather(
+          location.lat,
+          location.lng,
+          new Date(date)
+        )
+        
+        if (weatherData) {
+          console.log('Weather data received:', weatherData)
+          weatherRecommendation = WeatherClient.getActivityRecommendation(weatherData)
+        } else {
+          console.log('No weather data returned')
+        }
+      } catch (weatherError) {
+        console.error('Error fetching weather:', weatherError)
+        // Continue without weather data
       }
     }
 
