@@ -15,7 +15,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/firebase/context';
+import { useFirebase } from '@/lib/firebase/context';
 import { MarketplaceProduct } from '@/lib/models/marketplace';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ export default function ExpertProductsPage() {
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user } = useFirebase();
   const router = useRouter();
 
   useEffect(() => {
