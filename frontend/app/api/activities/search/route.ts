@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyIdToken } from '@/lib/firebase/admin'
 import { Activity } from '@/types/travel'
+import { WeatherClient } from '@/lib/weather/client'
 
 // Activity type mapping to Google Places types
 const activityTypeToPlaceTypes: Record<string, string[]> = {
@@ -14,6 +15,11 @@ const activityTypeToPlaceTypes: Record<string, string[]> = {
   outdoor: ['park', 'hiking_trail', 'beach', 'campground', 'zoo'],
   wellness: ['spa', 'beauty_salon', 'hair_care']
 }
+
+// Indoor/Outdoor classification
+const indoorActivities = ['shopping', 'cultural', 'wellness', 'entertainment']
+const outdoorActivities = ['outdoor', 'sightseeing']
+const mixedActivities = ['dining', 'activity'] // Can be either
 
 // Estimated duration by activity type (in minutes)
 const estimatedDurations: Record<string, number> = {
@@ -61,7 +67,8 @@ export async function POST(request: NextRequest) {
       searchQuery, 
       budget,
       date,
-      timeOfDay 
+      timeOfDay,
+      preferIndoorActivities
     } = await request.json()
 
     if (!location || !location.lat || !location.lng) {
@@ -114,8 +121,41 @@ export async function POST(request: NextRequest) {
 
     const results = searchData.results || []
 
+    // Get weather data if we need to filter by indoor/outdoor
+    let weatherData = null
+    let weatherRecommendation = null
+    
+    if (date && !preferIndoorActivities) {
+      // Only fetch weather if not already preferring indoor
+      const weatherClient = WeatherClient.getInstance()
+      weatherData = await weatherClient.getWeather(
+        location.lat,
+        location.lng,
+        new Date(date)
+      )
+      
+      if (weatherData) {
+        weatherRecommendation = WeatherClient.getActivityRecommendation(weatherData)
+      }
+    }
+
+    // Determine if we should filter for indoor activities
+    const shouldPreferIndoor = preferIndoorActivities || 
+                              (weatherRecommendation?.preferIndoor && 
+                               weatherRecommendation.severity !== 'low')
+
     // Get place types for filtering
-    const targetTypes = activityTypeToPlaceTypes[activityType] || []
+    let targetTypes = activityTypeToPlaceTypes[activityType] || []
+    
+    // If weather is bad and no specific type selected, prefer indoor types
+    if (shouldPreferIndoor && !activityType) {
+      targetTypes = [
+        ...activityTypeToPlaceTypes.shopping,
+        ...activityTypeToPlaceTypes.cultural,
+        ...activityTypeToPlaceTypes.entertainment,
+        ...activityTypeToPlaceTypes.wellness
+      ]
+    }
 
     // Transform and enhance results
     const activities: Activity[] = results
@@ -124,6 +164,15 @@ export async function POST(request: NextRequest) {
         if (targetTypes.length > 0 && place.types) {
           return place.types.some((type: string) => targetTypes.includes(type))
         }
+        
+        // Additional filtering for indoor preference
+        if (shouldPreferIndoor && activityType) {
+          // If we need indoor activities, filter out definitely outdoor types
+          if (outdoorActivities.includes(activityType)) {
+            return false
+          }
+        }
+        
         return true
       })
       .map((place: any) => {
@@ -205,7 +254,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ activities })
+    // Sort activities - if preferring indoor, sort those first
+    if (shouldPreferIndoor) {
+      activities.sort((a, b) => {
+        const aIsIndoor = indoorActivities.includes(a.type) || 
+                         (a.tags?.some(tag => tag.includes('indoor')) ?? false)
+        const bIsIndoor = indoorActivities.includes(b.type) || 
+                         (b.tags?.some(tag => tag.includes('indoor')) ?? false)
+        
+        if (aIsIndoor && !bIsIndoor) return -1
+        if (!aIsIndoor && bIsIndoor) return 1
+        
+        // Then sort by rating
+        return (b.rating || 0) - (a.rating || 0)
+      })
+    }
+
+    return NextResponse.json({ 
+      activities,
+      weather: weatherData ? {
+        condition: weatherData.condition,
+        temperature: weatherData.temp,
+        description: weatherData.description,
+        recommendation: weatherRecommendation
+      } : undefined
+    })
 
   } catch (error) {
     console.error('Activity search error:', error)

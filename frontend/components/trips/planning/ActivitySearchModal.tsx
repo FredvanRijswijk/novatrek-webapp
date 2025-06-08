@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2 } from 'lucide-react';
+import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2, CloudRain, Sun, Cloud, Umbrella } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +64,8 @@ export function ActivitySearchModal({
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [preferIndoor, setPreferIndoor] = useState(false);
+  const [weather, setWeather] = useState<any>(null);
 
   // Calculate budget limit based on price range
   const getBudgetLimit = () => {
@@ -112,7 +116,8 @@ export function ActivitySearchModal({
           searchQuery: searchQuery || undefined,
           budget: getBudgetLimit(),
           date: date.toISOString(),
-          timeOfDay: getTimeOfDay()
+          timeOfDay: getTimeOfDay(),
+          preferIndoorActivities: preferIndoor
         }),
       });
 
@@ -122,6 +127,19 @@ export function ActivitySearchModal({
 
       const data = await response.json();
       setActivities(data.activities || []);
+      
+      // Set weather data if available
+      if (data.weather) {
+        setWeather(data.weather);
+        
+        // Auto-enable indoor preference if weather is bad
+        if (data.weather.recommendation?.preferIndoor && 
+            data.weather.recommendation.severity === 'high' &&
+            !preferIndoor) {
+          setPreferIndoor(true);
+          toast.info(`${data.weather.recommendation.reason} - showing indoor activities first`);
+        }
+      }
 
       if (data.activities.length === 0) {
         toast.info('No activities found. Try adjusting your filters.');
@@ -140,7 +158,7 @@ export function ActivitySearchModal({
     if (hasSearched && isOpen) {
       searchActivities();
     }
-  }, [selectedType, priceRange]);
+  }, [selectedType, priceRange, preferIndoor]);
 
   // Reset when modal closes
   useEffect(() => {
@@ -150,6 +168,8 @@ export function ActivitySearchModal({
       setPriceRange('all');
       setActivities([]);
       setHasSearched(false);
+      setPreferIndoor(false);
+      setWeather(null);
     }
   }, [isOpen]);
 
@@ -173,6 +193,22 @@ export function ActivitySearchModal({
         return '🧘';
       default:
         return '📍';
+    }
+  };
+
+  const getWeatherIcon = () => {
+    if (!weather) return null;
+    
+    switch (weather.condition) {
+      case 'rain':
+      case 'drizzle':
+        return <CloudRain className="h-4 w-4" />;
+      case 'thunderstorm':
+        return <Umbrella className="h-4 w-4" />;
+      case 'clear':
+        return <Sun className="h-4 w-4" />;
+      default:
+        return <Cloud className="h-4 w-4" />;
     }
   };
 
@@ -251,6 +287,7 @@ export function ActivitySearchModal({
                 setSearchQuery('');
                 setSelectedType('all');
                 setPriceRange('all');
+                setPreferIndoor(false);
                 if (hasSearched) {
                   searchActivities();
                 }
@@ -259,6 +296,39 @@ export function ActivitySearchModal({
               Clear Filters
             </Button>
           </div>
+
+          {/* Weather Alert and Indoor Toggle */}
+          {weather && (
+            <div className="space-y-3">
+              <Alert className={cn(
+                "py-2",
+                weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"
+              )}>
+                <div className="flex items-center gap-2">
+                  {getWeatherIcon()}
+                  <AlertDescription className="flex-1">
+                    <span className="font-medium">{weather.temperature}°C</span> - {weather.description}
+                    {weather.recommendation?.reason && (
+                      <span className="ml-2 text-muted-foreground">
+                        ({weather.recommendation.reason})
+                      </span>
+                    )}
+                  </AlertDescription>
+                </div>
+              </Alert>
+
+              <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg">
+                <Label htmlFor="indoor-toggle" className="text-sm font-medium cursor-pointer">
+                  Prefer indoor activities
+                </Label>
+                <Switch
+                  id="indoor-toggle"
+                  checked={preferIndoor}
+                  onCheckedChange={setPreferIndoor}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <Separator />
