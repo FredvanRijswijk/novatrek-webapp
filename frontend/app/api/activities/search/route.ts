@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const typeString = types.length > 0 ? types[0] : undefined
 
     // Use Google Places Text Search API
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     if (!apiKey) {
       throw new Error('Google Maps API key not configured')
     }
