@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyIdToken } from '@/lib/firebase/admin'
 import { Activity } from '@/types/travel'
-import { WeatherClient } from '@/lib/weather/client'
+import { WeatherServerClient } from '@/lib/weather/server-client'
 
 // Activity type mapping to Google Places types
 const activityTypeToPlaceTypes: Record<string, string[]> = {
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       // Only fetch weather if not already preferring indoor
       try {
         console.log('Attempting to fetch weather data for date:', date)
-        const weatherClient = WeatherClient.getInstance()
+        const weatherClient = WeatherServerClient.getInstance()
         weatherData = await weatherClient.getWeather(
           location.lat,
           location.lng,
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         
         if (weatherData) {
           console.log('Weather data received:', weatherData)
-          weatherRecommendation = WeatherClient.getActivityRecommendation(weatherData)
+          weatherRecommendation = WeatherServerClient.getActivityRecommendation(weatherData)
         } else {
           console.log('No weather data returned')
         }

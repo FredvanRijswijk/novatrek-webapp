@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyIdToken } from '@/lib/firebase/admin'
-import { WeatherClient } from '@/lib/weather/client'
+import { WeatherServerClient } from '@/lib/weather/server-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get weather data
-    const weatherClient = WeatherClient.getInstance()
+    const weatherClient = WeatherServerClient.getInstance()
     const weatherData = await weatherClient.getWeather(
       location.lat,
       location.lng,
