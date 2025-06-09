@@ -19,6 +19,7 @@ import { TripModel } from '@/lib/models'
 import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { formatDistanceToNow } from 'date-fns'
+import { AddLinkDialog } from '@/components/captures/AddLinkDialog'
 
 export default function CapturesPage() {
   const { user } = useFirebase()
@@ -238,6 +239,9 @@ export default function CapturesPage() {
             </TabsList>
           </Tabs>
           
+          {/* Add Link Button */}
+          <AddLinkDialog onSuccess={loadCaptures} />
+          
           {/* AI Processing Button - Only show if there are unprocessed captures */}
           {captures.some(c => !c.isProcessed) && (
             <Button
@@ -271,8 +275,11 @@ export default function CapturesPage() {
                 {searchQuery ? 'No captures match your search' : 'No captures yet'}
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                Install the browser extension to start saving travel content
+                Add links manually or install the browser extension to save travel content
               </p>
+              <div className="mt-4">
+                <AddLinkDialog onSuccess={loadCaptures} />
+              </div>
             </CardContent>
           </Card>
         ) : (
