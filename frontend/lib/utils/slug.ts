@@ -42,7 +42,9 @@ export function formatLocation(location?: { city?: string; state?: string; count
 /**
  * Generate meta description from bio
  */
-export function generateMetaDescription(bio: string, maxLength = 160): string {
+export function generateMetaDescription(bio?: string, maxLength = 160): string {
+  if (!bio) return ''
+  
   const cleanBio = bio.replace(/\s+/g, ' ').trim()
   
   if (cleanBio.length <= maxLength) {

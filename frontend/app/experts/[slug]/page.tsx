@@ -50,7 +50,7 @@ async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
       userId: expert.userId,
       slug: expert.slug || generateSlug(expert.businessName), // Generate slug if missing
       businessName: expert.businessName,
-      description: expert.description,
+      bio: expert.bio || expert.description || '', // Handle both bio and description fields
       location: expert.location,
       specializations: expert.specializations || [],
       languages: expert.languages || [],
@@ -62,15 +62,18 @@ async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
       yearsOfExperience: expert.yearsOfExperience,
       status: expert.status || 'pending',
       isApproved: expert.isApproved || false,
-      stripeAccountId: expert.stripeAccountId,
+      stripeConnectAccountId: expert.stripeConnectAccountId || expert.stripeAccountId,
       stripeAccountStatus: expert.stripeAccountStatus,
       onboardingComplete: expert.onboardingComplete || false,
       tagline: expert.tagline,
-      website: expert.website,
-      socialMedia: expert.socialMedia || {},
+      websiteUrl: expert.websiteUrl || expert.website,
+      socialLinks: expert.socialLinks || expert.socialMedia || {},
       commission: expert.commission || 15,
       availability: expert.availability || {},
       responseTime: expert.responseTime,
+      totalTripsPlanned: expert.totalTripsPlanned,
+      featuredIn: expert.featuredIn,
+      payoutSchedule: expert.payoutSchedule || 'monthly',
       createdAt: expert.createdAt,
       updatedAt: expert.updatedAt
     } as TravelExpert
