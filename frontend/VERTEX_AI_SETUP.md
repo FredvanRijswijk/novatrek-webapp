@@ -4,6 +4,13 @@ This guide helps you set up Vertex AI with Firebase Genkit for NovaTrek.
 
 **Note**: The app will automatically fall back to OpenAI if Vertex AI is not configured, so you can start using it immediately while setting up Vertex AI.
 
+## Current Issue with Packing Suggestions
+
+The AI packing suggestions feature is currently experiencing initialization issues with the Firebase AI SDK. The system will:
+1. Try Firebase AI SDK with Vertex backend
+2. Fall back to direct Vertex AI integration
+3. Use weather-based suggestions if all AI providers fail
+
 ## Prerequisites
 
 1. **Firebase Project with Vertex AI enabled** (which you already have)
@@ -17,6 +24,9 @@ To use Vertex AI immediately, add this to your `.env.local`:
 ```bash
 # Add your Google Cloud project ID (usually same as Firebase project ID)
 GOOGLE_VERTEX_PROJECT=your-firebase-project-id
+
+# Optional: If you have OpenAI as backup
+OPENAI_API_KEY=your-openai-api-key
 ```
 
 Then run:
@@ -25,6 +35,28 @@ gcloud auth application-default login
 ```
 
 That's it! The chat will now use Vertex AI Gemini.
+
+### For Packing Suggestions Specifically
+
+The packing suggestions feature requires Vertex AI to be properly configured. If you're seeing "Failed to generate packing suggestions", check:
+
+1. **Vertex AI API is enabled**: 
+   ```bash
+   gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
+   ```
+
+2. **You're authenticated**:
+   ```bash
+   gcloud auth list  # Should show your account
+   gcloud config get-value project  # Should show your project
+   ```
+
+3. **Environment variables are set**:
+   ```bash
+   # In .env.local
+   GOOGLE_VERTEX_PROJECT=your-project-id
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+   ```
 
 ## Full Setup Steps
 
@@ -198,6 +230,36 @@ function GroupPlanning() {
 - Use Gemini 1.5 Flash for most queries (faster, cheaper)
 - Use Gemini 1.5 Pro only for complex analysis
 - Monitor usage in Google Cloud Console
+
+## Testing Packing Suggestions
+
+To test if the packing suggestions are working:
+
+1. Go to a trip planning page: `http://localhost:3000/dashboard/trips/[trip-id]/plan`
+2. Click on the "Packing" tab
+3. Click the "AI Suggestions" button
+4. Check the browser console (F12) for any errors
+5. Check the terminal running `npm run dev` for server-side errors
+
+### Expected Behavior
+
+- **If Vertex AI is configured**: You'll get personalized packing suggestions based on your trip details
+- **If only weather data is available**: You'll get basic weather-appropriate suggestions
+- **Loading state**: Shows "Generating AI Suggestions" with a spinner
+
+### Common Errors and Solutions
+
+1. **"Firebase AI with Vertex backend is not available"**
+   - The Firebase AI SDK couldn't initialize
+   - Solution: Use direct Vertex AI setup (see above)
+
+2. **"Failed to generate packing suggestions"**
+   - Usually means Vertex AI API is not enabled or authenticated
+   - Solution: Run `gcloud auth application-default login`
+
+3. **Empty suggestions**
+   - The AI couldn't generate relevant items
+   - Check if your trip has activities and destinations set
 
 ## Security Best Practices
 

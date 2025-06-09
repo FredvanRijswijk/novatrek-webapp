@@ -1,21 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, Calendar, MapPin, Users, ChevronRight } from 'lucide-react';
+import { useEffect, useState, lazy, Suspense } from 'react';
+import { Plus, Calendar, MapPin, Users, ChevronRight, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
 import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { Trip } from '@/types/travel';
 import { format, differenceInDays } from 'date-fns';
 
+// Lazy load the delete dialog
+const DeleteTripDialog = lazy(() => 
+  import('@/components/trips/DeleteTripDialog').then(mod => ({ default: mod.DeleteTripDialog }))
+);
+
 export default function TripsPage() {
   const { user } = useFirebase();
   const router = useRouter();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +48,30 @@ export default function TripsPage() {
 
     loadTrips();
   }, [user]);
+
+  const handleDeleteClick = (e: React.MouseEvent, tripId: string, tripTitle: string) => {
+    e.stopPropagation(); // Prevent card click
+    setSelectedTrip({ id: tripId, title: tripTitle });
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteTrip = async () => {
+    if (!selectedTrip) return;
+    
+    try {
+      setDeletingId(selectedTrip.id);
+      await TripModel.delete(selectedTrip.id);
+      // Remove from local state
+      setTrips(prev => prev.filter(t => t.id !== selectedTrip.id));
+      setShowDeleteDialog(false);
+      setSelectedTrip(null);
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      alert('Failed to delete trip. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const getTripStatus = (trip: Trip) => {
     const now = new Date();
@@ -115,28 +154,57 @@ export default function TripsPage() {
             return (
               <Card 
                 key={trip.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => router.push(`/dashboard/trips/${trip.id}/plan`)}
+                className="relative hover:shadow-lg transition-shadow"
               >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="line-clamp-1">
-                        {trip.title}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        {trip.destinations && trip.destinations.length > 0
-                          ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                          : trip.destination?.name || 'Unknown location'
-                        }
-                      </CardDescription>
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/dashboard/trips/${trip.id}/plan`)}
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="line-clamp-1">
+                          {trip.title}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-2">
+                          <MapPin className="h-3 w-3" />
+                          {trip.destinations && trip.destinations.length > 0
+                            ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
+                            : trip.destination?.name || 'Unknown location'
+                          }
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={status.variant}>
+                          {status.label}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/trips/${trip.id}/plan`);
+                            }}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              View & Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={(e) => handleDeleteClick(e, trip.id, trip.title)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Trip
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                    <Badge variant={status.variant}>
-                      {status.label}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
@@ -166,10 +234,27 @@ export default function TripsPage() {
                     )}
                   </div>
                 </CardContent>
+                </div>
               </Card>
             );
           })}
         </div>
+      )}
+
+      {/* Delete Trip Dialog */}
+      {selectedTrip && (
+        <Suspense fallback={null}>
+          <DeleteTripDialog
+            isOpen={showDeleteDialog}
+            onClose={() => {
+              setShowDeleteDialog(false);
+              setSelectedTrip(null);
+            }}
+            onConfirm={handleDeleteTrip}
+            tripTitle={selectedTrip.title}
+            isDeleting={deletingId === selectedTrip.id}
+          />
+        </Suspense>
       )}
     </div>
   );

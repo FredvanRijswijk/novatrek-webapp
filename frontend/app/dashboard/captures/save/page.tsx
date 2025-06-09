@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/lib/firebase';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { CaptureModelEnhanced } from '@/lib/models/capture-enhanced';
+import { CreateCaptureInput } from '@/lib/models/capture';
 
 export default function SaveCapturePage() {
   const router = useRouter();
@@ -23,24 +23,25 @@ export default function SaveCapturePage() {
 
       try {
         // Get data from URL params
-        const captureData = {
-          userId: user.uid,
+        const captureData: CreateCaptureInput = {
           content: searchParams.get('url') || '',
           contentType: 'link',
           source: 'browser-extension',
           sourceUrl: searchParams.get('url') || '',
           title: searchParams.get('title') || '',
-          tags: [],
-          isProcessed: false,
-          isSorted: false,
-          capturedAt: Timestamp.now(),
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
+          tags: []
         };
 
-        // Save to Firestore
-        const capturesRef = collection(db, 'captures');
-        await addDoc(capturesRef, captureData);
+        // Save using enhanced model
+        await CaptureModelEnhanced.create({
+          ...captureData,
+          userId: user.uid,
+          isProcessed: false,
+          isSorted: false,
+          capturedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as any, user.uid);
 
         setStatus('success');
         

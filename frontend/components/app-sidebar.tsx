@@ -99,6 +99,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Marketplace",
         url: "/marketplace",
         icon: Store,
+        badge: "New",
+        badgeVariant: "default",
         items: [
           {
             title: "Browse Experts",

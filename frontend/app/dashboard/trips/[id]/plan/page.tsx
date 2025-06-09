@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical, Share2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical, Share2, Plane, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useFirebase } from '@/lib/firebase/context';
 import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
@@ -70,11 +71,32 @@ const ShareTripDialog = lazy(() =>
   import('@/components/trips/ShareTripDialog').then(mod => ({ default: mod.ShareTripDialog }))
 );
 
+const DeleteTripDialog = lazy(() => 
+  import('@/components/trips/DeleteTripDialog').then(mod => ({ default: mod.DeleteTripDialog }))
+);
+
 // Import progress indicator
 const TripProgressIndicator = dynamic(
   () => import('@/components/trips/TripProgressIndicator').then(mod => ({ default: mod.TripProgressIndicator })),
   { 
     loading: () => <div className="animate-pulse bg-muted h-64 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+// Import packing and flight components
+const PackingChecklist = dynamic(
+  () => import('@/components/trips/PackingChecklist').then(mod => ({ default: mod.PackingChecklist })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+const TransportPlanner = dynamic(
+  () => import('@/components/trips/TransportPlanner').then(mod => ({ default: mod.TransportPlanner })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
     ssr: false 
   }
 );
@@ -89,6 +111,8 @@ export default function TripPlanningPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDestinationsDialog, setShowDestinationsDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const tripSharingEnabled = useFeatureFlag('tripSharing');
 
   const tripId = params.id as string;
@@ -114,6 +138,20 @@ export default function TripPlanningPage() {
 
     loadTrip();
   }, [user, tripId, router]);
+
+  const handleDeleteTrip = async () => {
+    if (!trip || !user) return;
+    
+    try {
+      setDeleting(true);
+      await TripModel.delete(tripId);
+      router.push('/dashboard/trips');
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      alert('Failed to delete trip. Please try again.');
+      setDeleting(false);
+    }
+  };
 
   // Memoize date calculations and trip statistics
   const { startDate, endDate, tripDuration, daysPlanned, totalActivities } = useMemo(() => {
@@ -224,6 +262,14 @@ export default function TripPlanningPage() {
                     Share Trip
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Trip
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             </div>
@@ -282,9 +328,11 @@ export default function TripPlanningPage() {
 
             {/* Planning Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
+                <TabsTrigger value="transport">Transport</TabsTrigger>
                 <TabsTrigger value="budget">Budget</TabsTrigger>
+                <TabsTrigger value="packing">Packing</TabsTrigger>
                 <TabsTrigger value="photos">Photos</TabsTrigger>
                 <TabsTrigger value="chat">AI Assistant</TabsTrigger>
               </TabsList>
@@ -303,8 +351,36 @@ export default function TripPlanningPage() {
                 </Card>
               </TabsContent>
 
+              <TabsContent value="transport" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Travel & Transport</CardTitle>
+                    <CardDescription>
+                      Track all your flights, trains, buses, and other transport between destinations
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {activeTab === 'transport' && <TransportPlanner trip={trip} onUpdate={() => loadTrip()} />}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="budget" className="mt-6">
                 {activeTab === 'budget' && <BudgetTracker trip={trip} onUpdate={setTrip} />}
+              </TabsContent>
+
+              <TabsContent value="packing" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Packing Checklist</CardTitle>
+                    <CardDescription>
+                      Keep track of what you need to pack for your trip
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {activeTab === 'packing' && <PackingChecklist tripId={trip.id} trip={trip} />}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="photos" className="mt-6">
@@ -384,7 +460,12 @@ export default function TripPlanningPage() {
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" size="sm">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  size="sm"
+                  onClick={() => setActiveTab('itinerary')}
+                >
                   <Calendar className="mr-2 h-4 w-4" />
                   Add Activity
                 </Button>
@@ -397,9 +478,23 @@ export default function TripPlanningPage() {
                   <DollarSign className="mr-2 h-4 w-4" />
                   Add Expense
                 </Button>
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Users className="mr-2 h-4 w-4" />
-                  Invite Travelers
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  size="sm"
+                  onClick={() => setActiveTab('packing')}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Manage Packing
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  size="sm"
+                  onClick={() => setActiveTab('flights')}
+                >
+                  <Plane className="mr-2 h-4 w-4" />
+                  Add Flight
                 </Button>
               </CardContent>
             </Card>
@@ -438,6 +533,19 @@ export default function TripPlanningPage() {
             trip={trip}
             open={showShareDialog}
             onOpenChange={setShowShareDialog}
+          />
+        </Suspense>
+      )}
+
+      {/* Delete Trip Dialog */}
+      {trip && (
+        <Suspense fallback={null}>
+          <DeleteTripDialog
+            isOpen={showDeleteDialog}
+            onClose={() => setShowDeleteDialog(false)}
+            onConfirm={handleDeleteTrip}
+            tripTitle={trip.title}
+            isDeleting={deleting}
           />
         </Suspense>
       )}

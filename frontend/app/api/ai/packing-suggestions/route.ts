@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/firebase/admin'
-import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced'
-import { generatePackingSuggestions } from '@/lib/ai/vertex-firebase'
+import { TripModelAdmin } from '@/lib/models/trip-admin'
 import { findBestTemplate, packingTemplates } from '@/lib/data/packing-templates'
 import { PackingCategory, PackingItem } from '@/types/travel'
+import { generateObject } from 'ai'
+import { getVertexModel } from '@/lib/ai/vertex-provider'
+import { z } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get trip details
-    const trip = await TripModel.getById(tripId)
+    const trip = await TripModelAdmin.getById(tripId)
     if (!trip || trip.userId !== userId) {
       return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
     }
@@ -92,7 +94,136 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate AI suggestions
-    const suggestions = await generatePackingSuggestions(context)
+    let suggestions
+    
+    // Try different AI providers
+    const aiProviders = [
+      // Skip Firebase AI SDK on server-side - it requires browser context
+      // {
+      //   name: 'Firebase AI SDK',
+      //   func: async () => {
+      //     const { generatePackingSuggestions } = await import('@/lib/ai/vertex-firebase')
+      //     return await generatePackingSuggestions(context)
+      //   }
+      // },
+      {
+        name: 'Vertex AI Direct',
+        func: async () => {
+          // Use direct Vertex AI provider as fallback
+          const model = getVertexModel('chat')
+          
+          const schema = z.object({
+            items: z.array(z.object({
+              name: z.string(),
+              category: z.string(),
+              quantity: z.number(),
+              reason: z.string().optional(),
+              weatherDependent: z.boolean().optional(),
+              activityDependent: z.array(z.string()).optional()
+            })),
+            reminders: z.array(z.string()),
+            weatherTips: z.array(z.string())
+          })
+          
+          const destinations = context.trip.destinations
+            .map(d => `${d.city || d.name}, ${d.country}`)
+            .join(' -> ')
+          
+          const activityTypes = [...new Set(context.activities.map(a => a.type))].join(', ')
+          const activityNames = context.activities.map(a => a.name).join(', ')
+          
+          const prompt = `You are a helpful travel packing assistant. Generate personalized packing suggestions based on the following trip details:
+
+Trip Information:
+- Destinations: ${destinations}
+- Duration: ${context.trip.duration} days
+- Dates: ${context.trip.startDate.toLocaleDateString()} to ${context.trip.endDate.toLocaleDateString()}
+- Number of travelers: ${context.trip.travelers}
+
+Weather Conditions:
+- Average temperature: ${context.weather.averageTemp.low}°C to ${context.weather.averageTemp.high}°C
+- Rain expected: ${context.weather.rainExpected}
+- Snow expected: ${context.weather.snowExpected}
+
+Planned Activities:
+- Types: ${activityTypes || 'General sightseeing'}
+- Specific: ${activityNames || 'Not specified'}
+
+Already Packed Items:
+${context.existingItems.join(', ')}
+
+Please suggest ADDITIONAL items that would be helpful for this specific trip. Focus on:
+- Items specific to the destination or activities
+- Weather-dependent items they might forget
+- Activity-specific gear
+- Local customs or requirements
+- Practical items for the specific climate
+
+Group suggestions by category (Clothes, Electronics, Health & Safety, Accessories, Activity Gear, etc.)`
+          
+          const result = await generateObject({
+            model,
+            schema,
+            prompt
+          })
+          
+          return result.object
+        }
+      }
+    ]
+    
+    // Try each provider until one works
+    for (const provider of aiProviders) {
+      try {
+        console.log(`Trying AI provider: ${provider.name}`)
+        suggestions = await provider.func()
+        console.log(`${provider.name} succeeded`)
+        break
+      } catch (error) {
+        console.error(`${provider.name} failed:`, error)
+        continue
+      }
+    }
+    
+    // If all AI providers fail, use fallback suggestions
+    if (!suggestions) {
+      console.log('All AI providers failed, using fallback suggestions')
+      
+      // Provide basic suggestions based on trip type and weather
+      const weatherItems = []
+      if (context.weather.rainExpected) {
+        weatherItems.push(
+          { name: "Rain jacket", category: "Clothes", quantity: 1, reason: "Rain expected", weatherDependent: true },
+          { name: "Waterproof bag cover", category: "Accessories", quantity: 1, reason: "Protect belongings from rain", weatherDependent: true }
+        )
+      }
+      if (context.weather.snowExpected) {
+        weatherItems.push(
+          { name: "Warm gloves", category: "Clothes", quantity: 1, reason: "Cold weather protection", weatherDependent: true },
+          { name: "Thermal underwear", category: "Clothes", quantity: 2, reason: "Extra warmth in cold weather", weatherDependent: true }
+        )
+      }
+      if (context.weather.averageTemp.high > 25) {
+        weatherItems.push(
+          { name: "Sunscreen", category: "Toiletries", quantity: 1, reason: "Sun protection", weatherDependent: true },
+          { name: "Sunglasses", category: "Accessories", quantity: 1, reason: "Eye protection", weatherDependent: true }
+        )
+      }
+      
+      suggestions = {
+        items: weatherItems,
+        reminders: [
+          "Check weather forecast before departure",
+          "Confirm all travel documents are valid",
+          "Leave a copy of your itinerary with someone at home"
+        ],
+        weatherTips: [
+          context.weather.rainExpected ? "Pack rain gear in easily accessible place" : null,
+          context.weather.averageTemp.high > 25 ? "Stay hydrated and protect yourself from sun" : null,
+          context.weather.averageTemp.low < 10 ? "Layer clothing for temperature changes" : null
+        ].filter(Boolean)
+      }
+    }
 
     // Merge AI suggestions with base template
     const mergedCategories = mergeAISuggestions(baseCategories, suggestions)
@@ -113,10 +244,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ packingList })
   } catch (error) {
     console.error('Error generating packing suggestions:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate packing suggestions' },
-      { status: 500 }
-    )
+    
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorDetails = {
+      error: 'Failed to generate packing suggestions',
+      details: errorMessage,
+      hint: errorMessage.includes('API key') ? 'Check Vertex AI configuration' : 
+            errorMessage.includes('permission') ? 'Check Firebase/Google Cloud permissions' :
+            'Check server logs for more details'
+    }
+    
+    return NextResponse.json(errorDetails, { status: 500 })
   }
 }
 

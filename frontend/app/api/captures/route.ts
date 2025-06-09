@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { CreateCaptureInput, TravelCapture } from '@/lib/models/capture';
-import { Timestamp } from 'firebase-admin/firestore';
+import { CaptureModelEnhanced } from '@/lib/models/capture-enhanced';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 // Helper function to trigger background processing
 async function processCapture(captureId: string) {
@@ -47,33 +48,42 @@ export async function POST(request: NextRequest) {
     // Extract user ID from the request (in production, get from verified token)
     const userId = request.headers.get('x-user-id') || 'demo-user'; // TEMPORARY
 
-    // Create the capture document - filter out undefined values
-    const captureData: any = {
-      userId,
-      content: body.content,
-      contentType: body.contentType || 'link',
-      source: body.source,
-      tags: body.tags || [],
-      isProcessed: false,
-      isSorted: false,
-      capturedAt: Timestamp.now(),
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    };
-
-    // Only add optional fields if they have values
-    if (body.sourceUrl) captureData.sourceUrl = body.sourceUrl;
-    if (body.title) captureData.title = body.title;
-    if (body.notes) captureData.notes = body.notes;
-    if (body.assignedTo) captureData.assignedTo = body.assignedTo;
-
-    // Get admin DB
+    // Get admin DB first
     const adminDb = getAdminDb();
     if (!adminDb) {
       return NextResponse.json(
         { error: 'Database not configured. Please set FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' },
         { status: 500 }
       );
+    }
+
+    // Create the capture document with DocumentReference fields
+    const userRef = adminDb.doc(`users/${userId}`);
+    
+    const captureData: any = {
+      userId, // Keep for backward compatibility
+      userRef, // Add DocumentReference for better querying
+      content: body.content,
+      contentType: body.contentType || 'link',
+      source: body.source,
+      tags: body.tags || [],
+      isProcessed: false,
+      isSorted: false,
+      capturedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Only add optional fields if they have values
+    if (body.sourceUrl) captureData.sourceUrl = body.sourceUrl;
+    if (body.title) captureData.title = body.title;
+    if (body.notes) captureData.notes = body.notes;
+    
+    // Handle trip assignment with DocumentReference
+    if (body.assignedTo) {
+      captureData.assignedTo = body.assignedTo;
+      captureData.tripRef = adminDb.doc(`trips/${body.assignedTo}`);
+      captureData.isSorted = true;
     }
 
     // Add to Firestore using admin SDK
@@ -127,9 +137,10 @@ export async function GET(request: NextRequest) {
     // Extract user ID (in production, get from verified token)
     const userId = request.headers.get('x-user-id') || 'demo-user'; // TEMPORARY
 
-    // Build query
+    // Build query using userRef for better performance
+    const userRef = adminDb.doc(`users/${userId}`);
     let capturesQuery = adminDb.collection('captures')
-      .where('userId', '==', userId)
+      .where('userRef', '==', userRef)
       .orderBy('capturedAt', 'desc')
       .limit(pageSize);
 

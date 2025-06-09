@@ -42,39 +42,22 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Trips with User References - supports both patterns
+    // Trips with User References only
     match /trips/{tripId} {
       allow read: if request.auth != null && (
-        // Legacy: String userId
-        request.auth.uid == resource.data.userId ||
-        // New: User reference
-        (resource.data.userRef != null &&
-         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
         // Shared trip access
         exists(/databases/$(database)/documents/tripShares/$(tripId))
       );
       
-      allow create: if request.auth != null && (
-        // Legacy: userId must match auth
-        request.resource.data.userId == request.auth.uid ||
-        // New: userRef must point to auth user
-        (request.resource.data.userRef != null &&
-         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
-      );
+      allow create: if request.auth != null && 
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow update: if request.auth != null && (
-        // Legacy: Check string userId
-        resource.data.userId == request.auth.uid ||
-        // New: Check user reference
-        (resource.data.userRef != null &&
-         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
-      );
+      allow update: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow delete: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
-        (resource.data.userRef != null &&
-         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
-      );
+      allow delete: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
     
     // Chat Messages with References - supports both patterns
@@ -120,21 +103,57 @@ service cloud.firestore {
       );
     }
     
-    // Packing Lists with References - supports both patterns
+    // Packing Lists with References only
     match /packing_lists/{listId} {
-      allow read, write: if request.auth != null && (
-        // Legacy: String userId
-        request.auth.uid == resource.data.userId ||
-        // New: User reference
-        (resource.data.userRef != null &&
-         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      // Allow read if authenticated - needed for queries
+      allow read: if request.auth != null;
+      
+      // Allow list/get if user owns the packing list or the associated trip
+      allow get: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Also allow if the user owns the trip associated with this packing list
+        (resource.data.tripRef != null && 
+         exists(resource.data.tripRef) && 
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
       
-      allow create: if request.auth != null && (
-        request.resource.data.userId == request.auth.uid ||
-        (request.resource.data.userRef != null &&
-         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      allow create: if request.auth != null && 
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      allow update, delete: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    
+    // Flights with References only
+    match /flights/{flightId} {
+      allow read: if request.auth != null;
+      
+      allow create: if request.auth != null && 
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      allow update, delete: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    
+    // Travel Segments with References only
+    match /travel_segments/{segmentId} {
+      // Allow read if authenticated - needed for queries
+      allow read: if request.auth != null;
+      
+      // Allow get if user owns the segment or the associated trip
+      allow get: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Also allow if the user owns the trip associated with this segment
+        (resource.data.tripRef != null && 
+         exists(resource.data.tripRef) && 
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
+      
+      allow create: if request.auth != null && 
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      allow update, delete: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
     
     // Trip Shares with References - supports both patterns
@@ -396,15 +415,47 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
-    // Captures - for iOS shortcuts and browser extension
+    // Captures - supports both patterns (userId and userRef)
     match /captures/{captureId} {
-      allow read, write: if request.auth != null && (
+      // Allow read if authenticated - needed for queries
+      allow read: if request.auth != null;
+      
+      // Allow get if user owns the capture
+      allow get: if request.auth != null && (
+        // Legacy: String userId
         request.auth.uid == resource.data.userId ||
-        request.auth.uid == resource.data.assignedTo
+        // New: User reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Can read if assigned to user's trip
+        (resource.data.assignedTo != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.assignedTo)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.assignedTo)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
       
-      allow create: if request.auth != null &&
-        request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && (
+        // Legacy: userId must match
+        request.resource.data.userId == request.auth.uid ||
+        // New: userRef must point to auth user
+        (request.resource.data.userRef != null &&
+         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow update: if request.auth != null && (
+        // Legacy: Owner can update
+        resource.data.userId == request.auth.uid ||
+        // New: Owner via reference can update
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow delete: if request.auth != null && (
+        // Legacy: Owner can delete
+        resource.data.userId == request.auth.uid ||
+        // New: Owner via reference can delete
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
     }
     
     // Error Logs (admin only)

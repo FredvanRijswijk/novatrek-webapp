@@ -14,20 +14,17 @@ import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Loader2, Link, MapPin, Calendar, DollarSign, Clock, Tag, Inbox, Folder, Search, Filter, ChevronRight, ExternalLink, Trash2, Edit, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
-import { TravelCapture } from '@/lib/models/capture'
+import { TravelCaptureEnhanced, CaptureModelEnhanced } from '@/lib/models/capture-enhanced'
+import { TripModel } from '@/lib/models'
 import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { formatDistanceToNow } from 'date-fns'
 
-interface CaptureWithId extends TravelCapture {
-  id: string
-}
-
 export default function CapturesPage() {
   const { user } = useFirebase()
-  const [captures, setCaptures] = useState<CaptureWithId[]>([])
+  const [captures, setCaptures] = useState<TravelCaptureEnhanced[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCapture, setSelectedCapture] = useState<CaptureWithId | null>(null)
+  const [selectedCapture, setSelectedCapture] = useState<TravelCaptureEnhanced | null>(null)
   const [filter, setFilter] = useState<'all' | 'unsorted' | 'sorted'>('unsorted')
   const [searchQuery, setSearchQuery] = useState('')
   const [trips, setTrips] = useState<Array<{ id: string; name: string }>>([])
@@ -44,26 +41,12 @@ export default function CapturesPage() {
 
     setLoading(true)
     try {
-      const capturesRef = collection(db, 'captures')
-      let q = query(
-        capturesRef,
-        where('userId', '==', user.uid),
-        orderBy('capturedAt', 'desc'),
-        limit(100)
-      )
-
+      let capturesData: TravelCaptureEnhanced[] = []
       if (filter === 'unsorted') {
-        q = query(q, where('isSorted', '==', false))
-      } else if (filter === 'sorted') {
-        q = query(q, where('isSorted', '==', true))
+        capturesData = await CaptureModelEnhanced.getUnsortedCaptures(user.uid)
+      } else {
+        capturesData = await CaptureModelEnhanced.getUserCaptures(user.uid)
       }
-
-      const snapshot = await getDocs(q)
-      const capturesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CaptureWithId[]
-
       setCaptures(capturesData)
     } catch (error) {
       console.error('Error loading captures:', error)
@@ -77,21 +60,12 @@ export default function CapturesPage() {
     if (!user) return
 
     try {
-      const tripsRef = collection(db, 'trips')
-      const q = query(
-        tripsRef,
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      )
-      const snapshot = await getDocs(q)
-      const tripsData = snapshot.docs.map(doc => {
-        const data = doc.data()
-        console.log('Trip data:', doc.id, data)
-        return {
-          id: doc.id,
-          name: data.title || 'Unnamed Trip'
-        }
-      })
+      // Use TripModel which handles references properly
+      const userTrips = await TripModel.getUserTrips(user.uid)
+      const tripsData = userTrips.map(trip => ({
+        id: trip.id,
+        name: trip.title || 'Unnamed Trip'
+      }))
       console.log('Loaded trips:', tripsData)
       setTrips(tripsData)
     } catch (error) {
@@ -102,13 +76,7 @@ export default function CapturesPage() {
 
   const handleAssignToTrip = async (captureId: string, tripId: string) => {
     try {
-      const captureRef = doc(db, 'captures', captureId)
-      await updateDoc(captureRef, {
-        assignedTo: tripId || null,
-        isSorted: !!tripId,
-        updatedAt: Timestamp.now()
-      })
-      
+      await CaptureModelEnhanced.assignToTrip(captureId, tripId || null)
       toast.success(tripId ? 'Assigned to trip' : 'Moved to inbox')
       loadCaptures()
     } catch (error) {
@@ -121,7 +89,7 @@ export default function CapturesPage() {
     if (!confirm('Are you sure you want to delete this capture?')) return
 
     try {
-      await deleteDoc(doc(db, 'captures', captureId))
+      await CaptureModelEnhanced.delete(captureId)
       toast.success('Capture deleted')
       loadCaptures()
       setSelectedCapture(null)
@@ -142,8 +110,11 @@ export default function CapturesPage() {
     )
   })
 
-  const renderCaptureCard = (capture: CaptureWithId) => {
-    const timeAgo = formatDistanceToNow(capture.capturedAt.toDate(), { addSuffix: true })
+  const renderCaptureCard = (capture: TravelCaptureEnhanced) => {
+    const capturedAtDate = capture.capturedAt instanceof Date 
+      ? capture.capturedAt 
+      : capture.capturedAt.toDate()
+    const timeAgo = formatDistanceToNow(capturedAtDate, { addSuffix: true })
     
     return (
       <Card 
@@ -174,9 +145,9 @@ export default function CapturesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {capture.extractedData?.aiSummary ? (
+          {capture.aiSummary ? (
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-              {capture.extractedData.aiSummary}
+              {capture.aiSummary}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -195,7 +166,7 @@ export default function CapturesPage() {
             {capture.extractedData?.price && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <DollarSign className="h-3 w-3" />
-                <span>{'$'.repeat(capture.extractedData.price.level || 1)}</span>
+                <span>{'$'.repeat(capture.extractedData.price.priceLevel || 1)}</span>
               </div>
             )}
             
@@ -208,7 +179,7 @@ export default function CapturesPage() {
           </div>
           
           <div className="flex items-center gap-2 mt-3">
-            {(capture.extractedData?.aiTags || capture.tags).map(tag => (
+            {(capture.aiTags || capture.tags).map(tag => (
               <Badge key={tag} variant="secondary" className="text-xs">
                 {tag}
               </Badge>
@@ -317,7 +288,12 @@ export default function CapturesPage() {
               <DialogHeader>
                 <DialogTitle>{selectedCapture.title || 'Untitled Capture'}</DialogTitle>
                 <DialogDescription>
-                  Saved {formatDistanceToNow(selectedCapture.capturedAt.toDate(), { addSuffix: true })} via {selectedCapture.source}
+                  Saved {formatDistanceToNow(
+                    selectedCapture.capturedAt instanceof Date 
+                      ? selectedCapture.capturedAt 
+                      : selectedCapture.capturedAt.toDate(), 
+                    { addSuffix: true }
+                  )} via {selectedCapture.source}
                 </DialogDescription>
               </DialogHeader>
               
@@ -385,9 +361,9 @@ export default function CapturesPage() {
                       
                       {selectedCapture.extractedData.price && (
                         <div className="text-sm">
-                          <span className="font-medium">💰 Price:</span> {'$'.repeat(selectedCapture.extractedData.price.level || 1)}
-                          {selectedCapture.extractedData.price.estimatedCost && 
-                            ` (${selectedCapture.extractedData.price.currency || '$'}${selectedCapture.extractedData.price.estimatedCost.min}-${selectedCapture.extractedData.price.estimatedCost.max})`
+                          <span className="font-medium">💰 Price:</span> {'$'.repeat(selectedCapture.extractedData.price.priceLevel || 1)}
+                          {selectedCapture.extractedData.price.amount && 
+                            ` (${selectedCapture.extractedData.price.currency || '$'}${selectedCapture.extractedData.price.amount})`
                           }
                         </div>
                       )}
@@ -404,9 +380,9 @@ export default function CapturesPage() {
                         </div>
                       )}
                       
-                      {selectedCapture.extractedData.aiSummary && (
+                      {selectedCapture.aiSummary && (
                         <div className="text-sm bg-muted p-2 rounded">
-                          {selectedCapture.extractedData.aiSummary}
+                          {selectedCapture.aiSummary}
                         </div>
                       )}
                     </div>

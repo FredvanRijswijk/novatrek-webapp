@@ -1,13 +1,34 @@
-import { getApp } from 'firebase/app'
+import { getApp, getApps } from 'firebase/app'
 import { getAI, getGenerativeModel, VertexAIBackend } from 'firebase/ai'
 import { SYSTEM_PROMPTS } from './vertex-config'
 import type { GenerativeModel } from 'firebase/ai'
 
-// Get the Firebase app instance
-const app = getApp()
-
 // Initialize AI with Vertex AI backend
-const ai = getAI(app, { backend: new VertexAIBackend() })
+let ai: any
+let initializationError: Error | null = null
+
+// Only initialize if running in browser context with Firebase app
+if (typeof window !== 'undefined' && getApps().length > 0) {
+  try {
+    const app = getApp()
+    ai = getAI(app, { backend: new VertexAIBackend() })
+  } catch (error) {
+    console.error('Failed to initialize Firebase AI with Vertex backend:', error)
+    initializationError = error as Error
+  }
+} else {
+  // Server-side or no Firebase app
+  initializationError = new Error('Firebase AI requires browser context with initialized Firebase app')
+}
+
+// Create a dummy AI instance if initialization failed
+if (!ai) {
+  ai = {
+    getGenerativeModel: () => {
+      throw initializationError || new Error('Firebase AI with Vertex backend is not available. Please check your configuration.')
+    }
+  }
+}
 
 // Available models
 export const models = {
@@ -18,7 +39,12 @@ export const models = {
 
 // Get a configured model instance
 export function getModel(modelName: keyof typeof models = 'flash'): GenerativeModel {
-  return getGenerativeModel(ai, { model: models[modelName] })
+  try {
+    return getGenerativeModel(ai, { model: models[modelName] })
+  } catch (error) {
+    console.error('Failed to get model:', error)
+    throw new Error('Vertex AI is not properly configured. Please check your Google Cloud setup.')
+  }
 }
 
 // Helper function for basic text generation
@@ -350,7 +376,13 @@ export async function generatePackingSuggestions(context: {
   preferences?: any
   existingItems: string[]
 }) {
-  const model = getModel('flash')
+  let model: GenerativeModel
+  try {
+    model = getModel('flash')
+  } catch (error) {
+    console.error('Failed to get model for packing suggestions:', error)
+    throw new Error('AI service is not available. The Vertex AI backend may not be configured.')
+  }
   
   // Define the response schema for structured output
   const responseSchema = {
@@ -428,17 +460,25 @@ Focus on items that are:
 
 Group suggestions by category (Clothes, Electronics, Health & Safety, Accessories, Activity Gear, etc.)`
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema,
-      temperature: 0.7,
-      maxOutputTokens: 1500,
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema,
+        temperature: 0.7,
+        maxOutputTokens: 1500,
+      }
+    })
+    
+    return JSON.parse(result.response.text())
+  } catch (error) {
+    console.error('Failed to generate packing suggestions:', error)
+    if (error instanceof Error) {
+      throw new Error(`AI generation failed: ${error.message}`)
     }
-  })
-  
-  return JSON.parse(result.response.text())
+    throw error
+  }
 }
 
 // Export AI instance for advanced usage

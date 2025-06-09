@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { 
   Plus, 
+  Minus,
   Loader2, 
   Package, 
   Shirt, 
@@ -26,12 +26,13 @@ import {
   UserPlus
 } from 'lucide-react'
 import { PackingList, PackingCategory, PackingItem } from '@/types/travel'
-import { PackingModel } from '@/lib/models/packing'
+import { PackingModel } from '@/lib/models'
 import { useFirebase } from '@/lib/firebase/context'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface PackingChecklistProps {
   tripId: string
+  trip?: any // Trip details for better loading messages
   onClose?: () => void
 }
 
@@ -46,7 +47,7 @@ const categoryIcons: Record<string, any> = {
   shared: Users
 }
 
-export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
+export function PackingChecklist({ tripId, trip, onClose }: PackingChecklistProps) {
   const { user } = useFirebase()
   const [packingList, setPackingList] = useState<PackingList | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,10 +57,30 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
   const [newItemName, setNewItemName] = useState('')
   const [showAddItem, setShowAddItem] = useState<string | null>(null)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState(0)
+  
+  const loadingMessages = [
+    "Checking weather forecasts...",
+    "Analyzing your planned activities...",
+    "Selecting essential items...",
+    "Adding weather-appropriate clothing...",
+    "Including travel essentials...",
+    "Finalizing your personalized list..."
+  ]
 
   useEffect(() => {
     loadPackingList()
   }, [tripId])
+  
+  useEffect(() => {
+    if (!loading) return
+    
+    const interval = setInterval(() => {
+      setLoadingMessage((prev) => (prev + 1) % loadingMessages.length)
+    }, 2000)
+    
+    return () => clearInterval(interval)
+  }, [loading, loadingMessages.length])
 
   const loadPackingList = async () => {
     try {
@@ -83,53 +104,80 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
     if (!user) return
 
     try {
-      // For now, create a basic packing list
-      // In production, this would use templates or AI
-      const packingListId = await PackingModel.create({
-        tripId,
-        userId: user.uid,
-        name: 'Trip Packing List',
-        categories: [
-          {
-            id: 'essentials',
-            name: 'Essentials',
-            icon: 'briefcase',
-            order: 1,
-            items: []
-          },
-          {
-            id: 'clothes',
-            name: 'Clothes',
-            icon: 'shirt',
-            order: 2,
-            items: []
-          },
-          {
-            id: 'toiletries',
-            name: 'Toiletries',
-            icon: 'droplet',
-            order: 3,
-            items: []
-          },
-          {
-            id: 'electronics',
-            name: 'Electronics',
-            icon: 'laptop',
-            order: 4,
-            items: []
-          },
-          {
-            id: 'shared',
-            name: 'Shared packing',
-            icon: 'users',
-            order: 5,
-            items: []
-          }
-        ]
+      // Get trip details to determine the best template
+      const token = await user.getIdToken()
+      
+      // First try to get AI-generated suggestions with template
+      const response = await fetch('/api/ai/packing-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          tripId,
+          tripType: 'leisure', // Default, could be determined from trip
+          useTemplate: true
+        })
       })
 
-      const newList = await PackingModel.getById(packingListId)
-      setPackingList(newList)
+      if (response.ok) {
+        const { packingList: suggestedList } = await response.json()
+        
+        // Create the packing list with template items
+        const packingListId = await PackingModel.create({
+          tripId,
+          userId: user.uid,
+          name: 'Trip Packing List',
+          categories: suggestedList.categories || []
+        })
+
+        const newList = await PackingModel.getById(packingListId)
+        setPackingList(newList)
+      } else {
+        // Fallback to basic template
+        const { findBestTemplate } = await import('@/lib/data/packing-templates')
+        const template = findBestTemplate('leisure', 'temperate', 7) // Default values
+        
+        const packingListId = await PackingModel.create({
+          tripId,
+          userId: user.uid,
+          name: 'Trip Packing List',
+          categories: template?.categories || [
+            {
+              id: 'essentials',
+              name: 'Essentials',
+              icon: 'briefcase',
+              order: 1,
+              items: []
+            },
+            {
+              id: 'clothes',
+              name: 'Clothes',
+              icon: 'shirt',
+              order: 2,
+              items: []
+            },
+            {
+              id: 'toiletries',
+              name: 'Toiletries',
+              icon: 'droplet',
+              order: 3,
+              items: []
+            },
+            {
+              id: 'electronics',
+              name: 'Electronics',
+              icon: 'laptop',
+              order: 4,
+              items: []
+            }
+          ]
+        })
+
+        const newList = await PackingModel.getById(packingListId)
+        setPackingList(newList)
+      }
     } catch (error) {
       console.error('Error creating packing list:', error)
     }
@@ -201,6 +249,40 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
     }
   }
 
+  const updateItemQuantity = async (categoryId: string, itemId: string, newQuantity: number) => {
+    if (!packingList || newQuantity < 1) return
+
+    try {
+      setSaving(true)
+      
+      // Update local state immediately for better UX
+      const updatedCategories = packingList.categories.map(cat => {
+        if (cat.id === categoryId) {
+          return {
+            ...cat,
+            items: cat.items.map(item => 
+              item.id === itemId 
+                ? { ...item, quantity: newQuantity }
+                : item
+            )
+          }
+        }
+        return cat
+      })
+
+      setPackingList({ ...packingList, categories: updatedCategories })
+      
+      // Update in database
+      await PackingModel.updateItem(packingList.id, categoryId, itemId, { quantity: newQuantity })
+    } catch (error) {
+      console.error('Error updating item quantity:', error)
+      // Reload to restore correct state on error
+      await loadPackingList()
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const generateAISuggestions = async () => {
     if (!packingList || !user) return
 
@@ -221,9 +303,24 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
         })
       })
 
-      if (!response.ok) throw new Error('Failed to generate suggestions')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        const errorMessage = errorData?.error || `Failed to generate suggestions (${response.status})`
+        const hint = errorData?.hint || ''
+        const details = errorData?.details || ''
+        
+        console.error('Packing suggestions error:', { errorMessage, hint, details })
+        throw new Error(`${errorMessage}${hint ? ` - ${hint}` : ''}${details ? ` (${details})` : ''}`)
+      }
 
       const { packingList: suggestedList } = await response.json()
+      
+      if (!suggestedList?.categories) {
+        throw new Error('Invalid response from AI service')
+      }
+      
+      // Count new items being added
+      let newItemsCount = 0
       
       // Merge suggestions with existing list
       const updatedCategories = packingList.categories.map(existingCat => {
@@ -237,7 +334,12 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
         const existingItemNames = existingCat.items.map(item => item.name.toLowerCase())
         const newItems = suggestedCat.items.filter(
           (item: PackingItem) => !existingItemNames.includes(item.name.toLowerCase())
-        )
+        ).map((item: PackingItem) => ({
+          ...item,
+          aiSuggested: true
+        }))
+        
+        newItemsCount += newItems.length
         
         return {
           ...existingCat,
@@ -245,10 +347,18 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
         }
       })
 
+      if (newItemsCount === 0) {
+        alert('AI found no additional items to suggest. Your packing list looks complete!')
+        return
+      }
+
       await PackingModel.update(packingList.id, { categories: updatedCategories })
       await loadPackingList()
+      
+      alert(`Added ${newItemsCount} new AI-suggested items to your packing list!`)
     } catch (error) {
       console.error('Error generating AI suggestions:', error)
+      alert(error instanceof Error ? error.message : 'Failed to generate AI suggestions. Please try again.')
     } finally {
       setGeneratingAI(false)
     }
@@ -269,8 +379,37 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] p-8 space-y-6">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-32 w-32 rounded-full bg-primary/10 animate-pulse" />
+            </div>
+            <div className="relative flex items-center justify-center">
+              <Package className="h-16 w-16 text-primary animate-bounce" />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold">Creating Your Perfect Packing List</h3>
+            <p className="text-muted-foreground">
+              {trip && trip.destinations && trip.destinations.length > 0 
+                ? `Analyzing your ${trip.duration || ''} day journey to ${trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')}`
+                : trip && trip.destination 
+                  ? `Analyzing your ${trip.duration || ''} day trip to ${trip.destination.name}`
+                  : 'Preparing your customized packing list'
+              }
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Checking weather forecasts, considering your activities, and selecting essential items...
+            </p>
+          </div>
+          
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="min-w-[200px] text-center">{loadingMessages[loadingMessage]}</span>
+          </div>
+        </div>
       </div>
     )
   }
@@ -285,7 +424,22 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* AI Generation Overlay */}
+      {generatingAI && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <div>
+              <p className="text-lg font-semibold">Generating AI Suggestions</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Analyzing your trip details and activities...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -301,7 +455,10 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
           </Button>
           <Button size="sm" onClick={generateAISuggestions} disabled={generatingAI}>
             {generatingAI ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -327,9 +484,8 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
         </TabsList>
 
         {/* Category cards */}
-        <ScrollArea className="h-[500px] pr-4">
-          <div className="grid gap-4 mt-4">
-            {filteredCategories.map(category => {
+        <div className="grid gap-4 mt-4">
+          {filteredCategories.map(category => {
               const progress = getCategoryProgress(category)
               const Icon = categoryIcons[category.id] || Package
 
@@ -357,7 +513,7 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
                   <CardContent>
                     <div className="space-y-2">
                       {category.items.map(item => (
-                        <div key={item.id} className="flex items-center justify-between group">
+                        <div key={item.id} className="flex items-center justify-between group py-1">
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={item.checked}
@@ -368,11 +524,6 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
                               item.checked ? 'line-through text-muted-foreground' : ''
                             }`}>
                               {item.name}
-                              {item.quantity && item.quantity > 1 && (
-                                <span className="ml-1 text-muted-foreground">
-                                  ({item.quantity})
-                                </span>
-                              )}
                             </label>
                             {item.aiSuggested && (
                               <Badge variant="secondary" className="text-xs">
@@ -381,14 +532,35 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
                               </Badge>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => removeItem(category.id, item.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateItemQuantity(category.id, item.id, Math.max(1, (item.quantity || 1) - 1))}
+                              disabled={saving || (item.quantity || 1) <= 1}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm w-8 text-center">{item.quantity || 1}x</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateItemQuantity(category.id, item.id, (item.quantity || 1) + 1)}
+                              disabled={saving}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 ml-2"
+                              onClick={() => removeItem(category.id, item.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       
@@ -442,7 +614,6 @@ export function PackingChecklist({ tripId, onClose }: PackingChecklistProps) {
               )
             })}
           </div>
-        </ScrollArea>
       </Tabs>
 
       {/* Invite friends dialog */}

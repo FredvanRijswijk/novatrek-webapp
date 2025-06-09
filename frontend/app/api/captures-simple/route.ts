@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore, collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { initializeApp, getApps } from 'firebase/app';
-
-// Initialize Firebase (client SDK)
-// Use hardcoded values since env vars might not be available in API routes
-const firebaseConfig = {
-  apiKey: "AIzaSyDcwcJdE5rW5NZlBMZkVuIrAjXyY2LdV_s",
-  authDomain: "novatrek-dev.firebaseapp.com",
-  projectId: "novatrek-dev",
-  storageBucket: "novatrek-dev.firebasestorage.app",
-  messagingSenderId: "571946171510",
-  appId: "1:571946171510:web:77cfa5dc825f9db8b037ef"
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+import { getAdminDb } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,34 +23,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the capture document
+    // Get admin DB
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      return NextResponse.json(
+        { error: 'Database not configured. Please set FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' },
+        { status: 500 }
+      );
+    }
+
+    // Create the capture document with DocumentReference fields
+    const userRef = adminDb.doc(`users/${userId}`);
+    
     const captureData: any = {
-      userId,
+      userId, // Keep for backward compatibility
+      userRef, // Add DocumentReference for better querying
       content: body.content,
       contentType: body.contentType || 'link',
       source: body.source,
       tags: body.tags || [],
       isProcessed: false,
       isSorted: false,
-      capturedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      capturedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     // Only add optional fields if they have values
     if (body.sourceUrl) captureData.sourceUrl = body.sourceUrl;
     if (body.title) captureData.title = body.title;
     if (body.notes) captureData.notes = body.notes;
-    if (body.assignedTo) captureData.assignedTo = body.assignedTo;
+    
+    // Handle trip assignment with DocumentReference
+    if (body.assignedTo) {
+      captureData.assignedTo = body.assignedTo;
+      captureData.tripRef = adminDb.doc(`trips/${body.assignedTo}`);
+      captureData.isSorted = true;
+    }
 
-    // Since we're using client SDK without auth context,
-    // we'll add a server timestamp to prove this came from our API
-    captureData._serverValidated = true;
-    captureData._apiVersion = '1.0';
-
-    // Add to Firestore
-    const capturesRef = collection(db, 'captures');
-    const docRef = await addDoc(capturesRef, captureData);
+    // Add to Firestore using admin SDK
+    const docRef = await adminDb.collection('captures').add(captureData);
 
     return NextResponse.json({ 
       success: true, 
@@ -73,15 +71,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error creating capture:', error);
-    
-    // Check if it's a permission error
-    if (error.code === 'permission-denied') {
-      return NextResponse.json(
-        { error: 'Permission denied. Check Firestore rules.' },
-        { status: 403 }
-      );
-    }
-    
     return NextResponse.json(
       { error: error.message || 'Failed to create capture' },
       { status: 500 }

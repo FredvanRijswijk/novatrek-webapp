@@ -57,40 +57,17 @@ export class TripModelEnhanced {
     return trip ? convertTimestampsToDates(trip) : null
   }
 
-  // Get all trips for a user - queries both patterns
+  // Get all trips for a user - uses references only
   static async getUserTrips(userId: string): Promise<TripEnhanced[]> {
     const userRef = doc(this.db, 'users', userId)
     
-    // Query using both patterns for maximum compatibility
-    const [refTrips, stringTrips] = await Promise.all([
-      getCollection<TripEnhanced>(
-        this.COLLECTION,
-        where('userRef', '==', userRef),
-        orderBy('createdAt', 'desc')
-      ),
-      getCollection<TripEnhanced>(
-        this.COLLECTION,
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      )
-    ])
+    const trips = await getCollection<TripEnhanced>(
+      this.COLLECTION,
+      where('userRef', '==', userRef),
+      orderBy('createdAt', 'desc')
+    )
 
-    // Combine and deduplicate results
-    const tripMap = new Map<string, TripEnhanced>()
-    
-    refTrips.forEach(trip => {
-      tripMap.set(trip.id, trip)
-    })
-    
-    stringTrips.forEach(trip => {
-      if (!tripMap.has(trip.id)) {
-        tripMap.set(trip.id, trip)
-      }
-    })
-
-    return Array.from(tripMap.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .map(trip => convertTimestampsToDates(trip))
+    return trips.map(trip => convertTimestampsToDates(trip))
   }
 
   // Update trip - optionally update references if userId changes
@@ -118,56 +95,19 @@ export class TripModelEnhanced {
     })
   }
 
-  // Subscribe to user's trips - monitors both patterns
+  // Subscribe to user's trips - uses references only
   static subscribeToUserTrips(userId: string, callback: (trips: TripEnhanced[]) => void) {
     const userRef = doc(this.db, 'users', userId)
-    const tripMap = new Map<string, TripEnhanced>()
 
-    // Subscribe to reference-based trips
-    const unsubRef = subscribeToCollection<TripEnhanced>(
+    return subscribeToCollection<TripEnhanced>(
       this.COLLECTION,
-      (refTrips) => {
-        // Update map with reference-based trips
-        refTrips.forEach(trip => {
-          tripMap.set(trip.id, trip)
-        })
-        
-        // Call callback with combined results
-        const allTrips = Array.from(tripMap.values())
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-          .map(trip => convertTimestampsToDates(trip))
-        callback(allTrips)
+      (trips) => {
+        const convertedTrips = trips.map(trip => convertTimestampsToDates(trip))
+        callback(convertedTrips)
       },
       where('userRef', '==', userRef),
       orderBy('createdAt', 'desc')
     )
-
-    // Subscribe to string-based trips
-    const unsubString = subscribeToCollection<TripEnhanced>(
-      this.COLLECTION,
-      (stringTrips) => {
-        // Update map with string-based trips
-        stringTrips.forEach(trip => {
-          if (!tripMap.has(trip.id)) {
-            tripMap.set(trip.id, trip)
-          }
-        })
-        
-        // Call callback with combined results
-        const allTrips = Array.from(tripMap.values())
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-          .map(trip => convertTimestampsToDates(trip))
-        callback(allTrips)
-      },
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    )
-
-    // Return combined unsubscribe function
-    return () => {
-      unsubRef()
-      unsubString()
-    }
   }
 
   // Add activity to itinerary
