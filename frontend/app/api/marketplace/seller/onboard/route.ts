@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, getAdminDb } from '@/lib/firebase/admin'
 import { createConnectAccount, createAccountLink } from '@/lib/stripe/connect'
+import { createConnectAccountV2, createAccountLinkV2 } from '@/lib/stripe/connect-v2'
 import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
+import { shouldUseStripeV2 } from '@/lib/feature-flags'
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,8 +65,13 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Create new Connect account
-    const account = await createConnectAccount(email, application.businessName)
+    // Check if we should use v2 for this new account
+    const useV2 = shouldUseStripeV2(userId, true)
+    
+    // Create new Connect account (v1 or v2 based on feature flag)
+    const account = useV2 
+      ? await createConnectAccountV2(email, application.businessName)
+      : await createConnectAccount(email, application.businessName)
 
     // Create expert profile using Admin SDK
     const expertData = {
@@ -80,6 +87,7 @@ export async function POST(request: NextRequest) {
       payoutSchedule: 'weekly', // Default
       contactEmail: email,
       stripeAccountId: account.id, // Add this field too
+      stripeAccountVersion: useV2 ? 'v2' : 'v1', // Track which version
       stripeAccountStatus: {
         chargesEnabled: false,
         payoutsEnabled: false,
@@ -96,12 +104,18 @@ export async function POST(request: NextRequest) {
       id: expertRef.id
     })
 
-    // Generate account link for onboarding
-    const accountLink = await createAccountLink(
-      account.id,
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding`,
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding/complete`
-    )
+    // Generate account link for onboarding (v1 or v2)
+    const accountLink = useV2
+      ? await createAccountLinkV2(
+          account.id,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding`,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding/complete`
+        )
+      : await createAccountLink(
+          account.id,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding`,
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/expert/onboarding/complete`
+        )
 
     return NextResponse.json({
       url: accountLink.url,
@@ -157,9 +171,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid account' }, { status: 403 })
     }
 
-    // Check if onboarding is complete
-    const { isAccountOnboarded } = await import('@/lib/stripe/connect')
-    const isComplete = await isAccountOnboarded(accountId)
+    // Check if onboarding is complete (handle both v1 and v2)
+    const isV2 = expert.stripeAccountVersion === 'v2'
+    let isComplete = false
+    let onboardingDetails: any = {}
+
+    if (isV2) {
+      const { isAccountOnboardedV2 } = await import('@/lib/stripe/connect-v2')
+      const v2Status = await isAccountOnboardedV2(accountId)
+      isComplete = v2Status.isComplete
+      onboardingDetails = {
+        canAcceptPayments: v2Status.canAcceptPayments,
+        canReceivePayouts: v2Status.canReceivePayouts,
+        requirementsNeeded: v2Status.requirementsNeeded
+      }
+    } else {
+      const { isAccountOnboarded } = await import('@/lib/stripe/connect')
+      isComplete = await isAccountOnboarded(accountId)
+    }
 
     if (isComplete) {
       // Update expert profile using Admin SDK
@@ -172,7 +201,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       complete: isComplete,
-      accountId
+      accountId,
+      version: isV2 ? 'v2' : 'v1',
+      ...(isV2 && { details: onboardingDetails })
     })
 
   } catch (error) {

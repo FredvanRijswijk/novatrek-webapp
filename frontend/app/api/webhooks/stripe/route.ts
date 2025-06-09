@@ -14,6 +14,7 @@ import {
   sendExpertNewOrderEmailServer
 } from '@/lib/email/server';
 import { stripePlans } from '@/lib/stripe/plans';
+import { handleConnectWebhookV2, isAccountOnboardedV2 } from '@/lib/stripe/connect-v2';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -85,7 +86,15 @@ export async function POST(req: NextRequest) {
       // Stripe Connect Account Events
       case 'account.updated': {
         const account = event.data.object as Stripe.Account;
-        await handleAccountUpdated(account);
+        // Try v2 handler first
+        const v2Result = await handleConnectWebhookV2(event);
+        if (v2Result.data) {
+          // If v2 handler processed it, update our database
+          await handleAccountUpdatedV2(account, v2Result.data);
+        } else {
+          // Fall back to v1 handler
+          await handleAccountUpdated(account);
+        }
         break;
       }
 
@@ -103,7 +112,13 @@ export async function POST(req: NextRequest) {
 
       case 'capability.updated': {
         const capability = event.data.object as Stripe.Capability;
-        await handleCapabilityUpdated(capability);
+        // Handle v2 capability updates
+        const v2Result = await handleConnectWebhookV2(event);
+        if (v2Result.data) {
+          await handleCapabilityUpdatedV2(capability, v2Result.data);
+        } else {
+          await handleCapabilityUpdated(capability);
+        }
         break;
       }
 
@@ -896,6 +911,76 @@ async function handleTransferUpdated(transfer: Stripe.Transfer) {
     }
   } catch (error) {
     console.error('Error handling transfer.updated:', error);
+  }
+}
+
+// V2 Account Handlers
+async function handleAccountUpdatedV2(account: Stripe.Account, v2Data: any) {
+  try {
+    // Find the expert by Stripe account ID
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', account.id));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      const expertData = expertDoc.data();
+      
+      // Update expert's account status with v2 data
+      const updateData: any = {
+        stripeAccountStatus: {
+          chargesEnabled: v2Data.onboardingStatus.canAcceptPayments,
+          payoutsEnabled: v2Data.onboardingStatus.canReceivePayouts,
+          detailsSubmitted: account.details_submitted,
+          capabilities: account.capabilities,
+          requirementsNeeded: v2Data.onboardingStatus.requirementsNeeded,
+        },
+        updatedAt: new Date(),
+      };
+      
+      // If configurations are available, store them
+      if (v2Data.configurations) {
+        updateData.stripeAccountConfigurations = v2Data.configurations;
+      }
+      
+      await updateDoc(expertDoc.ref, updateData);
+      
+      // If onboarding is complete, update status
+      if (v2Data.onboardingStatus.isComplete && expertData.status === 'pending') {
+        await updateDoc(expertDoc.ref, {
+          onboardingComplete: true,
+          status: 'active',
+        });
+      }
+      
+      console.log(`Updated Connect v2 account status for expert ${expertData.userId}`);
+    }
+  } catch (error) {
+    console.error('Error handling v2 account.updated:', error);
+  }
+}
+
+async function handleCapabilityUpdatedV2(capability: Stripe.Capability, v2Data: any) {
+  try {
+    // Find the expert by account ID
+    const expertsRef = collection(db, 'marketplace_experts');
+    const q = query(expertsRef, where('stripeAccountId', '==', capability.account));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const expertDoc = querySnapshot.docs[0];
+      
+      // Update specific capability status
+      await updateDoc(expertDoc.ref, {
+        [`stripeAccountStatus.capabilities.${capability.id}`]: capability.status,
+        [`stripeAccountConfigurations.${v2Data.capability}_status`]: v2Data.status,
+        updatedAt: new Date(),
+      });
+
+      console.log(`Updated v2 capability ${capability.id} to ${capability.status} for account ${capability.account}`);
+    }
+  } catch (error) {
+    console.error('Error handling v2 capability.updated:', error);
   }
 }
 
