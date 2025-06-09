@@ -30,9 +30,9 @@ import { formatLocation, generateMetaDescription, generateSlug } from '@/lib/uti
 import { ExpertJsonLd } from '@/components/seo/ExpertJsonLd'
 
 interface ExpertPageProps {
-  params: {
+  params: Promise<{
     slug: string
-  }
+  }>
 }
 
 async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
@@ -86,7 +86,8 @@ async function getExpertProducts(expertId: string): Promise<MarketplaceProduct[]
 }
 
 export async function generateMetadata({ params }: ExpertPageProps): Promise<Metadata> {
-  const expert = await getExpertBySlug(params.slug)
+  const { slug } = await params
+  const expert = await getExpertBySlug(slug)
   
   if (!expert) {
     return {
@@ -133,7 +134,8 @@ export async function generateMetadata({ params }: ExpertPageProps): Promise<Met
 }
 
 export default async function ExpertProfilePage({ params }: ExpertPageProps) {
-  const expert = await getExpertBySlug(params.slug)
+  const { slug } = await params
+  const expert = await getExpertBySlug(slug)
   
   if (!expert) {
     notFound()
