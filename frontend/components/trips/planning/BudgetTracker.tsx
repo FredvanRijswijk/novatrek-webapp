@@ -32,7 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Trip, Budget, Expense } from '@/types/travel';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useFirebase } from '@/lib/firebase/context';

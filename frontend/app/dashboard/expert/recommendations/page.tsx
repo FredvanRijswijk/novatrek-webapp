@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { auth } from '@/lib/firebase';
-import { MarketplaceModel } from '@/lib/models/marketplace';
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced';
 import { RecommendationModel, ExpertSavedPlace, PlaceRecommendation } from '@/lib/models/recommendations';
 import { useGooglePlacesSearch } from '@/hooks/use-google-places-search';
 

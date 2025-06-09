@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { UserModel } from '@/lib/models/user';
 import { User, Trip, Destination, Budget, ActivityType } from '@/types/travel';
 import { dateValidation } from '@/lib/utils/validation';

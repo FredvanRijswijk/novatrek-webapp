@@ -26,7 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, X, InfoIcon } from 'lucide-react'
 import { useFirebase } from '@/lib/firebase/context'
-import { MarketplaceModel } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 
 const SPECIALIZATION_OPTIONS = [
   'Adventure Travel',

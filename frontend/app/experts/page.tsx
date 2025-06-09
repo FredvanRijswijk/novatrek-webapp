@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { MarketplaceModel, TravelExpert } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
+import { TravelExpert } from '@/lib/models/marketplace'
 import { formatLocation } from '@/lib/utils/slug'
 
 export const metadata: Metadata = {

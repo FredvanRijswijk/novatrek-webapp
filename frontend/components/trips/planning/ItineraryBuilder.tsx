@@ -35,7 +35,7 @@ import { Trip, DayItinerary, Activity } from '@/types/travel';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActivitySearchModal } from './ActivitySearchModal';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { WeatherDisplay } from '../WeatherDisplay';
 
 interface ItineraryBuilderProps {

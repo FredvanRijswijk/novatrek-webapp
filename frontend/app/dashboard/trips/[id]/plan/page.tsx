@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFirebase } from '@/lib/firebase/context';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { Trip } from '@/types/travel';
 import { format, differenceInDays } from 'date-fns';
 import { useFeatureFlag } from '@/hooks/use-feature-flag';

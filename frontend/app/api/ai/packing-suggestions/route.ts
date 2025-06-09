@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/firebase/admin'
-import { TripModel } from '@/lib/models/trip'
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced'
 import { generatePackingSuggestions } from '@/lib/ai/vertex-firebase'
 import { findBestTemplate, packingTemplates } from '@/lib/data/packing-templates'
 import { PackingCategory, PackingItem } from '@/types/travel'

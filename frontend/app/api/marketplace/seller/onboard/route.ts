@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, getAdminDb } from '@/lib/firebase/admin'
 import { createConnectAccount, createAccountLink } from '@/lib/stripe/connect'
-import { MarketplaceModel } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 
 export async function POST(request: NextRequest) {
   try {

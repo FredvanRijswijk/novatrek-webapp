@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { Trip } from '@/types/travel';
 import { format, differenceInDays } from 'date-fns';
 

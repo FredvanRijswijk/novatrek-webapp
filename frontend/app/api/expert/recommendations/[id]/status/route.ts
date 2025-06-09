@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyIdToken } from '@/lib/firebase/admin';
-import { MarketplaceModel } from '@/lib/models/marketplace';
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced';
 import { RecommendationModel } from '@/lib/models/recommendations';
 
 export async function PATCH(

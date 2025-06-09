@@ -25,7 +25,8 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
-import { MarketplaceModel, MarketplaceTransaction, MarketplaceProduct } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
+import { MarketplaceTransaction, MarketplaceProduct } from '@/lib/models/marketplace'
 
 interface AnalyticsData {
   totalRevenue: number

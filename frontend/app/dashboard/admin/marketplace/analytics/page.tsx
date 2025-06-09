@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AdminRoute } from '@/components/auth/AdminRoute'
-import { MarketplaceModel } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 import { 
   TrendingUp, 
   TrendingDown, 

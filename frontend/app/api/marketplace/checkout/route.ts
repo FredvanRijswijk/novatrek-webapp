@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, getAdminDb } from '@/lib/firebase/admin'
 import { stripe } from '@/lib/stripe/config'
-import { MarketplaceModel } from '@/lib/models/marketplace'
+import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 import { FieldValue } from 'firebase-admin/firestore'
 
 export async function POST(request: NextRequest) {

@@ -22,7 +22,7 @@ import {
 import { format, differenceInDays } from 'date-fns'
 import { toast } from 'sonner'
 import { getTripShare, updateShareAccess, copySharedTrip } from '@/lib/firebase/sharing'
-import { TripModel } from '@/lib/models/trip'
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced'
 import { useFirebase } from '@/lib/firebase/context'
 import type { Trip } from '@/types/travel'
 import type { TripShare } from '@/types/sharing'

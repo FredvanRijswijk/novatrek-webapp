@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/lib/firebase/context';
-import { TripModel } from '@/lib/models/trip';
+import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { Trip, DayItinerary } from '@/types/travel';
 import { format, parseISO } from 'date-fns';
 
