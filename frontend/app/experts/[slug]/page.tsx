@@ -37,8 +37,12 @@ interface ExpertPageProps {
 
 async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
   try {
+    console.log('Looking for expert with slug:', slug)
     const expert = await MarketplaceModel.getExpertBySlug(slug)
-    if (!expert) return null
+    if (!expert) {
+      console.log('No expert found with slug:', slug)
+      return null
+    }
     
     // Convert enhanced expert to regular TravelExpert type
     return {

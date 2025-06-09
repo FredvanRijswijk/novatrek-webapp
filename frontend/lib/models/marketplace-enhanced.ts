@@ -123,13 +123,51 @@ export class MarketplaceModelEnhanced {
   }
 
   static async getExpertBySlug(slug: string): Promise<MarketplaceExpertEnhanced | null> {
-    const experts = await getCollection<MarketplaceExpertEnhanced>(
+    // First try to find by slug with active status
+    let experts = await getCollection<MarketplaceExpertEnhanced>(
       'marketplace_experts',
       where('slug', '==', slug),
       where('status', '==', 'active')
     )
     
-    return experts[0] || null
+    if (experts.length > 0) {
+      return experts[0]
+    }
+    
+    // Try without status filter (in case expert exists but isn't active)
+    experts = await getCollection<MarketplaceExpertEnhanced>(
+      'marketplace_experts',
+      where('slug', '==', slug)
+    )
+    
+    if (experts.length > 0) {
+      console.log('Found expert but status is:', experts[0].status)
+      return experts[0]
+    }
+    
+    // If not found by slug, get all experts and check if any match by generated slug
+    const allExperts = await getCollection<MarketplaceExpertEnhanced>(
+      'marketplace_experts'
+    )
+    
+    // Import generateSlug function
+    const { generateSlug } = await import('@/lib/utils/slug')
+    
+    // Find expert whose generated slug matches
+    const expert = allExperts.find(e => {
+      const generatedSlug = generateSlug(e.businessName)
+      return generatedSlug === slug
+    })
+    
+    if (expert) {
+      console.log('Found expert by generated slug, actual data:', { 
+        businessName: expert.businessName, 
+        slug: expert.slug,
+        status: expert.status 
+      })
+    }
+    
+    return expert || null
   }
 
   // Product methods
