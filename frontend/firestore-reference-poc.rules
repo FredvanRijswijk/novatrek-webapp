@@ -154,5 +154,122 @@ service cloud.firestore {
       // Allow collection group queries for active products only
       allow read: if resource.data.isActive == true;
     }
+    
+    // Trips with User References
+    match /trips/{tripId} {
+      allow read: if request.auth != null && (
+        // Legacy: String userId
+        request.auth.uid == resource.data.userId ||
+        // New: User reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Shared trip access (would need to check tripShares collection)
+        exists(/databases/$(database)/documents/tripShares/$(tripId))
+      );
+      
+      allow create: if request.auth != null && (
+        // Legacy: userId must match auth
+        request.resource.data.userId == request.auth.uid ||
+        // New: userRef must point to auth user
+        (request.resource.data.userRef != null &&
+         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow update: if request.auth != null && (
+        // Legacy: Check string userId
+        resource.data.userId == request.auth.uid ||
+        // New: Check user reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+    }
+    
+    // Chat Messages with References
+    match /chat_messages/{messageId} {
+      allow read: if request.auth != null && (
+        // Legacy: String userId
+        request.auth.uid == resource.data.userId ||
+        // New: User reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Can read if part of the trip (legacy)
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Can read if part of the trip (new)
+        (resource.data.tripRef != null &&
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        (request.resource.data.userRef != null &&
+         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      // Messages are immutable
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Packing Lists with References
+    match /packing_lists/{listId} {
+      allow read, write: if request.auth != null && (
+        // Legacy: String userId
+        request.auth.uid == resource.data.userId ||
+        // New: User reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        (request.resource.data.userRef != null &&
+         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+    }
+    
+    // Trip Shares with References
+    match /tripShares/{shareId} {
+      allow read: if request.auth != null && (
+        // Owner can read (legacy)
+        request.auth.uid == resource.data.ownerId ||
+        // Owner can read (new)
+        (resource.data.ownerRef != null &&
+         resource.data.ownerRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Anyone with the token can read (public share)
+        true
+      );
+      
+      allow create: if request.auth != null && (
+        // Must own the trip being shared (will be verified by checking trip ownership)
+        (request.resource.data.ownerId == request.auth.uid) ||
+        (request.resource.data.ownerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow update: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.ownerRef != null &&
+         resource.data.ownerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow delete: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.ownerRef != null &&
+         resource.data.ownerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+    }
+    
+    // Helper function to check trip ownership via reference
+    function userOwnsTrip(userId, tripRef) {
+      return tripRef is path && 
+             get(tripRef).data.userRef == /databases/$(database)/documents/users/$(userId);
+    }
   }
 }

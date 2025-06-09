@@ -189,6 +189,253 @@ class ReferenceFieldMigrator {
     }
   }
 
+  async migrateTripUserReferences(options: MigrationOptions = {}) {
+    const { dryRun = false, batchSize = 500 } = options
+    
+    console.log('\nStarting trip → user reference migration...')
+    console.log(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE'}`)
+    
+    const stats = { migrated: 0, skipped: 0, failed: 0, total: 0 }
+
+    try {
+      const tripsSnapshot = await this.db.collection('trips').get()
+      stats.total = tripsSnapshot.size
+      console.log(`Found ${stats.total} trips to process`)
+
+      const trips = tripsSnapshot.docs
+
+      for (let i = 0; i < trips.length; i += batchSize) {
+        const batch = this.db.batch()
+        const batchTrips = trips.slice(i, i + batchSize)
+        let batchUpdates = 0
+
+        for (const tripDoc of batchTrips) {
+          const trip = tripDoc.data()
+          
+          // Skip if already has reference
+          if (trip.userRef) {
+            stats.skipped++
+            continue
+          }
+
+          // Migrate if has string ID
+          if (trip.userId) {
+            try {
+              const userRef = this.db.collection('users').doc(trip.userId)
+              
+              // Verify user exists
+              const userSnapshot = await userRef.get()
+              if (userSnapshot.exists) {
+                if (!dryRun) {
+                  batch.update(tripDoc.ref, {
+                    userRef: userRef,
+                    updatedAt: FieldValue.serverTimestamp()
+                  })
+                  batchUpdates++
+                }
+                stats.migrated++
+                console.log(`✓ Migrated trip ${tripDoc.id} → user ${trip.userId}`)
+              } else {
+                stats.failed++
+                console.error(`✗ Failed trip ${tripDoc.id} - user ${trip.userId} not found`)
+              }
+            } catch (error: any) {
+              stats.failed++
+              console.error(`✗ Failed trip ${tripDoc.id} - ${error.message}`)
+            }
+          } else {
+            stats.skipped++
+            console.log(`✓ Skipped trip ${tripDoc.id} - no userId`)
+          }
+        }
+
+        if (batchUpdates > 0 && !dryRun) {
+          await batch.commit()
+        }
+      }
+
+      console.log(`\nTrip migration: ${stats.migrated} migrated, ${stats.skipped} skipped, ${stats.failed} failed`)
+
+    } catch (error) {
+      console.error('Trip migration failed:', error)
+    }
+
+    return stats
+  }
+
+  async migrateChatMessageReferences(options: MigrationOptions = {}) {
+    const { dryRun = false, batchSize = 500 } = options
+    
+    console.log('\nStarting chat message reference migration...')
+    const stats = { migrated: 0, skipped: 0, failed: 0, total: 0 }
+
+    try {
+      const messagesSnapshot = await this.db.collection('chat_messages').get()
+      stats.total = messagesSnapshot.size
+      console.log(`Found ${stats.total} chat messages to process`)
+
+      const messages = messagesSnapshot.docs
+
+      for (let i = 0; i < messages.length; i += batchSize) {
+        const batch = this.db.batch()
+        const batchMessages = messages.slice(i, i + batchSize)
+        let batchUpdates = 0
+
+        for (const messageDoc of batchMessages) {
+          const message = messageDoc.data()
+          const updates: any = {}
+
+          // Check what needs migration
+          if (!message.userRef && message.userId) {
+            updates.userRef = this.db.collection('users').doc(message.userId)
+          }
+
+          if (!message.tripRef && message.tripId) {
+            updates.tripRef = this.db.collection('trips').doc(message.tripId)
+          }
+
+          // Apply updates if needed
+          if (Object.keys(updates).length > 0) {
+            if (!dryRun) {
+              updates.updatedAt = FieldValue.serverTimestamp()
+              batch.update(messageDoc.ref, updates)
+              batchUpdates++
+            }
+            stats.migrated++
+            console.log(`✓ Migrated chat message ${messageDoc.id}`)
+          } else {
+            stats.skipped++
+          }
+        }
+
+        if (batchUpdates > 0 && !dryRun) {
+          await batch.commit()
+        }
+      }
+
+      console.log(`\nChat message migration: ${stats.migrated} migrated, ${stats.skipped} skipped`)
+
+    } catch (error) {
+      console.error('Chat message migration failed:', error)
+    }
+
+    return stats
+  }
+
+  async migratePackingListReferences(options: MigrationOptions = {}) {
+    const { dryRun = false, batchSize = 500 } = options
+    
+    console.log('\nStarting packing list reference migration...')
+    const stats = { migrated: 0, skipped: 0, failed: 0, total: 0 }
+
+    try {
+      const packingSnapshot = await this.db.collection('packing_lists').get()
+      stats.total = packingSnapshot.size
+      console.log(`Found ${stats.total} packing lists to process`)
+
+      const packingLists = packingSnapshot.docs
+
+      for (let i = 0; i < packingLists.length; i += batchSize) {
+        const batch = this.db.batch()
+        const batchLists = packingLists.slice(i, i + batchSize)
+        let batchUpdates = 0
+
+        for (const listDoc of batchLists) {
+          const list = listDoc.data()
+          const updates: any = {}
+
+          if (!list.userRef && list.userId) {
+            updates.userRef = this.db.collection('users').doc(list.userId)
+          }
+
+          if (!list.tripRef && list.tripId) {
+            updates.tripRef = this.db.collection('trips').doc(list.tripId)
+          }
+
+          if (Object.keys(updates).length > 0) {
+            if (!dryRun) {
+              updates.updatedAt = FieldValue.serverTimestamp()
+              batch.update(listDoc.ref, updates)
+              batchUpdates++
+            }
+            stats.migrated++
+            console.log(`✓ Migrated packing list ${listDoc.id}`)
+          } else {
+            stats.skipped++
+          }
+        }
+
+        if (batchUpdates > 0 && !dryRun) {
+          await batch.commit()
+        }
+      }
+
+      console.log(`\nPacking list migration: ${stats.migrated} migrated, ${stats.skipped} skipped`)
+
+    } catch (error) {
+      console.error('Packing list migration failed:', error)
+    }
+
+    return stats
+  }
+
+  async migrateTripShareReferences(options: MigrationOptions = {}) {
+    const { dryRun = false, batchSize = 500 } = options
+    
+    console.log('\nStarting trip share reference migration...')
+    const stats = { migrated: 0, skipped: 0, failed: 0, total: 0 }
+
+    try {
+      const sharesSnapshot = await this.db.collection('tripShares').get()
+      stats.total = sharesSnapshot.size
+      console.log(`Found ${stats.total} trip shares to process`)
+
+      const shares = sharesSnapshot.docs
+
+      for (let i = 0; i < shares.length; i += batchSize) {
+        const batch = this.db.batch()
+        const batchShares = shares.slice(i, i + batchSize)
+        let batchUpdates = 0
+
+        for (const shareDoc of batchShares) {
+          const share = shareDoc.data()
+          const updates: any = {}
+
+          if (!share.ownerRef && share.ownerId) {
+            updates.ownerRef = this.db.collection('users').doc(share.ownerId)
+          }
+
+          if (!share.tripRef && share.tripId) {
+            updates.tripRef = this.db.collection('trips').doc(share.tripId)
+          }
+
+          if (Object.keys(updates).length > 0) {
+            if (!dryRun) {
+              updates.updatedAt = FieldValue.serverTimestamp()
+              batch.update(shareDoc.ref, updates)
+              batchUpdates++
+            }
+            stats.migrated++
+            console.log(`✓ Migrated trip share ${shareDoc.id}`)
+          } else {
+            stats.skipped++
+          }
+        }
+
+        if (batchUpdates > 0 && !dryRun) {
+          await batch.commit()
+        }
+      }
+
+      console.log(`\nTrip share migration: ${stats.migrated} migrated, ${stats.skipped} skipped`)
+
+    } catch (error) {
+      console.error('Trip share migration failed:', error)
+    }
+
+    return stats
+  }
+
   async verifyMigration() {
     console.log('\n=== Verifying Migration ===')
     
@@ -209,9 +456,30 @@ class ReferenceFieldMigrator {
       }
     })
     
-    console.log(`Products with expertId: ${productsWithBoth.size}`)
+    console.log(`\nProducts with expertId: ${productsWithBoth.size}`)
     console.log(`  - With expertRef: ${withRef}`)
     console.log(`  - Without expertRef: ${withoutRef}`)
+
+    // Check trips with both fields
+    const tripsWithUserId = await this.db.collection('trips')
+      .where('userId', '!=', null)
+      .get()
+    
+    let tripsWithRef = 0
+    let tripsWithoutRef = 0
+    
+    tripsWithUserId.forEach(doc => {
+      const data = doc.data()
+      if (data.userRef) {
+        tripsWithRef++
+      } else {
+        tripsWithoutRef++
+      }
+    })
+    
+    console.log(`\nTrips with userId: ${tripsWithUserId.size}`)
+    console.log(`  - With userRef: ${tripsWithRef}`)
+    console.log(`  - Without userRef: ${tripsWithoutRef}`)
     
     // Sample check - verify references are valid
     console.log('\nChecking reference validity (sample of 10)...')
@@ -241,8 +509,10 @@ async function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
   const verify = args.includes('--verify')
-  const transactionsOnly = args.includes('--transactions')
   const productsOnly = args.includes('--products')
+  const transactionsOnly = args.includes('--transactions')
+  const tripsOnly = args.includes('--trips')
+  const allTrips = args.includes('--all-trips')
   
   const migrator = new ReferenceFieldMigrator()
 
@@ -250,12 +520,28 @@ async function main() {
     if (verify) {
       await migrator.verifyMigration()
     } else {
-      if (!transactionsOnly) {
-        await migrator.migrateProductExpertReferences({ dryRun })
+      // Marketplace migrations
+      if (!tripsOnly && !allTrips) {
+        if (!transactionsOnly) {
+          await migrator.migrateProductExpertReferences({ dryRun })
+        }
+        
+        if (!productsOnly) {
+          await migrator.migrateTransactionReferences({ dryRun })
+        }
       }
       
-      if (!productsOnly) {
-        await migrator.migrateTransactionReferences({ dryRun })
+      // Trip-related migrations
+      if (!productsOnly && !transactionsOnly) {
+        if (tripsOnly || allTrips) {
+          await migrator.migrateTripUserReferences({ dryRun })
+        }
+        
+        if (allTrips) {
+          await migrator.migrateChatMessageReferences({ dryRun })
+          await migrator.migratePackingListReferences({ dryRun })
+          await migrator.migrateTripShareReferences({ dryRun })
+        }
       }
     }
     
@@ -275,14 +561,23 @@ Usage: npm run migrate:references [options]
 Options:
   --dry-run        Run migration in dry-run mode (no changes)
   --verify         Verify migration status
-  --products       Migrate only products
-  --transactions   Migrate only transactions
+  
+Marketplace options:
+  --products       Migrate only marketplace products
+  --transactions   Migrate only marketplace transactions
+  
+Trip options:
+  --trips          Migrate only trips (user references)
+  --all-trips      Migrate trips and all related collections (chat, packing, shares)
+  
   --help          Show this help message
 
 Examples:
-  npm run migrate:references --dry-run    # Test migration without changes
-  npm run migrate:references              # Run full migration
-  npm run migrate:references --verify     # Check migration status
+  npm run migrate:references --dry-run         # Test all migrations without changes
+  npm run migrate:references                   # Run marketplace migrations only
+  npm run migrate:references --trips --dry-run # Test trip migration
+  npm run migrate:references --all-trips       # Migrate all trip-related data
+  npm run migrate:references --verify          # Check migration status
   `)
   process.exit(0)
 }
