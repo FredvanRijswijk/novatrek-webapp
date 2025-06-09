@@ -1,0 +1,453 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow webhook updates to subscription data (for development)
+      // In production, use Firebase Admin SDK instead
+      allow write: if request.resource.data.keys().hasAll(['subscription', 'updatedAt']) 
+        && request.resource.data.keys().size() <= 3;
+        
+      // Allow payments subcollection writes (for webhooks)
+      match /payments/{paymentId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if true; // For webhook writes in development
+      }
+    }
+    
+    // Travel Preferences - users can only access their own preferences
+    match /travelPreferences/{userId} {
+      // Allow users to create their own preferences document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to read and update their own preferences
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      
+      // Prevent deletion of preferences (soft delete by updating instead)
+      allow delete: if false;
+    }
+    
+    // Trips - users can only access their own trips
+    match /trips/{tripId} {
+      // Allow authenticated users to create trips
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own trips
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own trips
+      allow list: if request.auth != null;
+      
+      // Allow reading trip if user has valid share access
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/tripShares/$(tripId + '_' + request.auth.token.shareToken));
+    }
+    
+    // Chat messages - users can access their own messages
+    match /chat_messages/{messageId} {
+      // Allow authenticated users to create messages
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own messages
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own messages
+      allow list: if request.auth != null;
+    }
+    
+    // Test documents - allow authenticated users to create and access their own documents
+    match /test_documents/{documentId} {
+      // Allow authenticated users to create documents
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read/write/delete their own documents
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own documents
+      allow list: if request.auth != null;
+    }
+    
+    // Saved places - users can access their own saved places
+    match /saved_places/{placeId} {
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow list: if request.auth != null;
+    }
+    
+    // Trip shares - manage trip sharing
+    match /tripShares/{shareId} {
+      // Allow owners to create shares for their trips
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.ownerId;
+      
+      // Allow reading share by share token (for public access)
+      allow read: if true;
+      
+      // Allow owners to update/delete their shares
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+      
+      // Allow users to list their own shares
+      allow list: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Travel captures - universal inbox for travel content
+    match /captures/{captureId} {
+      // Allow authenticated users to create captures
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.keys().hasAll(['userId', 'content', 'source', 'capturedAt', 'createdAt', 'updatedAt']);
+      
+      // TEMPORARY: Allow API to create captures without auth
+      // This checks for our server validation flag
+      allow create: if request.resource.data._serverValidated == true &&
+        request.resource.data._apiVersion == '1.0' &&
+        request.resource.data.keys().hasAll(['userId', 'content', 'source']);
+      
+      // Allow users to read and update their own captures
+      allow read, update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to delete their own captures
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own captures
+      allow list: if request.auth != null;
+    }
+    
+    // API Keys - users can manage their own API keys
+    match /apiKeys/{keyId} {
+      // Allow users to create/read/update their own API keys
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      allow read, update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow listing user's own keys
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Travel Experts
+    match /marketplace_experts/{expertId} {
+      // Allow public read of active experts (for SEO and public profiles)
+      allow read: if resource.data.status == 'active';
+      
+      // Allow public listing of active experts (for /experts page)
+      allow list: if true;
+      
+      // Allow experts to update their own profile
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Only server can create expert profiles (after application approval)
+      allow create: if false;
+      
+      // Allow deletion only by the expert themselves or admin
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+    }
+    
+    // Marketplace Products
+    match /marketplace_products/{productId} {
+      // Allow public read of active products (for SEO and public access)
+      allow read: if resource.data.status == 'active';
+      
+      // Allow public listing of products (for marketplace and expert profiles)
+      allow list: if true;
+      
+      // Allow experts to create products if they own the expert profile
+      allow create: if request.auth != null && 
+        get(/databases/$(database)/documents/marketplace_experts/$(request.resource.data.expertId)).data.userId == request.auth.uid;
+      
+      // Allow experts to update/delete their own products
+      allow update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid;
+    }
+    
+    // Marketplace Transactions
+    match /marketplace_transactions/{transactionId} {
+      // Allow buyers and sellers to read their own transactions
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.buyerId || 
+         request.auth.uid == resource.data.sellerId);
+      
+      // Only server can create/update transactions (via webhooks)
+      allow create, update: if false;
+      
+      // List own transactions
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Reviews
+    match /marketplace_reviews/{reviewId} {
+      // Allow public read and list of reviews (for SEO and transparency)
+      allow read, list: if true;
+      
+      // Allow verified buyers to create reviews
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.buyerId &&
+        exists(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)) &&
+        get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.buyerId == request.auth.uid &&
+        get(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId)).data.status == 'completed';
+      
+      // Allow buyers to update their own reviews within 30 days
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.buyerId &&
+        request.time < resource.data.createdAt + duration.value(30, 'd');
+      
+      // Allow soft delete by buyer or admin
+      allow delete: if request.auth != null && 
+        (request.auth.uid == resource.data.buyerId || request.auth.token.admin == true);
+    }
+    
+    // Marketplace Applications
+    match /marketplace_applications/{applicationId} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null && 
+          request.auth.token.admin == true;
+      }
+      
+      // Allow users to create one application
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own application OR admins to read any
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || isAdmin());
+      
+      // Only admins can update applications (approval/rejection)
+      allow update: if isAdmin();
+      
+      // No deletion of applications
+      allow delete: if false;
+      
+      // Users can list their own applications OR admins can list all
+      allow list: if request.auth != null;
+    }
+    
+    // Marketplace Configuration (read-only for all authenticated users)
+    match /marketplace_config/{configId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via server
+    }
+    
+    // Marketplace Payouts - track expert payouts
+    match /marketplace_payouts/{payoutId} {
+      // Allow experts to read their own payouts
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Only server can create/update payouts (via webhooks)
+      allow create, update: if false;
+      
+      // List own payouts
+      allow list: if request.auth != null;
+      
+      // No deletion of payout records
+      allow delete: if false;
+    }
+    
+    // Marketplace Transfers - track platform fee transfers
+    match /marketplace_transfers/{transferId} {
+      // Only admins can read transfer records
+      allow read, list: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // Only server can create/update transfers (via webhooks)
+      allow create, update: if false;
+      
+      // No deletion of transfer records
+      allow delete: if false;
+    }
+    
+    // Admin Users - only admins can read, no client-side writes
+    match /admin_users/{adminId} {
+      // Allow admins to read their own admin record
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      // No client-side writes - admin creation/updates via server only
+      allow write: if false;
+    }
+    
+    // Packing Lists - users can manage their own packing lists
+    match /packing_lists/{listId} {
+      // Allow users to create packing lists
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read and update their own packing lists
+      allow read, update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to delete their own packing lists
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Allow users to list their own packing lists
+      allow list: if request.auth != null;
+    }
+    
+    // Packing Templates - read-only for all authenticated users
+    match /packing_templates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via server
+    }
+    
+    // System Logs - write allowed for authenticated users, read for admins only
+    match /logs/{logId} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null && 
+          request.auth.token.admin == true;
+      }
+      
+      // Allow authenticated users to write logs
+      allow create: if request.auth != null;
+      
+      // Only admins can read logs
+      allow read, list: if isAdmin();
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
+    // Help Categories - public read, admin write
+    match /help_categories/{categoryId} {
+      // Allow public read for help categories
+      allow read, list: if true;
+      
+      // Only admins can create/update/delete categories
+      allow create, update, delete: if request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // Help Articles - public read, admin write
+    match /help_articles/{articleId} {
+      // Allow public read for published articles
+      allow read: if resource.data.status == 'published';
+      
+      // Allow list for all (filtering done client-side)
+      allow list: if true;
+      
+      // Allow anyone to update view count, helpful, or notHelpful fields only
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) ||
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpful']) ||
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notHelpful']);
+      
+      // Only admins can create/delete help articles and do full updates
+      allow create: if request.auth != null && 
+        request.auth.token.admin == true;
+      allow update: if request.auth != null && 
+        request.auth.token.admin == true &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpful']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notHelpful']);
+      allow delete: if request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // Help Feedback - write for all users, read for admins
+    match /help_feedback/{feedbackId} {
+      // Allow anyone to create feedback (including anonymous users)
+      allow create: if true;
+      
+      // Only admins can read feedback
+      allow read, list: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
+    // Contact/Support Requests
+    match /support_requests/{requestId} {
+      // Allow authenticated users to create support requests
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Allow users to read their own support requests
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+      
+      // Allow admins to update support requests (status, response)
+      allow update: if request.auth != null && 
+        request.auth.token.admin == true;
+      
+      // Allow listing for users (their own) and admins (all)
+      allow list: if request.auth != null;
+      
+      // No deletion of support requests
+      allow delete: if false;
+    }
+    
+    // Weather cache - readable by all authenticated users, writable by all (for caching)
+    match /weatherCache/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Place recommendations - public read, expert/admin write
+    match /place_recommendations/{recommendationId} {
+      allow read: if true;
+      allow create: if request.auth != null && (
+        // Experts can create recommendations
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) ||
+        // Admins can create recommendations
+        request.auth.token.admin == true
+      );
+      allow update: if request.auth != null && (
+        // Experts can update their own recommendations
+        resource.data.recommendedBy.id == request.auth.uid ||
+        // Admins can update any recommendation
+        request.auth.token.admin == true
+      );
+      allow delete: if request.auth.token.admin == true;
+    }
+
+    // Expert saved places - private to experts
+    match /expert_saved_places/{placeId} {
+      allow read: if request.auth != null && (
+        resource.data.expertId == request.auth.uid ||
+        request.auth.token.admin == true
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.expertId &&
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid));
+      allow update: if request.auth != null && 
+        resource.data.expertId == request.auth.uid;
+      allow delete: if request.auth != null && 
+        resource.data.expertId == request.auth.uid;
+    }
+
+    // User saved recommendations
+    match /user_saved_recommendations/{savedId} {
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Default rule - deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
