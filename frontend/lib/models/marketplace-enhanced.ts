@@ -122,6 +122,16 @@ export class MarketplaceModelEnhanced {
     return Array.from(expertMap.values()).slice(0, limitCount)
   }
 
+  static async getExpertBySlug(slug: string): Promise<MarketplaceExpertEnhanced | null> {
+    const experts = await getCollection<MarketplaceExpertEnhanced>(
+      'marketplace_experts',
+      where('slug', '==', slug),
+      where('status', '==', 'active')
+    )
+    
+    return experts[0] || null
+  }
+
   // Product methods
   static async createProduct(data: Omit<MarketplaceProduct, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const enhancedData: any = {

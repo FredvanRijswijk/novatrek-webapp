@@ -37,7 +37,39 @@ interface ExpertPageProps {
 
 async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
   try {
-    return await MarketplaceModel.getExpertBySlug(slug)
+    const expert = await MarketplaceModel.getExpertBySlug(slug)
+    if (!expert) return null
+    
+    // Convert enhanced expert to regular TravelExpert type
+    return {
+      id: expert.id,
+      userId: expert.userId,
+      slug: expert.slug,
+      businessName: expert.businessName,
+      description: expert.description,
+      location: expert.location,
+      specializations: expert.specializations || [],
+      languages: expert.languages || [],
+      certifications: expert.certifications || [],
+      profileImageUrl: expert.profileImageUrl,
+      coverImageUrl: expert.coverImageUrl,
+      rating: expert.rating || 0,
+      reviewCount: expert.reviewCount || 0,
+      yearsOfExperience: expert.yearsOfExperience,
+      status: expert.status || 'pending',
+      isApproved: expert.isApproved || false,
+      stripeAccountId: expert.stripeAccountId,
+      stripeAccountStatus: expert.stripeAccountStatus,
+      onboardingComplete: expert.onboardingComplete || false,
+      tagline: expert.tagline,
+      website: expert.website,
+      socialMedia: expert.socialMedia || {},
+      commission: expert.commission || 15,
+      availability: expert.availability || {},
+      responseTime: expert.responseTime,
+      createdAt: expert.createdAt,
+      updatedAt: expert.updatedAt
+    } as TravelExpert
   } catch (error) {
     console.error('Error fetching expert:', error)
     return null
@@ -46,7 +78,7 @@ async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
 
 async function getExpertProducts(expertId: string): Promise<MarketplaceProduct[]> {
   try {
-    return await MarketplaceModel.getProductsByExpert(expertId, 'active')
+    return await MarketplaceModel.getProductsByExpert(expertId)
   } catch (error) {
     console.error('Error fetching products:', error)
     return []
