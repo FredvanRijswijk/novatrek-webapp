@@ -5,15 +5,15 @@ This guide provides step-by-step instructions to deploy NovaTrek to Vercel for e
 ## Pre-Deployment Checklist
 
 ### Required Accounts
-- [ ] Vercel account (free tier works)
-- [ ] Firebase project (with Blaze plan for functions)
-- [ ] Stripe account (with Connect enabled)
-- [ ] Google Cloud account (for Maps & Vertex AI)
-- [ ] OpenAI account (for AI features)
-- [ ] Resend account (for emails)
+- [x] Vercel account (free tier works)
+- [x] Firebase project (with Blaze plan for functions)
+- [x] Stripe account (with Connect enabled)
+- [x] Google Cloud account (for Maps & Vertex AI)
+- [x] OpenAI account (for AI features)
+- [x] Resend account (for emails)
 
 ### Required API Keys
-- [ ] Firebase configuration
+- [x] Firebase configuration
 - [ ] Firebase Admin SDK service account
 - [ ] Google Maps API key
 - [ ] Stripe keys (publishable & secret)

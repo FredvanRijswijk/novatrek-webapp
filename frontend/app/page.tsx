@@ -1,10 +1,8 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useFirebase } from "@/lib/firebase"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { 
   Plane, 
   MapPin, 
@@ -12,305 +10,662 @@ import {
   Check,
   Store,
   Users,
-  Star
+  Star,
+  MessageSquare,
+  Calendar,
+  DollarSign,
+  Globe,
+  Shield,
+  Zap,
+  Brain,
+  Share2,
+  Camera,
+  Cloud,
+  Mail,
+  ChevronRight,
+  ArrowRight,
+  Inbox,
+  Package,
+  UserCheck,
+  BarChart3,
+  Sun
 } from "lucide-react"
-import { signInWithGoogle } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useSubscription } from "@/hooks/use-subscription"
+import { useState } from "react"
+import Link from "next/link"
 
-export default function Home() {
-  const { isAuthenticated, user } = useFirebase()
-  const { subscription, loading: subLoading, fetchSubscriptionStatus } = useSubscription()
+const features = [
+  {
+    icon: Brain,
+    title: "AI-Powered Trip Planning",
+    description: "Get personalized itineraries powered by GPT-4 and Gemini. Our AI understands your preferences and creates perfect day-by-day plans."
+  },
+  {
+    icon: Users,
+    title: "Group Travel Made Easy",
+    description: "Plan trips with friends and family. Our AI finds the perfect compromise between everyone's preferences."
+  },
+  {
+    icon: Store,
+    title: "Expert Marketplace",
+    description: "Connect with verified travel experts. Get custom itineraries, consultations, and insider tips from professionals."
+  },
+  {
+    icon: Inbox,
+    title: "Travel Inbox",
+    description: "Save travel inspiration from anywhere on the web. Our browser extension and email integration capture everything."
+  },
+  {
+    icon: DollarSign,
+    title: "Smart Budget Tracking",
+    description: "Track expenses by category, split costs with travel companions, and stay within budget with real-time insights."
+  },
+  {
+    icon: Sun,
+    title: "Weather-Aware Planning",
+    description: "Get real-time weather forecasts and AI recommendations that adapt to conditions at your destination."
+  }
+]
+
+const expertFeatures = [
+  {
+    icon: Package,
+    title: "Sell Your Expertise",
+    description: "Create and sell trip templates, offer consultations, or provide custom planning services."
+  },
+  {
+    icon: Shield,
+    title: "Secure Payments",
+    description: "Stripe Connect handles all payments securely. Get paid directly with only 15% platform fee."
+  },
+  {
+    icon: BarChart3,
+    title: "Analytics Dashboard",
+    description: "Track your sales, customer reviews, and earnings with detailed analytics and insights."
+  }
+]
+
+const pricingPlans = [
+  {
+    name: "Free",
+    price: "$0",
+    description: "Perfect for casual travelers",
+    features: [
+      "1 active trip",
+      "Basic AI recommendations", 
+      "3-day itineraries",
+      "Standard support"
+    ],
+    cta: "Start Free",
+    highlighted: false
+  },
+  {
+    name: "Basic",
+    price: "$9.99",
+    period: "/month",
+    description: "For regular travelers",
+    features: [
+      "3 active trips",
+      "Advanced AI features",
+      "7-day itineraries",
+      "Priority support",
+      "Weather integration",
+      "Budget tracking"
+    ],
+    cta: "Start Trial",
+    highlighted: true
+  },
+  {
+    name: "Pro",
+    price: "$29.99",
+    period: "/month",
+    description: "For travel enthusiasts",
+    features: [
+      "Unlimited trips",
+      "Premium AI models",
+      "14-day itineraries",
+      "24/7 priority support",
+      "Group travel tools",
+      "API access",
+      "Custom integrations"
+    ],
+    cta: "Start Trial",
+    highlighted: false
+  }
+]
+
+const testimonials = [
+  {
+    name: "Sarah Chen",
+    role: "Digital Nomad",
+    content: "NovaTrek's AI saved me hours of planning. The group compromise feature helped my friends and I plan the perfect trip to Japan!",
+    rating: 5
+  },
+  {
+    name: "Marcus Rodriguez",
+    role: "Travel Expert",
+    content: "As a travel planner, the marketplace has been game-changing. I've connected with clients worldwide and grown my business 3x.",
+    rating: 5
+  },
+  {
+    name: "Emily Watson",
+    role: "Adventure Traveler", 
+    content: "The Travel Inbox is brilliant! I save inspiration from Instagram, blogs, and emails all in one place. Planning has never been easier.",
+    rating: 5
+  }
+]
+
+export default function LandingPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [checkingSubscription, setCheckingSubscription] = useState(false)
-  const [error, setError] = useState("")
 
-  useEffect(() => {
-    if (isAuthenticated && !checkingSubscription && !subLoading) {
-      checkSubscriptionAndRedirect()
-    }
-  }, [isAuthenticated, subLoading])
-
-  const checkSubscriptionAndRedirect = async () => {
-    setCheckingSubscription(true)
-    
-    try {
-      // Skip subscription check for now - go directly to dashboard
-      router.push('/dashboard')
-      
-      // Original subscription check code (commented out for now)
-      /*
-      // Fetch latest subscription status
-      const subscriptionData = await fetchSubscriptionStatus()
-      
-      // Check subscription and redirect accordingly
-      if (subscriptionData?.isActive) {
-        router.push('/dashboard')
-      } else {
-        router.push('/onboarding')
-      }
-      */
-    } catch (error) {
-      console.error('Error checking subscription:', error)
-      // Default to dashboard for now
-      router.push('/dashboard')
-    } finally {
-      setCheckingSubscription(false)
-    }
-  }
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    try {
-      await signInWithGoogle()
-      // Subscription check will happen automatically via useEffect
-    } catch (error) {
-      console.error('Sign in error:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleEmailSignUp = async (e: React.FormEvent) => {
+  const handleGetStarted = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    
-    try {
-      // For now, redirect to a proper signup page
-      // We'll create this page next
+    if (email) {
       router.push(`/signup?email=${encodeURIComponent(email)}`)
-    } catch (error: any) {
-      console.error('Sign up error:', error)
-      setError(error.message || 'Failed to sign up')
-    } finally {
-      setIsLoading(false)
+    } else {
+      router.push('/signup')
     }
   }
 
   return (
-    <main className="flex min-h-screen">
-      {/* Theme toggle - absolute positioned */}
-      <div className="absolute top-4 right-4 z-10">
-        <ThemeToggle />
-      </div>
-      
-      {/* Left side - Sign in form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-950">
-        <div className="w-full max-w-md space-y-8">
-          {/* Logo and Title */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-8">
-              <Plane className="w-10 h-10 text-primary" />
-              <span className="text-3xl font-bold">NovaTrek</span>
+    <div className="min-h-screen bg-background">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <Plane className="w-8 h-8 text-primary" />
+              <span className="text-2xl font-bold">NovaTrek</span>
             </div>
             
-            <h1 className="text-2xl font-semibold mb-2">
-              Get started with NovaTrek
-            </h1>
-            <p className="text-muted-foreground">
-              Try NovaTrek free
-            </p>
-          </div>
-
-          {/* Social sign in buttons */}
-          <div className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              <span className="flex-1 text-left">Continue with Google</span>
-            </Button>
-
-            <Button 
-              variant="outline" 
-              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
-              disabled
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
-              </svg>
-              <span className="flex-1 text-left">Continue with Apple ID</span>
-            </Button>
-
-            <Button 
-              variant="outline" 
-              className="w-full py-6 text-base font-normal justify-start px-6 space-x-3"
-              disabled
-            >
-              <MapPin className="w-5 h-5" />
-              <span className="flex-1 text-left">SSO through employer</span>
-            </Button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="#features" className="text-sm font-medium hover:text-primary">
+                Features
+              </Link>
+              <Link href="#marketplace" className="text-sm font-medium hover:text-primary">
+                Marketplace
+              </Link>
+              <Link href="#pricing" className="text-sm font-medium hover:text-primary">
+                Pricing
+              </Link>
+              <Link href="/experts" className="text-sm font-medium hover:text-primary">
+                Experts
+              </Link>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-gray-950 px-2 text-muted-foreground">Or</span>
+
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <Button variant="ghost" onClick={() => router.push('/login')}>
+                Sign In
+              </Button>
+              <Button onClick={() => router.push('/signup')}>
+                Get Started
+              </Button>
             </div>
           </div>
+        </div>
+      </nav>
 
-          {/* Email sign up form */}
-          <form onSubmit={handleEmailSignUp} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12"
-              required
-            />
-            <Button 
-              type="submit" 
-              className="w-full py-6 text-base bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-            >
-              SIGN UP
-            </Button>
+      {/* Hero Section */}
+      <section className="pt-20 pb-32 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-8">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">AI-Powered Travel Planning Platform</span>
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Plan Smarter,<br />Travel Better
+          </h1>
+          
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            NovaTrek combines AI intelligence with human expertise to create personalized travel experiences. 
+            From planning to booking to sharing memories, we've got you covered.
+          </p>
+
+          {/* Email CTA */}
+          <form onSubmit={handleGetStarted} className="max-w-md mx-auto mb-8">
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-lg border bg-background"
+              />
+              <Button type="submit" size="lg">
+                Start Free
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </div>
           </form>
 
-          <p className="text-center text-sm">
-            Already have an account?{" "}
-            <button className="text-primary hover:underline font-medium">
-              Sign in
-            </button>
+          <p className="text-sm text-muted-foreground">
+            No credit card required • Free forever plan available
           </p>
 
-          {/* Legal text */}
-          <p className="text-xs text-muted-foreground text-center">
-            By creating an account, you agree to our{" "}
-            <a href="#" className="underline">Terms of Service</a> and{" "}
-            <a href="#" className="underline">Privacy Policy</a>. You also
-            acknowledge that you have reviewed our{" "}
-            <a href="#" className="underline">Travel Guidelines</a>.
-          </p>
+          {/* Trust badges */}
+          <div className="flex items-center justify-center gap-8 mt-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold">10,000+</div>
+              <div className="text-sm text-muted-foreground">Active Travelers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold">500+</div>
+              <div className="text-sm text-muted-foreground">Travel Experts</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold">4.9/5</div>
+              <div className="text-sm text-muted-foreground">User Rating</div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Right side - Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-12 items-center">
-        <div className="max-w-xl">
-          <h2 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-            Plan, explore, and experience your perfect journey, all on NovaTrek.
-          </h2>
+      {/* Features Grid */}
+      <section id="features" className="py-20 px-4 bg-muted/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Everything You Need for Perfect Trips</h2>
+            <p className="text-xl text-muted-foreground">
+              Powerful features that make travel planning effortless
+            </p>
+          </div>
 
-          {/* Phone mockup */}
-          <div className="mb-12 relative">
-            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-4 max-w-sm mx-auto">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">$2,847</span>
-                  <Sparkles className="w-6 h-6 text-yellow-500" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <Card key={index} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <feature.icon className="w-10 h-10 text-primary mb-4" />
+                  <CardTitle>{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI Chat Demo */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold mb-6">
+                Chat with the Smartest Travel AI
+              </h2>
+              <p className="text-xl text-muted-foreground mb-8">
+                Our AI assistant understands context, remembers your preferences, and provides 
+                personalized recommendations using GPT-4 and Gemini models.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">Multi-destination planning</div>
+                    <div className="text-sm text-muted-foreground">
+                      Plan complex trips with multiple stops effortlessly
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="bg-green-500 h-2 rounded-full w-3/4"></div>
-                  <div className="bg-blue-500 h-2 rounded-full w-1/2"></div>
-                  <div className="bg-purple-500 h-2 rounded-full w-1/4"></div>
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">Real-time recommendations</div>
+                    <div className="text-sm text-muted-foreground">
+                      Get instant suggestions based on weather and local events
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">Trip budget overview</p>
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">Budget optimization</div>
+                    <div className="text-sm text-muted-foreground">
+                      AI helps you get the most value within your budget
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button size="lg" className="mt-8" onClick={() => router.push('/signup')}>
+                Try AI Chat Free
+                <MessageSquare className="ml-2 w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="relative">
+              <div className="bg-muted rounded-lg p-6 shadow-xl">
+                <div className="space-y-4">
+                  <div className="bg-background rounded-lg p-4 ml-auto max-w-xs">
+                    <p className="text-sm">I'm planning a 10-day trip to Japan for cherry blossom season. What do you recommend?</p>
+                  </div>
+                  <div className="bg-primary/10 rounded-lg p-4 max-w-xs">
+                    <p className="text-sm">Great timing! For cherry blossoms, I recommend visiting in early April. Here's a perfect itinerary:
+
+🌸 Days 1-3: Tokyo (Ueno Park, Shinjuku Gyoen)
+🌸 Days 4-5: Mount Fuji & Hakone
+🌸 Days 6-8: Kyoto (Maruyama Park, Philosopher's Path)
+🌸 Days 9-10: Osaka (Osaka Castle Park)
+
+Would you like me to add specific activities and budget estimates?</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Features list */}
-          <ul className="space-y-4">
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Access smart travel planning and budgeting tools
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Track your trips, itineraries, and travel expenses
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Get weather forecasts and activity recommendations
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Chat with AI for personalized travel advice
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Share itineraries with travel companions
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Get AI-powered destination insights
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Check className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white">
-                Create detailed day-by-day itineraries
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-full bg-gray-900 dark:bg-white p-1 mt-0.5">
-                <Store className="w-3 h-3 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-gray-900 dark:text-white font-semibold">
-                NEW: Browse trip templates from expert travel planners
-              </span>
-            </li>
-          </ul>
-          
-          {/* Marketplace CTA */}
-          <div className="mt-8 p-4 bg-white/50 dark:bg-gray-800/50 rounded-xl backdrop-blur">
-            <div className="flex items-center gap-2 mb-2">
-              <Store className="w-5 h-5" />
-              <span className="font-semibold">Marketplace Now Open!</span>
-            </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-              Discover curated trip templates and connect with verified travel experts.
+      {/* Marketplace Section */}
+      <section id="marketplace" className="py-20 px-4 bg-muted/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Travel Expert Marketplace</h2>
+            <p className="text-xl text-muted-foreground">
+              Connect with professionals or become an expert yourself
             </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* For Travelers */}
+            <Card className="p-8">
+              <CardHeader>
+                <Globe className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-2xl">For Travelers</CardTitle>
+                <CardDescription>Get expert help for your trips</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">Curated trip templates</div>
+                    <div className="text-sm text-muted-foreground">
+                      Ready-made itineraries by destination experts
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">1-on-1 consultations</div>
+                    <div className="text-sm text-muted-foreground">
+                      Video calls with travel professionals
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-primary mt-1" />
+                  <div>
+                    <div className="font-medium">Custom planning</div>
+                    <div className="text-sm text-muted-foreground">
+                      Fully personalized trip planning services
+                    </div>
+                  </div>
+                </div>
+                <Button className="w-full mt-6" variant="outline" onClick={() => router.push('/marketplace')}>
+                  Browse Marketplace
+                  <ChevronRight className="ml-2 w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* For Experts */}
+            <Card className="p-8 border-primary">
+              <CardHeader>
+                <UserCheck className="w-12 h-12 text-primary mb-4" />
+                <CardTitle className="text-2xl">For Travel Experts</CardTitle>
+                <CardDescription>Monetize your travel knowledge</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {expertFeatures.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <feature.icon className="w-5 h-5 text-primary mt-1" />
+                    <div>
+                      <div className="font-medium">{feature.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {feature.description}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button className="w-full mt-6" onClick={() => router.push('/dashboard/become-expert')}>
+                  Become an Expert
+                  <ChevronRight className="ml-2 w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Travel Inbox Feature */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-2xl p-8 md:p-12">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <Inbox className="w-12 h-12 text-primary mb-6" />
+                <h2 className="text-3xl font-bold mb-4">
+                  Your Travel Inbox
+                </h2>
+                <p className="text-lg text-muted-foreground mb-6">
+                  Never lose travel inspiration again. Save content from anywhere - 
+                  websites, emails, or social media - and our AI organizes everything for you.
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-primary" />
+                    </div>
+                    <span>Browser extension for one-click saves</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-primary" />
+                    </div>
+                    <span>Email forwarding to your inbox</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                      <Brain className="w-4 h-4 text-primary" />
+                    </div>
+                    <span>AI categorization and insights</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <div className="bg-background rounded-lg shadow-xl p-6 max-w-sm">
+                  <div className="text-sm font-medium text-muted-foreground mb-4">Travel Inbox</div>
+                  <div className="space-y-3">
+                    <div className="bg-muted rounded-lg p-3">
+                      <div className="font-medium text-sm">Hidden Cafe in Tokyo</div>
+                      <div className="text-xs text-muted-foreground mt-1">Saved from Instagram • 2 hours ago</div>
+                    </div>
+                    <div className="bg-muted rounded-lg p-3">
+                      <div className="font-medium text-sm">Best Hiking Trails in Peru</div>
+                      <div className="text-xs text-muted-foreground mt-1">Saved from Blog • Yesterday</div>
+                    </div>
+                    <div className="bg-muted rounded-lg p-3">
+                      <div className="font-medium text-sm">Barcelona Food Tour</div>
+                      <div className="text-xs text-muted-foreground mt-1">Saved via Email • 3 days ago</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20 px-4 bg-muted/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
+            <p className="text-xl text-muted-foreground">
+              Choose the plan that fits your travel style
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {pricingPlans.map((plan, index) => (
+              <Card key={index} className={plan.highlighted ? "border-primary shadow-lg" : ""}>
+                {plan.highlighted && (
+                  <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-medium">
+                    Most Popular
+                  </div>
+                )}
+                <CardHeader>
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <div className="flex items-baseline gap-1 mt-2">
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    {plan.period && <span className="text-muted-foreground">{plan.period}</span>}
+                  </div>
+                  <CardDescription className="mt-2">{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-3">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check className="w-5 h-5 text-primary mt-0.5" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    className="w-full" 
+                    variant={plan.highlighted ? "default" : "outline"}
+                    onClick={() => router.push('/signup')}
+                  >
+                    {plan.cta}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">Loved by Travelers Worldwide</h2>
+            <p className="text-xl text-muted-foreground">
+              See what our community has to say
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <div className="flex gap-1 mb-2">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground italic">"{testimonial.content}"</p>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <div className="font-medium">{testimonial.name}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-primary text-primary-foreground">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold mb-4">
+            Ready to Transform Your Travel Experience?
+          </h2>
+          <p className="text-xl mb-8 opacity-90">
+            Join thousands of travelers who plan smarter with NovaTrek
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => router.push('/marketplace')}
+              size="lg" 
+              variant="secondary"
+              onClick={() => router.push('/signup')}
             >
-              Explore Marketplace
-              <Sparkles className="ml-2 w-4 h-4" />
+              Start Free Trial
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="bg-transparent text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/10"
+              onClick={() => router.push('/dashboard/become-expert')}
+            >
+              Become an Expert
+              <UserCheck className="ml-2 w-4 h-4" />
             </Button>
           </div>
         </div>
-      </div>
-    </main>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-4 bg-background border-t">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Plane className="w-6 h-6 text-primary" />
+                <span className="text-lg font-bold">NovaTrek</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                AI-powered travel planning for the modern explorer.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#features" className="hover:text-primary">Features</Link></li>
+                <li><Link href="#pricing" className="hover:text-primary">Pricing</Link></li>
+                <li><Link href="/marketplace" className="hover:text-primary">Marketplace</Link></li>
+                <li><Link href="/experts" className="hover:text-primary">Find Experts</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/about" className="hover:text-primary">About</Link></li>
+                <li><Link href="/blog" className="hover:text-primary">Blog</Link></li>
+                <li><Link href="/careers" className="hover:text-primary">Careers</Link></li>
+                <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/privacy" className="hover:text-primary">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-primary">Terms of Service</Link></li>
+                <li><Link href="/cookies" className="hover:text-primary">Cookie Policy</Link></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
+            © 2024 NovaTrek. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </div>
   )
 }
