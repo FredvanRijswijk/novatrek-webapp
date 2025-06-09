@@ -93,6 +93,35 @@ export class MarketplaceModelEnhanced {
     return refExperts[0] || stringExperts[0] || null
   }
 
+  static async getActiveExperts(limitCount = 20): Promise<MarketplaceExpertEnhanced[]> {
+    // Query both patterns for active experts
+    const [refExperts, stringExperts] = await Promise.all([
+      getCollection<MarketplaceExpertEnhanced>(
+        'marketplace_experts',
+        where('status', '==', 'active'),
+        orderBy('rating', 'desc'),
+        orderBy('reviewCount', 'desc')
+      ),
+      getCollection<MarketplaceExpertEnhanced>(
+        'marketplace_experts',
+        where('status', '==', 'active'),
+        orderBy('rating', 'desc')
+      )
+    ])
+
+    // Combine and deduplicate
+    const expertMap = new Map<string, MarketplaceExpertEnhanced>()
+    refExperts.forEach(e => expertMap.set(e.id, e))
+    stringExperts.forEach(e => {
+      if (!expertMap.has(e.id)) {
+        expertMap.set(e.id, e)
+      }
+    })
+
+    // Return limited results
+    return Array.from(expertMap.values()).slice(0, limitCount)
+  }
+
   // Product methods
   static async createProduct(data: Omit<MarketplaceProduct, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const enhancedData: any = {

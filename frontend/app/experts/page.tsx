@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 import { TravelExpert } from '@/lib/models/marketplace'
+import type { MarketplaceExpertEnhanced } from '@/lib/models/marketplace-enhanced'
 import { formatLocation } from '@/lib/utils/slug'
 
 export const metadata: Metadata = {
@@ -38,7 +39,39 @@ export const metadata: Metadata = {
 
 async function getExperts(): Promise<TravelExpert[]> {
   try {
-    return await MarketplaceModel.getActiveExperts(50)
+    const experts = await MarketplaceModel.getActiveExperts(50)
+    // Convert enhanced experts to regular TravelExpert type
+    return experts.map(expert => ({
+      ...expert,
+      // Ensure all required fields are present
+      id: expert.id,
+      userId: expert.userId,
+      slug: expert.slug,
+      businessName: expert.businessName,
+      description: expert.description,
+      location: expert.location,
+      specializations: expert.specializations || [],
+      languages: expert.languages || [],
+      certifications: expert.certifications || [],
+      profileImageUrl: expert.profileImageUrl,
+      coverImageUrl: expert.coverImageUrl,
+      rating: expert.rating || 0,
+      reviewCount: expert.reviewCount || 0,
+      yearsOfExperience: expert.yearsOfExperience,
+      status: expert.status || 'pending',
+      isApproved: expert.isApproved || false,
+      stripeAccountId: expert.stripeAccountId,
+      stripeAccountStatus: expert.stripeAccountStatus,
+      onboardingComplete: expert.onboardingComplete || false,
+      tagline: expert.tagline,
+      website: expert.website,
+      socialMedia: expert.socialMedia || {},
+      commission: expert.commission || 15,
+      availability: expert.availability || {},
+      responseTime: expert.responseTime,
+      createdAt: expert.createdAt,
+      updatedAt: expert.updatedAt
+    } as TravelExpert))
   } catch (error) {
     console.error('Error fetching experts:', error)
     return []
