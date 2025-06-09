@@ -13,7 +13,7 @@ import {
   runTransaction,
   writeBatch
 } from 'firebase/firestore'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 
 export interface MarketplaceExpertRef {
   id: string
@@ -52,7 +52,7 @@ export interface MarketplaceProductRef {
 }
 
 export class MarketplaceReferenceModel {
-  private static db = getFirestore()
+  private static db = db
 
   // Expert methods
   static async createExpert(expertData: Omit<MarketplaceExpertRef, 'id' | 'createdAt' | 'updatedAt'>) {

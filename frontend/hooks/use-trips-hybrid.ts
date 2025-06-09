@@ -11,7 +11,7 @@ import {
   orderBy,
   QueryConstraint
 } from 'firebase/firestore'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { TripRef, ChatMessageRef, PackingListRef, TripShareRef } from '@/lib/models/trip-reference'
 import { User } from '@/lib/models/user'
 
@@ -34,8 +34,6 @@ export function useUserTrips(options: UseTripOptions = {}) {
       setLoading(false)
       return
     }
-
-    const db = getFirestore()
 
     const fetchTrips = async () => {
       try {
@@ -184,8 +182,6 @@ export function useTripWithUser(tripId: string | null) {
       try {
         setLoading(true)
         setError(null)
-        const db = getFirestore()
-
         // Get trip
         const tripRef = doc(db, 'trips', tripId)
         const tripSnapshot = await getDoc(tripRef)
@@ -251,7 +247,6 @@ export function useTripChatMessages(tripId: string | null, realtime = true) {
       return
     }
 
-    const db = getFirestore()
     const tripRef = doc(db, 'trips', tripId)
 
     if (realtime) {
@@ -380,8 +375,6 @@ export function useTripPackingList(tripId: string | null, userId: string | null)
       try {
         setLoading(true)
         setError(null)
-        const db = getFirestore()
-
         const tripRef = doc(db, 'trips', tripId)
         const userRef = doc(db, 'users', userId)
 

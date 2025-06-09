@@ -16,7 +16,7 @@ import {
   orderBy,
   limit
 } from '@/lib/firebase'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { Trip, DayItinerary, Activity, Expense } from '@/types/travel'
 import { User } from './user'
 import { cleanFirestoreData, convertTimestampsToDates } from '@/lib/utils/firebase-helpers'
@@ -28,7 +28,7 @@ export interface TripEnhanced extends Trip {
 
 export class TripModelEnhanced {
   static readonly COLLECTION = 'trips'
-  private static db = getFirestore()
+  private static db = db
 
   // Create a new trip with both userId and userRef
   static async create(tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {

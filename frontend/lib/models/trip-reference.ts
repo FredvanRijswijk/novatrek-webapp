@@ -14,7 +14,7 @@ import {
   writeBatch,
   CollectionReference
 } from 'firebase/firestore'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { User } from './user'
 import { Trip, DayItinerary, Activity, Expense, Photo } from './trip'
 
@@ -78,7 +78,7 @@ export interface UserSavedRecommendationRef {
 }
 
 export class TripReferenceModel {
-  private static db = getFirestore()
+  private static db = db
 
   // Trip methods with reference fields
   static async createTripWithReference(

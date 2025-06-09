@@ -14,7 +14,7 @@ import {
   where,
   orderBy
 } from '@/lib/firebase'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { User } from './user'
 import { 
   MarketplaceExpert, 
@@ -51,7 +51,7 @@ export interface MarketplaceApplicationEnhanced extends MarketplaceApplication {
 }
 
 export class MarketplaceModelEnhanced {
-  private static db = getFirestore()
+  private static db = db
 
   // Expert methods
   static async createExpert(data: Omit<MarketplaceExpert, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {

@@ -10,7 +10,7 @@ import {
   onSnapshot,
   QueryConstraint
 } from 'firebase/firestore'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { MarketplaceExpertRef, MarketplaceProductRef } from '@/lib/models/marketplace-reference'
 
 interface UseProductsOptions {
@@ -27,7 +27,6 @@ export function useMarketplaceProducts(options: UseProductsOptions = {}) {
 
   useEffect(() => {
     const { expertId, realtime = false, includeInactive = false } = options
-    const db = getFirestore()
 
     const fetchProducts = async () => {
       try {
@@ -185,7 +184,6 @@ export function useProductWithExpert(productId: string | null) {
       try {
         setLoading(true)
         setError(null)
-        const db = getFirestore()
 
         // Get product
         const productRef = doc(db, 'marketplace_products', productId)
@@ -259,7 +257,6 @@ export function useExpertProductReviews(expertId: string | null) {
     const fetchReviews = async () => {
       try {
         setLoading(true)
-        const db = getFirestore()
         const expertRef = doc(db, 'marketplace_experts', expertId)
 
         // Get all products for this expert (hybrid approach)

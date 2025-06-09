@@ -14,7 +14,7 @@ import {
   orderBy,
   limit as firestoreLimit
 } from '@/lib/firebase'
-import { getFirestore } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import { ChatMessage, ChatSession, AIProvider } from './chat'
 import { User } from './user'
 import { Trip } from '@/types/travel'
@@ -31,7 +31,7 @@ export interface ChatSessionEnhanced extends ChatSession {
 }
 
 export class ChatModelEnhanced {
-  private static db = getFirestore()
+  private static db = db
 
   // Create a new chat message with references
   static async createMessage(
