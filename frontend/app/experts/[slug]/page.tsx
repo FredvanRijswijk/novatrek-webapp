@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 import { TravelExpert, MarketplaceProduct, ProductReview } from '@/lib/models/marketplace'
-import { formatLocation, generateMetaDescription } from '@/lib/utils/slug'
+import { formatLocation, generateMetaDescription, generateSlug } from '@/lib/utils/slug'
 import { ExpertJsonLd } from '@/components/seo/ExpertJsonLd'
 
 interface ExpertPageProps {
@@ -44,7 +44,7 @@ async function getExpertBySlug(slug: string): Promise<TravelExpert | null> {
     return {
       id: expert.id,
       userId: expert.userId,
-      slug: expert.slug,
+      slug: expert.slug || generateSlug(expert.businessName), // Generate slug if missing
       businessName: expert.businessName,
       description: expert.description,
       location: expert.location,

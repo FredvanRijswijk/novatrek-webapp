@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
 import { TravelExpert } from '@/lib/models/marketplace'
 import type { MarketplaceExpertEnhanced } from '@/lib/models/marketplace-enhanced'
-import { formatLocation } from '@/lib/utils/slug'
+import { formatLocation, generateSlug } from '@/lib/utils/slug'
 
 export const metadata: Metadata = {
   title: 'Travel Experts | NovaTrek - Find Your Perfect Travel Planner',
@@ -46,7 +46,7 @@ async function getExperts(): Promise<TravelExpert[]> {
       // Ensure all required fields are present
       id: expert.id,
       userId: expert.userId,
-      slug: expert.slug,
+      slug: expert.slug || generateSlug(expert.businessName), // Generate slug if missing
       businessName: expert.businessName,
       description: expert.description,
       location: expert.location,
