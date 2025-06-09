@@ -13,12 +13,28 @@ export default function DashboardPage() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [upcomingTrips, setUpcomingTrips] = useState<Trip[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const loadUserData = useCallback(async () => {
     if (!authUser) return
 
     try {
       setLoadingData(true)
+
+      // Check if user is admin
+      try {
+        const { AdminModel } = await import('@/lib/models/admin')
+        const adminStatus = await AdminModel.isAdmin(authUser.uid)
+        setIsAdmin(adminStatus)
+        
+        // If admin, redirect to admin dashboard
+        if (adminStatus) {
+          window.location.href = '/dashboard/admin/marketplace'
+          return
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+      }
 
       // Create or update user profile
       const userData = await UserModel.createOrUpdateFromAuth({

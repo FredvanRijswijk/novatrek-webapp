@@ -69,7 +69,55 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       email: user?.email || "",
       avatar: user?.photoURL || "/avatars/default.png",
     },
-    navMain: [
+    navMain: isAdminUser ? [
+      // Admin-only navigation
+      {
+        title: "Admin Dashboard",
+        url: "/dashboard/admin/marketplace",
+        icon: ShieldCheck,
+      },
+      {
+        title: "Applications",
+        url: "/dashboard/admin/marketplace/applications",
+        icon: Sparkles,
+      },
+      {
+        title: "Experts",
+        url: "/dashboard/admin/marketplace/experts",
+        icon: Briefcase,
+      },
+      {
+        title: "Products",
+        url: "/dashboard/admin/marketplace/products",
+        icon: Store,
+      },
+      {
+        title: "Recommendations",
+        url: "/dashboard/admin/recommendations",
+        icon: MapPin,
+      },
+      {
+        title: "Analytics",
+        url: "/dashboard/admin/marketplace/analytics",
+        icon: Shield,
+      },
+      {
+        title: "System Logs",
+        url: "/dashboard/admin/logs",
+        icon: MessageCircle,
+      },
+      {
+        title: "Help Articles",
+        url: "/dashboard/admin/help",
+        icon: HelpCircle,
+      },
+      {
+        title: "Settings",
+        url: "/dashboard/settings/profile",
+        icon: Settings,
+      },
+    ] : [
+      // Regular user navigation
       {
         title: "Dashboard",
         url: "/dashboard",
@@ -163,7 +211,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       // Show Expert Dashboard if user is an expert
-      ...(isExpert ? [{
+      ...(isExpert && !isAdminUser ? [{
         title: "Expert Dashboard",
         url: "/dashboard/expert",
         icon: Briefcase,
@@ -190,46 +238,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       }] : []),
-      // Show Admin section if user is an admin
-      ...(isAdminUser ? [{
-        title: "Admin",
-        url: "/dashboard/admin/marketplace",
-        icon: ShieldCheck,
-        items: [
-          {
-            title: "Dashboard",
-            url: "/dashboard/admin/marketplace",
-          },
-          {
-            title: "Applications",
-            url: "/dashboard/admin/marketplace/applications",
-          },
-          {
-            title: "Experts",
-            url: "/dashboard/admin/marketplace/experts",
-          },
-          {
-            title: "Products",
-            url: "/dashboard/admin/marketplace/products",
-          },
-          {
-            title: "Recommendations",
-            url: "/dashboard/admin/recommendations",
-          },
-          {
-            title: "Analytics",
-            url: "/dashboard/admin/marketplace/analytics",
-          },
-          {
-            title: "System Logs",
-            url: "/dashboard/admin/logs",
-          },
-          {
-            title: "Help Center",
-            url: "/dashboard/admin/help",
-          },
-        ],
-      }] : []),
       // Show Test section in development
       ...(process.env.NODE_ENV === 'development' ? [{
         title: "Testing",
@@ -251,7 +259,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       }] : []),
     ],
-    projects: [
+    projects: isAdminUser ? [
+      // Admin quick actions
+      {
+        name: "Review Applications",
+        url: "/dashboard/admin/marketplace/applications",
+        icon: Sparkles,
+      },
+      {
+        name: "Manage Experts",
+        url: "/dashboard/admin/marketplace/experts",
+        icon: Briefcase,
+      },
+      {
+        name: "View Analytics",
+        url: "/dashboard/admin/marketplace/analytics",
+        icon: Shield,
+      },
+    ] : [
+      // Regular user quick actions
       {
         name: "Plan New Trip",
         url: "/dashboard/trips/new",
