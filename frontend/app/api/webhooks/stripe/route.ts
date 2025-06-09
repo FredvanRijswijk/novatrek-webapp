@@ -17,6 +17,25 @@ import { stripePlans } from '@/lib/stripe/plans';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Helper function to check if event was already processed
+async function isEventProcessed(eventId: string): Promise<boolean> {
+  const eventRef = doc(db, 'webhook_events', eventId);
+  const eventDoc = await getDoc(eventRef);
+  return eventDoc.exists();
+}
+
+// Helper function to mark event as processed
+async function markEventAsProcessed(event: Stripe.Event) {
+  const eventRef = doc(db, 'webhook_events', event.id);
+  await setDoc(eventRef, {
+    eventId: event.id,
+    type: event.type,
+    processedAt: new Date(),
+    livemode: event.livemode,
+    createdAt: new Date(event.created * 1000),
+  });
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = (await headers()).get('stripe-signature');
@@ -35,6 +54,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Check if event was already processed
+    if (await isEventProcessed(event.id)) {
+      console.log(`Event ${event.id} already processed, skipping`);
+      return NextResponse.json({ received: true });
+    }
+
     switch (event.type) {
       // Marketplace Connect events
       case 'payment_intent.succeeded': {
@@ -118,7 +143,7 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdate(subscription);
+        await handleSubscriptionUpdate(subscription, event);
         break;
       }
 
@@ -156,14 +181,18 @@ export async function POST(req: NextRequest) {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
+    // Mark event as processed after successful handling
+    await markEventAsProcessed(event);
+
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Webhook handler error:', error);
+    // Don't mark as processed if there was an error
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }
 
-async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription, event: Stripe.Event) {
   const customerId = subscription.customer as string;
   const customer = await stripe.customers.retrieve(customerId);
   
@@ -200,19 +229,34 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }, { merge: true });
 
   // Send confirmation email for new subscriptions
-  if (isNewSubscription && subscription.status === 'active' && customer.email) {
+  // Check event type to avoid sending multiple emails for updates
+  if (isNewSubscription && subscription.status === 'active' && customer.email && event.type === 'customer.subscription.created') {
     try {
-      // Find the plan name and features
-      const plan = Object.values(stripePlans).find(p => 
-        p.priceIdMonthly === priceId || p.priceIdYearly === priceId
-      );
+      // Check if we already sent an email for this subscription
+      const emailSentRef = doc(db, 'email_tracking', `sub_confirm_${subscription.id}`);
+      const emailSentDoc = await getDoc(emailSentRef);
       
-      if (plan) {
-        await sendSubscriptionConfirmationEmailServer(
-          customer.email,
-          plan.name,
-          plan.features
+      if (!emailSentDoc.exists()) {
+        // Find the plan name and features
+        const plan = Object.values(stripePlans).find(p => 
+          p.priceIdMonthly === priceId || p.priceIdYearly === priceId
         );
+        
+        if (plan) {
+          await sendSubscriptionConfirmationEmailServer(
+            customer.email,
+            plan.name,
+            plan.features
+          );
+          
+          // Mark email as sent
+          await setDoc(emailSentRef, {
+            sentAt: new Date(),
+            subscriptionId: subscription.id,
+            customerId: customerId,
+            email: customer.email,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to send subscription confirmation email:', error);
@@ -246,13 +290,26 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     updatedAt: new Date(),
   }, { merge: true });
   
-  // Send cancellation email
+  // Send cancellation email with idempotency check
   if (customer.email && userData?.displayName) {
     try {
-      await sendSubscriptionCancelledEmailServer(
-        customer.email,
-        userData.displayName || 'Valued Customer'
-      );
+      const emailSentRef = doc(db, 'email_tracking', `sub_cancel_${subscription.id}`);
+      const emailSentDoc = await getDoc(emailSentRef);
+      
+      if (!emailSentDoc.exists()) {
+        await sendSubscriptionCancelledEmailServer(
+          customer.email,
+          userData.displayName || 'Valued Customer'
+        );
+        
+        // Mark email as sent
+        await setDoc(emailSentRef, {
+          sentAt: new Date(),
+          subscriptionId: subscription.id,
+          customerId: customerId,
+          email: customer.email,
+        });
+      }
     } catch (error) {
       console.error('Failed to send subscription cancellation email:', error);
     }
@@ -269,15 +326,21 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const firebaseUid = customer.metadata.firebaseUid;
   
-  const paymentsRef = collection(db, 'users', firebaseUid, 'payments');
-  await addDoc(paymentsRef, {
-    invoiceId: invoice.id,
-    amount: invoice.amount_paid,
-    currency: invoice.currency,
-    status: 'succeeded',
-    paidAt: new Date(invoice.created * 1000),
-    createdAt: new Date(),
-  });
+  // Use invoice ID as document ID for idempotency
+  const paymentRef = doc(db, 'users', firebaseUid, 'payments', invoice.id);
+  
+  // Check if payment already recorded
+  const paymentDoc = await getDoc(paymentRef);
+  if (!paymentDoc.exists()) {
+    await setDoc(paymentRef, {
+      invoiceId: invoice.id,
+      amount: invoice.amount_paid,
+      currency: invoice.currency,
+      status: 'succeeded',
+      paidAt: new Date(invoice.created * 1000),
+      createdAt: new Date(),
+    });
+  }
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
@@ -290,8 +353,10 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   const firebaseUid = customer.metadata.firebaseUid;
   
-  const paymentsRef = collection(db, 'users', firebaseUid, 'payments');
-  await addDoc(paymentsRef, {
+  // Use invoice ID as document ID for idempotency
+  const paymentRef = doc(db, 'users', firebaseUid, 'payments', `${invoice.id}_failed_${Date.now()}`);
+  
+  await setDoc(paymentRef, {
     invoiceId: invoice.id,
     amount: invoice.amount_due,
     currency: invoice.currency,
@@ -300,26 +365,40 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     createdAt: new Date(),
   });
   
-  // Send payment failed email
+  // Send payment failed email with idempotency check
   if (customer.email && invoice.subscription) {
     try {
-      const userRef = doc(db, 'users', firebaseUid);
-      const userDoc = await getDoc(userRef);
-      const userData = userDoc.data();
+      const emailSentRef = doc(db, 'email_tracking', `payment_failed_${invoice.id}_${invoice.attempt_count}`);
+      const emailSentDoc = await getDoc(emailSentRef);
       
-      // Get the subscription to find the plan
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-      const priceId = subscription.items.data[0]?.price.id;
-      const plan = Object.values(stripePlans).find(p => 
-        p.priceIdMonthly === priceId || p.priceIdYearly === priceId
-      );
-      
-      await sendPaymentFailedEmailServer(
-        customer.email,
-        userData?.displayName || 'Valued Customer',
-        plan?.name || 'Premium',
-        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`
-      );
+      if (!emailSentDoc.exists()) {
+        const userRef = doc(db, 'users', firebaseUid);
+        const userDoc = await getDoc(userRef);
+        const userData = userDoc.data();
+        
+        // Get the subscription to find the plan
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+        const priceId = subscription.items.data[0]?.price.id;
+        const plan = Object.values(stripePlans).find(p => 
+          p.priceIdMonthly === priceId || p.priceIdYearly === priceId
+        );
+        
+        await sendPaymentFailedEmailServer(
+          customer.email,
+          userData?.displayName || 'Valued Customer',
+          plan?.name || 'Premium',
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`
+        );
+        
+        // Mark email as sent
+        await setDoc(emailSentRef, {
+          sentAt: new Date(),
+          invoiceId: invoice.id,
+          attemptCount: invoice.attempt_count,
+          customerId: customerId,
+          email: customer.email,
+        });
+      }
     } catch (error) {
       console.error('Failed to send payment failed email:', error);
     }
@@ -346,21 +425,35 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
   // Only send if trial ends in 3 days or less
   if (daysUntilEnd <= 3 && daysUntilEnd > 0) {
     try {
-      const userRef = doc(db, 'users', firebaseUid);
-      const userDoc = await getDoc(userRef);
-      const userData = userDoc.data();
+      const emailSentRef = doc(db, 'email_tracking', `trial_ending_${subscription.id}_${daysUntilEnd}d`);
+      const emailSentDoc = await getDoc(emailSentRef);
       
-      const priceId = subscription.items.data[0]?.price.id;
-      const plan = Object.values(stripePlans).find(p => 
-        p.priceIdMonthly === priceId || p.priceIdYearly === priceId
-      );
-      
-      await sendSubscriptionTrialEndingEmailServer(
-        customer.email,
-        userData?.displayName || 'Valued Customer',
-        daysUntilEnd,
-        plan?.name || 'Premium'
-      );
+      if (!emailSentDoc.exists()) {
+        const userRef = doc(db, 'users', firebaseUid);
+        const userDoc = await getDoc(userRef);
+        const userData = userDoc.data();
+        
+        const priceId = subscription.items.data[0]?.price.id;
+        const plan = Object.values(stripePlans).find(p => 
+          p.priceIdMonthly === priceId || p.priceIdYearly === priceId
+        );
+        
+        await sendSubscriptionTrialEndingEmailServer(
+          customer.email,
+          userData?.displayName || 'Valued Customer',
+          daysUntilEnd,
+          plan?.name || 'Premium'
+        );
+        
+        // Mark email as sent
+        await setDoc(emailSentRef, {
+          sentAt: new Date(),
+          subscriptionId: subscription.id,
+          daysUntilEnd: daysUntilEnd,
+          customerId: customerId,
+          email: customer.email,
+        });
+      }
     } catch (error) {
       console.error('Failed to send trial ending email:', error);
     }
@@ -381,17 +474,7 @@ async function handleUpcomingInvoice(invoice: Stripe.Invoice) {
   // Only send renewal reminders, not trial ending invoices
   if (invoice.subscription && invoice.billing_reason === 'subscription_cycle') {
     try {
-      const userRef = doc(db, 'users', firebaseUid);
-      const userDoc = await getDoc(userRef);
-      const userData = userDoc.data();
-      
       const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-      const priceId = subscription.items.data[0]?.price.id;
-      const plan = Object.values(stripePlans).find(p => 
-        p.priceIdMonthly === priceId || p.priceIdYearly === priceId
-      );
-      
-      // Calculate days until renewal
       const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
       if (!periodEnd) return;
       
@@ -399,17 +482,40 @@ async function handleUpcomingInvoice(invoice: Stripe.Invoice) {
       
       // Only send if renewal is in 7 days or less
       if (daysUntilRenewal <= 7 && daysUntilRenewal > 0) {
-        await sendSubscriptionRenewalEmailServer(
-          customer.email,
-          userData?.displayName || 'Valued Customer',
-          plan?.name || 'Premium',
-          (invoice.amount_due / 100).toFixed(2),
-          periodEnd.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })
-        );
+        const emailSentRef = doc(db, 'email_tracking', `renewal_${subscription.id}_${periodEnd.getTime()}`);
+        const emailSentDoc = await getDoc(emailSentRef);
+        
+        if (!emailSentDoc.exists()) {
+          const userRef = doc(db, 'users', firebaseUid);
+          const userDoc = await getDoc(userRef);
+          const userData = userDoc.data();
+          
+          const priceId = subscription.items.data[0]?.price.id;
+          const plan = Object.values(stripePlans).find(p => 
+            p.priceIdMonthly === priceId || p.priceIdYearly === priceId
+          );
+          
+          await sendSubscriptionRenewalEmailServer(
+            customer.email,
+            userData?.displayName || 'Valued Customer',
+            plan?.name || 'Premium',
+            (invoice.amount_due / 100).toFixed(2),
+            periodEnd.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })
+          );
+          
+          // Mark email as sent
+          await setDoc(emailSentRef, {
+            sentAt: new Date(),
+            subscriptionId: subscription.id,
+            periodEnd: periodEnd,
+            customerId: customerId,
+            email: customer.email,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to send renewal reminder email:', error);
@@ -423,85 +529,104 @@ async function handleMarketplacePaymentSucceeded(paymentIntent: Stripe.PaymentIn
     product_id,
     buyer_id,
     expert_id,
+    transaction_id,
   } = paymentIntent.metadata;
 
-  if (!product_id || !buyer_id || !expert_id) {
+  if (!product_id || !buyer_id || !expert_id || !transaction_id) {
     console.error('Missing required marketplace metadata:', paymentIntent.metadata);
     return;
   }
 
   // Find and update the transaction
-  const transactionsRef = collection(db, 'marketplace_transactions');
-  const transactionQuery = await getDoc(doc(transactionsRef, paymentIntent.metadata.transaction_id || ''));
+  const transactionRef = doc(db, 'marketplace_transactions', transaction_id);
+  const transactionDoc = await getDoc(transactionRef);
   
-  if (transactionQuery.exists()) {
-    await updateDoc(transactionQuery.ref, {
-      status: 'completed',
-      completedAt: new Date(),
-      updatedAt: new Date(),
-      stripePaymentIntentId: paymentIntent.id,
-    });
-
-    // Update product sales count
-    const productRef = doc(db, 'marketplace_products', product_id);
-    const productDoc = await getDoc(productRef);
+  if (transactionDoc.exists()) {
+    const currentData = transactionDoc.data();
     
-    if (productDoc.exists()) {
-      const currentSales = productDoc.data().salesCount || 0;
-      await updateDoc(productRef, {
-        salesCount: currentSales + 1,
-        lastSaleAt: new Date(),
+    // Only update if not already completed (idempotency)
+    if (currentData.status !== 'completed') {
+      await updateDoc(transactionRef, {
+        status: 'completed',
+        completedAt: new Date(),
         updatedAt: new Date(),
+        stripePaymentIntentId: paymentIntent.id,
       });
-    }
 
-    // Send confirmation emails
-    try {
-      // Get buyer and expert information
-      const [buyerDoc, expertDoc, productDoc] = await Promise.all([
-        getDoc(doc(db, 'users', buyer_id)),
-        getDoc(doc(db, 'users', expert_id)),
-        getDoc(doc(db, 'marketplace_products', product_id))
-      ]);
+      // Update product sales count
+      const productRef = doc(db, 'marketplace_products', product_id);
+      const productDoc = await getDoc(productRef);
       
-      const buyerData = buyerDoc.data();
-      const expertData = expertDoc.data();
-      const productData = productDoc.data();
-      
-      if (buyerData?.email && productData) {
-        // Send order confirmation to buyer
-        await sendBuyerOrderConfirmationEmailServer(
-          buyerData.email,
-          buyerData.displayName || 'Valued Customer',
-          productData.name,
-          expertData?.businessName || 'Expert',
-          (paymentIntent.amount / 100).toFixed(2),
-          new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })
-        );
+      if (productDoc.exists()) {
+        const currentSales = productDoc.data().salesCount || 0;
+        await updateDoc(productRef, {
+          salesCount: currentSales + 1,
+          lastSaleAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
-      
-      if (expertData?.email && productData) {
-        // Send new order notification to expert
-        const orderDetails = `
+
+      // Send confirmation emails with idempotency
+      try {
+        const emailSentRef = doc(db, 'email_tracking', `order_${transaction_id}`);
+        const emailSentDoc = await getDoc(emailSentRef);
+        
+        if (!emailSentDoc.exists()) {
+          // Get buyer and expert information
+          const [buyerDoc, expertDoc, productDataDoc] = await Promise.all([
+            getDoc(doc(db, 'users', buyer_id)),
+            getDoc(doc(db, 'users', expert_id)),
+            getDoc(doc(db, 'marketplace_products', product_id))
+          ]);
+          
+          const buyerData = buyerDoc.data();
+          const expertData = expertDoc.data();
+          const productData = productDataDoc.data();
+          
+          if (buyerData?.email && productData) {
+            // Send order confirmation to buyer
+            await sendBuyerOrderConfirmationEmailServer(
+              buyerData.email,
+              buyerData.displayName || 'Valued Customer',
+              productData.name,
+              expertData?.businessName || 'Expert',
+              (paymentIntent.amount / 100).toFixed(2),
+              new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })
+            );
+          }
+          
+          if (expertData?.email && productData) {
+            // Send new order notification to expert
+            const orderDetails = `
 Product: ${productData.name}
 Category: ${productData.category}
 Price: $${(paymentIntent.amount / 100).toFixed(2)}
-        `.trim();
-        
-        await sendExpertNewOrderEmailServer(
-          expertData.email,
-          expertData.displayName || expertData.businessName || 'Expert',
-          orderDetails,
-          buyerData?.displayName || 'Customer',
-          (paymentIntent.amount / 100).toFixed(2)
-        );
+            `.trim();
+            
+            await sendExpertNewOrderEmailServer(
+              expertData.email,
+              expertData.displayName || expertData.businessName || 'Expert',
+              orderDetails,
+              buyerData?.displayName || 'Customer',
+              (paymentIntent.amount / 100).toFixed(2)
+            );
+          }
+          
+          // Mark emails as sent
+          await setDoc(emailSentRef, {
+            sentAt: new Date(),
+            transactionId: transaction_id,
+            buyerEmail: buyerData?.email,
+            expertEmail: expertData?.email,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to send marketplace order emails:', error);
       }
-    } catch (error) {
-      console.error('Failed to send marketplace order emails:', error);
     }
   }
 }
@@ -511,24 +636,30 @@ async function handleMarketplacePaymentFailed(paymentIntent: Stripe.PaymentInten
     product_id,
     buyer_id,
     expert_id,
+    transaction_id,
   } = paymentIntent.metadata;
 
-  if (!product_id || !buyer_id || !expert_id) {
+  if (!product_id || !buyer_id || !expert_id || !transaction_id) {
     console.error('Missing required marketplace metadata:', paymentIntent.metadata);
     return;
   }
 
   // Find and update the transaction
-  const transactionsRef = collection(db, 'marketplace_transactions');
-  const transactionQuery = await getDoc(doc(transactionsRef, paymentIntent.metadata.transaction_id || ''));
+  const transactionRef = doc(db, 'marketplace_transactions', transaction_id);
+  const transactionDoc = await getDoc(transactionRef);
   
-  if (transactionQuery.exists()) {
-    await updateDoc(transactionQuery.ref, {
-      status: 'failed',
-      failedAt: new Date(),
-      updatedAt: new Date(),
-      failureReason: paymentIntent.last_payment_error?.message,
-    });
+  if (transactionDoc.exists()) {
+    const currentData = transactionDoc.data();
+    
+    // Only update if not already marked as failed
+    if (currentData.status !== 'failed' && currentData.status !== 'completed') {
+      await updateDoc(transactionRef, {
+        status: 'failed',
+        failedAt: new Date(),
+        updatedAt: new Date(),
+        failureReason: paymentIntent.last_payment_error?.message,
+      });
+    }
   }
 }
 
@@ -634,22 +765,28 @@ async function handlePayoutCreated(payout: Stripe.Payout) {
       const expertDoc = querySnapshot.docs[0];
       const expertData = expertDoc.data();
       
-      // Record the payout
+      // Check if payout already exists (idempotency)
       const payoutsRef = collection(db, 'marketplace_payouts');
-      await addDoc(payoutsRef, {
-        expertId: expertDoc.id,
-        userId: expertData.userId,
-        stripePayoutId: payout.id,
-        amount: payout.amount,
-        currency: payout.currency,
-        status: payout.status,
-        type: payout.type,
-        method: payout.method,
-        arrivalDate: payout.arrival_date ? new Date(payout.arrival_date * 1000) : null,
-        createdAt: new Date(),
-      });
+      const existingPayoutQuery = query(payoutsRef, where('stripePayoutId', '==', payout.id));
+      const existingPayout = await getDocs(existingPayoutQuery);
+      
+      if (existingPayout.empty) {
+        // Record the payout
+        await addDoc(payoutsRef, {
+          expertId: expertDoc.id,
+          userId: expertData.userId,
+          stripePayoutId: payout.id,
+          amount: payout.amount,
+          currency: payout.currency,
+          status: payout.status,
+          type: payout.type,
+          method: payout.method,
+          arrivalDate: payout.arrival_date ? new Date(payout.arrival_date * 1000) : null,
+          createdAt: new Date(),
+        });
 
-      console.log(`Recorded payout ${payout.id} for expert ${expertData.userId}`);
+        console.log(`Recorded payout ${payout.id} for expert ${expertData.userId}`);
+      }
     }
   } catch (error) {
     console.error('Error handling payout.created:', error);
@@ -665,15 +802,19 @@ async function handlePayoutPaid(payout: Stripe.Payout) {
     
     if (!querySnapshot.empty) {
       const payoutDoc = querySnapshot.docs[0];
+      const currentData = payoutDoc.data();
       
-      await updateDoc(payoutDoc.ref, {
-        status: 'paid',
-        paidAt: new Date(),
-        updatedAt: new Date(),
-      });
+      // Only update if not already marked as paid
+      if (currentData.status !== 'paid') {
+        await updateDoc(payoutDoc.ref, {
+          status: 'paid',
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        });
 
-      // TODO: Send payout confirmation email to expert
-      console.log(`Payout ${payout.id} marked as paid`);
+        // TODO: Send payout confirmation email to expert
+        console.log(`Payout ${payout.id} marked as paid`);
+      }
     }
   } catch (error) {
     console.error('Error handling payout.paid:', error);
@@ -709,19 +850,25 @@ async function handlePayoutFailed(payout: Stripe.Payout) {
 // Transfer Event Handlers
 async function handleTransferCreated(transfer: Stripe.Transfer) {
   try {
-    // Record the transfer (platform fee split)
+    // Check if transfer already exists (idempotency)
     const transfersRef = collection(db, 'marketplace_transfers');
-    await addDoc(transfersRef, {
-      stripeTransferId: transfer.id,
-      amount: transfer.amount,
-      currency: transfer.currency,
-      destination: transfer.destination,
-      sourceTransaction: transfer.source_transaction,
-      metadata: transfer.metadata,
-      createdAt: new Date(),
-    });
+    const existingTransferQuery = query(transfersRef, where('stripeTransferId', '==', transfer.id));
+    const existingTransfer = await getDocs(existingTransferQuery);
+    
+    if (existingTransfer.empty) {
+      // Record the transfer (platform fee split)
+      await addDoc(transfersRef, {
+        stripeTransferId: transfer.id,
+        amount: transfer.amount,
+        currency: transfer.currency,
+        destination: transfer.destination,
+        sourceTransaction: transfer.source_transaction,
+        metadata: transfer.metadata,
+        createdAt: new Date(),
+      });
 
-    console.log(`Recorded transfer ${transfer.id} to ${transfer.destination}`);
+      console.log(`Recorded transfer ${transfer.id} to ${transfer.destination}`);
+    }
   } catch (error) {
     console.error('Error handling transfer.created:', error);
   }

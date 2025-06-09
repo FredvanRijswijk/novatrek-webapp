@@ -466,5 +466,25 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if false;
     }
+    
+    // Webhook Events (for idempotency)
+    match /webhook_events/{eventId} {
+      allow read: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow webhooks to create (no auth required for webhook endpoints)
+      allow create: if true;
+      allow update, delete: if false;
+    }
+    
+    // Email Tracking (for idempotency)
+    match /email_tracking/{trackingId} {
+      allow read: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Allow webhooks to create (no auth required for webhook endpoints)
+      allow create: if true;
+      allow update, delete: if false;
+    }
   }
 }
