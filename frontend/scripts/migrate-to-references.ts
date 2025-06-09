@@ -79,7 +79,7 @@ class ReferenceFieldMigrator {
               
               // Verify expert exists
               const expertSnapshot = await expertRef.get()
-              if (expertSnapshot.exists()) {
+              if (expertSnapshot.exists) {
                 if (!dryRun) {
                   batch.update(productDoc.ref, {
                     expertRef: expertRef,
@@ -93,7 +93,7 @@ class ReferenceFieldMigrator {
                 this.stats.failed++
                 console.error(`✗ Failed ${productDoc.id} - expert ${product.expertId} not found`)
               }
-            } catch (error) {
+            } catch (error: any) {
               this.stats.failed++
               console.error(`✗ Failed ${productDoc.id} - ${error.message}`)
             }
@@ -224,12 +224,12 @@ class ReferenceFieldMigrator {
       const product = doc.data()
       try {
         const expertSnapshot = await product.expertRef.get()
-        if (expertSnapshot.exists()) {
+        if (expertSnapshot.exists) {
           console.log(`✓ ${doc.id} → valid expert reference`)
         } else {
           console.log(`✗ ${doc.id} → invalid expert reference`)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log(`✗ ${doc.id} → error checking reference: ${error.message}`)
       }
     }
