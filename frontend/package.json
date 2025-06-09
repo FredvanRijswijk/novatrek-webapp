@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "create-admin": "tsx scripts/create-admin.ts",
+    "migrate:references": "tsx scripts/migrate-to-references.ts"
   },
   "dependencies": {
     "@ai-sdk/google-vertex": "^2.2.24",

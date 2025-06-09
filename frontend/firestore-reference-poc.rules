@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for reference validation
+    function isValidUserRef(userRef) {
+      return userRef is path && 
+             exists(userRef) && 
+             get(userRef).data.role != null;
+    }
+    
+    function isValidExpertRef(expertRef) {
+      return expertRef is path && 
+             exists(expertRef) && 
+             get(expertRef).data.isApproved == true;
+    }
+    
+    function userOwnsExpert(userId, expertRef) {
+      return expertRef is path && 
+             get(expertRef).data.userId == userId;
+    }
+    
+    // Marketplace Experts
+    match /marketplace_experts/{expertId} {
+      allow read: if true; // Public profiles
+      
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.isApproved == false;
+      
+      allow update: if request.auth != null && (
+        // Expert can update their own profile
+        request.auth.uid == resource.data.userId ||
+        // Admin can approve experts
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      
+      allow delete: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Marketplace Products with Reference Support
+    match /marketplace_products/{productId} {
+      allow read: if true; // Public products
+      
+      allow create: if request.auth != null && (
+        // Legacy: Check string expertId
+        (request.resource.data.expertId != null &&
+         get(/databases/$(database)/documents/marketplace_experts/$(request.resource.data.expertId)).data.userId == request.auth.uid) ||
+        // New: Check expertRef reference
+        (request.resource.data.expertRef != null &&
+         userOwnsExpert(request.auth.uid, request.resource.data.expertRef))
+      );
+      
+      allow update: if request.auth != null && (
+        // Legacy: Check string expertId
+        (resource.data.expertId != null &&
+         get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid) ||
+        // New: Check expertRef reference
+        (resource.data.expertRef != null &&
+         userOwnsExpert(request.auth.uid, resource.data.expertRef)) ||
+        // Admin access
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      
+      allow delete: if request.auth != null && (
+        // Legacy: Check string expertId
+        (resource.data.expertId != null &&
+         get(/databases/$(database)/documents/marketplace_experts/$(resource.data.expertId)).data.userId == request.auth.uid) ||
+        // New: Check expertRef reference
+        (resource.data.expertRef != null &&
+         userOwnsExpert(request.auth.uid, resource.data.expertRef)) ||
+        // Admin access
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Marketplace Transactions with Reference Support
+    match /marketplace_transactions/{transactionId} {
+      allow read: if request.auth != null && (
+        // Legacy: String IDs
+        request.auth.uid == resource.data.buyerId ||
+        request.auth.uid == resource.data.sellerId ||
+        // New: Reference fields - buyer can read their own transactions
+        (resource.data.buyerRef != null && 
+         resource.data.buyerRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // New: Expert can read transactions for their products
+        (resource.data.expertRef != null &&
+         userOwnsExpert(request.auth.uid, resource.data.expertRef)) ||
+        // Admin access
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      
+      allow create: if request.auth != null && (
+        // Legacy: buyerId must match auth user
+        (request.resource.data.buyerId == request.auth.uid) ||
+        // New: buyerRef must point to auth user
+        (request.resource.data.buyerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      // Transactions are immutable except for status updates by system
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Marketplace Reviews with Reference Support
+    match /marketplace_reviews/{reviewId} {
+      allow read: if true; // Public reviews
+      
+      allow create: if request.auth != null && (
+        // Must be the buyer (legacy string ID)
+        request.resource.data.buyerId == request.auth.uid ||
+        // Must be the buyer (new reference)
+        (request.resource.data.buyerRef != null &&
+         request.resource.data.buyerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      ) && 
+      // Must have purchased the product
+      exists(/databases/$(database)/documents/marketplace_transactions/$(request.resource.data.transactionId));
+      
+      allow update: if request.auth != null && (
+        // Legacy: Original reviewer only
+        resource.data.buyerId == request.auth.uid ||
+        // New: Original reviewer via reference
+        (resource.data.buyerRef != null &&
+         resource.data.buyerRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow delete: if request.auth != null && (
+        // Reviewer can delete their own review
+        resource.data.buyerId == request.auth.uid ||
+        (resource.data.buyerRef != null &&
+         resource.data.buyerRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Admin can delete any review
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Example: Advanced rule using reference following
+    match /expert_analytics/{expertId} {
+      // Only the expert or admin can read analytics
+      allow read: if request.auth != null && (
+        // Direct ownership check
+        get(/databases/$(database)/documents/marketplace_experts/$(expertId)).data.userId == request.auth.uid ||
+        // Admin access
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      
+      // Analytics are system-generated only
+      allow write: if false;
+    }
+    
+    // Example: Collection group query security
+    match /{path=**}/marketplace_products/{productId} {
+      // Allow collection group queries for active products only
+      allow read: if resource.data.isActive == true;
+    }
+  }
+}
