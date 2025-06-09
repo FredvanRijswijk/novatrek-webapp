@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
 // Initialize Firebase Admin
 function initializeFirebaseAdmin() {
   if (getApps().length === 0) {
-    const serviceAccount = require('../../novatrek-dev-firebase-adminsdk.json')
+    const serviceAccount = require('../novatrek-dev-firebase-adminsdk.json')
     
     initializeApp({
       credential: cert(serviceAccount),
