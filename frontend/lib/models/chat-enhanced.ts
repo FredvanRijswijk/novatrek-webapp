@@ -83,7 +83,10 @@ export class ChatModelEnhanced {
     const messageMap = new Map<string, ChatMessageEnhanced>()
     
     // Add all messages to map to deduplicate
-    [...refMessages, ...stringMessages].forEach(msg => {
+    refMessages.forEach(msg => {
+      messageMap.set(msg.id, msg)
+    })
+    stringMessages.forEach(msg => {
       messageMap.set(msg.id, msg)
     })
 
@@ -118,7 +121,10 @@ export class ChatModelEnhanced {
     // Combine and deduplicate
     const messageMap = new Map<string, ChatMessageEnhanced>()
     
-    [...refMessages, ...stringMessages].forEach(msg => {
+    refMessages.forEach(msg => {
+      messageMap.set(msg.id, msg)
+    })
+    stringMessages.forEach(msg => {
       messageMap.set(msg.id, msg)
     })
 
@@ -251,7 +257,11 @@ export class ChatModelEnhanced {
     const messageIds = new Set<string>()
     const tripIds = new Set<string>()
     
-    [...refMessages, ...stringMessages].forEach(msg => {
+    refMessages.forEach(msg => {
+      messageIds.add(msg.id)
+      if (msg.tripId) tripIds.add(msg.tripId)
+    })
+    stringMessages.forEach(msg => {
       messageIds.add(msg.id)
       if (msg.tripId) tripIds.add(msg.tripId)
     })
@@ -269,7 +279,10 @@ export class ChatModelEnhanced {
     ])
 
     const sessionIds = new Set<string>()
-    [...refSessions, ...stringSessions].forEach(session => {
+    refSessions.forEach(session => {
+      sessionIds.add(session.id)
+    })
+    stringSessions.forEach(session => {
       sessionIds.add(session.id)
     })
 
