@@ -19,7 +19,7 @@ import {
   EyeOff,
   AlertCircle
 } from "lucide-react"
-import { signInWithGoogle, createUserWithEmailAndPassword, getAuthErrorMessage } from "@/lib/firebase/auth"
+import { signInWithGoogle, signUpWithEmail, getAuthErrorMessage } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -74,7 +74,7 @@ export default function SignUpPage() {
     }
     
     try {
-      await createUserWithEmailAndPassword(email, password)
+      await signUpWithEmail(email, password)
       // Redirect will happen automatically via useEffect
     } catch (error: any) {
       setError(getAuthErrorMessage(error))
