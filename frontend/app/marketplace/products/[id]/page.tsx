@@ -36,6 +36,7 @@ import {
 import Image from 'next/image'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { track } from '@vercel/analytics'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -93,6 +94,15 @@ export default function ProductDetailPage({ params }: PageProps) {
   }
 
   const handleBooking = async () => {
+    track('click', { 
+      button: 'book_now', 
+      page: 'product_detail',
+      productId: resolvedParams.id,
+      productType: product?.type,
+      productPrice: product?.price,
+      expertId: expert?.id
+    })
+    
     if (!user) {
       router.push('/login')
       return
@@ -474,7 +484,19 @@ export default function ProductDetailPage({ params }: PageProps) {
                     <p className="text-sm text-muted-foreground line-clamp-3">{expert.bio}</p>
                   )}
 
-                  <Button variant="outline" className="w-full" asChild>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => {
+                      track('click', { 
+                        button: 'view_expert_profile_from_product', 
+                        page: 'product_detail',
+                        productId: resolvedParams.id,
+                        expertId: expert.id
+                      })
+                    }}
+                    asChild
+                  >
                     <Link href={`/marketplace/experts/${expert.id}`}>
                       View Profile
                     </Link>

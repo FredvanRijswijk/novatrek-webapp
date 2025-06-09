@@ -15,77 +15,54 @@ import {
   Users,
   Star
 } from "lucide-react"
-import { signInWithGoogle } from "@/lib/firebase/auth"
+import { signInWithGoogle, signInWithEmail, getAuthErrorMessage } from "@/lib/firebase/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useSubscription } from "@/hooks/use-subscription"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { 
+  Eye,
+  EyeOff,
+  AlertCircle
+} from "lucide-react"
 
-export default function Home() {
-  const { isAuthenticated, user } = useFirebase()
-  const { subscription, loading: subLoading, fetchSubscriptionStatus } = useSubscription()
+export default function LoginPage() {
+  const { isAuthenticated } = useFirebase()
   const router = useRouter()
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [checkingSubscription, setCheckingSubscription] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (isAuthenticated && !checkingSubscription && !subLoading) {
-      checkSubscriptionAndRedirect()
-    }
-  }, [isAuthenticated, subLoading])
-
-  const checkSubscriptionAndRedirect = async () => {
-    setCheckingSubscription(true)
-    
-    try {
-      // Skip subscription check for now - go directly to dashboard
+    if (isAuthenticated) {
       router.push('/dashboard')
-      
-      // Original subscription check code (commented out for now)
-      /*
-      // Fetch latest subscription status
-      const subscriptionData = await fetchSubscriptionStatus()
-      
-      // Check subscription and redirect accordingly
-      if (subscriptionData?.isActive) {
-        router.push('/dashboard')
-      } else {
-        router.push('/onboarding')
-      }
-      */
-    } catch (error) {
-      console.error('Error checking subscription:', error)
-      // Default to dashboard for now
-      router.push('/dashboard')
-    } finally {
-      setCheckingSubscription(false)
     }
-  }
+  }, [isAuthenticated, router])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
+    setError('')
     try {
       await signInWithGoogle()
-      // Subscription check will happen automatically via useEffect
-    } catch (error) {
-      console.error('Sign in error:', error)
+      // Redirect will happen automatically via useEffect
+    } catch (error: any) {
+      setError(getAuthErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleEmailSignUp = async (e: React.FormEvent) => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
     
     try {
-      // For now, redirect to a proper signup page
-      // We'll create this page next
-      router.push(`/signup?email=${encodeURIComponent(email)}`)
+      await signInWithEmail(email, password)
+      // Redirect will happen automatically via useEffect
     } catch (error: any) {
-      console.error('Sign up error:', error)
-      setError(error.message || 'Failed to sign up')
+      setError(getAuthErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -109,12 +86,20 @@ export default function Home() {
             </div>
             
             <h1 className="text-2xl font-semibold mb-2">
-              Get started with NovaTrek
+              Welcome back
             </h1>
             <p className="text-muted-foreground">
-              Try NovaTrek free
+              Sign in to your account
             </p>
           </div>
+
+          {/* Error alert */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Social sign in buttons */}
           <div className="space-y-3">
@@ -163,38 +148,66 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Email sign up form */}
-          <form onSubmit={handleEmailSignUp} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12"
-              required
-            />
+          {/* Email sign in form */}
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12"
+                required
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 pr-10"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            
             <Button 
               type="submit" 
               className="w-full py-6 text-base bg-gray-900 hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              disabled={isLoading}
             >
-              SIGN UP
+              {isLoading ? "Signing in..." : "SIGN IN"}
             </Button>
           </form>
 
           <p className="text-center text-sm">
-            Already have an account?{" "}
-            <Link href="/login-admin" className="text-primary hover:underline font-medium">
-              Sign in
+            Don't have an account?{" "}
+            <Link href="/signup" className="text-primary hover:underline font-medium">
+              Sign up
             </Link>
           </p>
 
-          {/* Legal text */}
-          <p className="text-xs text-muted-foreground text-center">
-            By creating an account, you agree to our{" "}
-            <a href="#" className="underline">Terms of Service</a> and{" "}
-            <a href="#" className="underline">Privacy Policy</a>. You also
-            acknowledge that you have reviewed our{" "}
-            <a href="#" className="underline">Travel Guidelines</a>.
+          {/* Forgot password link */}
+          <p className="text-center">
+            <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
+              Forgot your password?
+            </Link>
           </p>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ import { collection, query, where, orderBy, limit, getDocs } from 'firebase/fire
 import { MarketplaceProduct, TravelExpert } from '@/lib/models/marketplace'
 import Image from 'next/image'
 import Link from 'next/link'
+import { track } from '@vercel/analytics'
 
 const DESTINATION_ICONS: Record<string, any> = {
   'city': Building,
@@ -162,6 +164,13 @@ export default function MarketplacePage() {
   })
 
   const toggleFavorite = (productId: string) => {
+    const isAdding = !favorites.includes(productId)
+    track('click', { 
+      button: 'favorite_product', 
+      page: 'marketplace',
+      action: isAdding ? 'add' : 'remove',
+      productId 
+    })
     setFavorites(prev => 
       prev.includes(productId) 
         ? prev.filter(id => id !== productId)
@@ -179,7 +188,7 @@ export default function MarketplacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <PublicLayout>
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b">
         <div className="container mx-auto px-4 py-16">
@@ -439,7 +448,19 @@ export default function MarketplacePage() {
                     </CardContent>
 
                     <CardFooter className="p-4 pt-0">
-                      <Button asChild className="w-full group">
+                      <Button 
+                        asChild 
+                        className="w-full group"
+                        onClick={() => {
+                          track('click', { 
+                            button: 'view_product_details', 
+                            page: 'marketplace',
+                            productId: product.id,
+                            productType: product.type,
+                            productPrice: product.price
+                          })
+                        }}
+                      >
                         <Link href={`/marketplace/products/${product.id}`}>
                           View Details
                           <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -453,6 +474,6 @@ export default function MarketplacePage() {
           </div>
         </div>
       </div>
-    </div>
+    </PublicLayout>
   )
 }

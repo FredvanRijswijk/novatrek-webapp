@@ -1,4 +1,6 @@
-import { Metadata } from 'next'
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Star, MapPin, Languages, Award, Calendar } from 'lucide-react'
@@ -10,38 +12,19 @@ import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marke
 import { TravelExpert } from '@/lib/models/marketplace'
 import type { MarketplaceExpertEnhanced } from '@/lib/models/marketplace-enhanced'
 import { formatLocation, generateSlug } from '@/lib/utils/slug'
+import { track } from '@vercel/analytics'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 
-export const metadata: Metadata = {
-  title: 'Travel Experts | NovaTrek - Find Your Perfect Travel Planner',
-  description: 'Connect with certified travel experts, local guides, and trip planning specialists. Browse profiles, read reviews, and book consultations for your next adventure.',
-  keywords: 'travel experts, trip planners, local guides, travel consultants, vacation planning, travel advisors',
-  openGraph: {
-    title: 'Travel Experts | NovaTrek',
-    description: 'Connect with certified travel experts for personalized trip planning',
-    type: 'website',
-    url: 'https://novatrek.app/experts',
-    images: [
-      {
-        url: 'https://novatrek.app/og-experts.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'NovaTrek Travel Experts'
-      }
-    ]
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Travel Experts | NovaTrek',
-    description: 'Connect with certified travel experts for personalized trip planning',
-    images: ['https://novatrek.app/og-experts.jpg']
-  }
-}
+function ExpertsPage() {
+  const [experts, setExperts] = useState<TravelExpert[]>([])
+  const [loading, setLoading] = useState(true)
 
-async function getExperts(): Promise<TravelExpert[]> {
-  try {
-    const experts = await MarketplaceModel.getActiveExperts(50)
-    // Convert enhanced experts to regular TravelExpert type
-    return experts.map(expert => ({
+  useEffect(() => {
+    async function fetchExperts() {
+      try {
+        const expertsData = await MarketplaceModel.getActiveExperts(50)
+        // Convert enhanced experts to regular TravelExpert type
+        const formattedExperts = expertsData.map(expert => ({
       ...expert,
       // Ensure all required fields are present
       id: expert.id,
@@ -70,19 +53,21 @@ async function getExperts(): Promise<TravelExpert[]> {
       availability: expert.availability || {},
       responseTime: expert.responseTime,
       createdAt: expert.createdAt,
-      updatedAt: expert.updatedAt
-    } as TravelExpert))
-  } catch (error) {
-    console.error('Error fetching experts:', error)
-    return []
-  }
-}
-
-export default async function ExpertsPage() {
-  const experts = await getExperts()
+          updatedAt: expert.updatedAt
+        } as TravelExpert))
+        setExperts(formattedExperts)
+      } catch (error) {
+        console.error('Error fetching experts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchExperts()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
+    <PublicLayout>
       {/* Hero Section */}
       <section className="relative py-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
@@ -94,7 +79,13 @@ export default async function ExpertsPage() {
             From local guides to luxury planners, find the expert who matches your travel style.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg" asChild>
+            <Button 
+              size="lg" 
+              onClick={() => {
+                track('click', { button: 'become_expert_hero', page: 'experts' })
+              }}
+              asChild
+            >
               <Link href="/dashboard/become-expert">Become an Expert</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
@@ -109,13 +100,36 @@ export default async function ExpertsPage() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8">Featured Travel Experts</h2>
           
-          {experts.length === 0 ? (
+          {loading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="aspect-[4/3] bg-muted animate-pulse" />
+                  <CardHeader>
+                    <div className="h-4 bg-muted rounded animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-2/3 animate-pulse mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : experts.length === 0 ? (
             <Card className="p-12 text-center">
               <CardContent>
                 <p className="text-lg text-muted-foreground mb-4">
                   No experts available at the moment.
                 </p>
-                <Button asChild>
+                <Button 
+                  onClick={() => {
+                    track('click', { button: 'be_first_expert', page: 'experts' })
+                  }}
+                  asChild
+                >
                   <Link href="/dashboard/become-expert">Be the First Expert</Link>
                 </Button>
               </CardContent>
@@ -175,21 +189,40 @@ export default async function ExpertsPage() {
           <p className="text-lg mb-8 opacity-90">
             Join our community of travel experts and earn by helping others plan their perfect trips.
           </p>
-          <Button size="lg" variant="secondary" asChild>
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            onClick={() => {
+              track('click', { button: 'apply_expert_cta', page: 'experts' })
+            }}
+            asChild
+          >
             <Link href="/dashboard/become-expert">Apply to Become an Expert</Link>
           </Button>
         </div>
       </section>
-    </div>
+    </PublicLayout>
   )
 }
+
+export default ExpertsPage
 
 function ExpertCard({ expert }: { expert: TravelExpert }) {
   const location = formatLocation(expert.location)
   
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <Link href={`/experts/${expert.slug}`}>
+      <Link 
+        href={`/experts/${expert.slug}`}
+        onClick={() => {
+          track('click', { 
+            button: 'expert_card_image', 
+            page: 'experts',
+            expertId: expert.id,
+            expertSlug: expert.slug
+          })
+        }}
+      >
         <div className="aspect-[4/3] relative">
           {expert.profileImageUrl ? (
             <Image
@@ -270,7 +303,19 @@ function ExpertCard({ expert }: { expert: TravelExpert }) {
               <span>New expert</span>
             )}
           </div>
-          <Button size="sm" asChild>
+          <Button 
+            size="sm" 
+            onClick={() => {
+              track('click', { 
+                button: 'view_expert_profile', 
+                page: 'experts',
+                expertId: expert.id,
+                expertSlug: expert.slug,
+                expertRating: expert.rating
+              })
+            }}
+            asChild
+          >
             <Link href={`/experts/${expert.slug}`}>View Profile</Link>
           </Button>
         </div>
