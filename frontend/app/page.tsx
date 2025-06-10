@@ -203,7 +203,7 @@ export default function LandingPage() {
                 xmlns="http://www.w3.org/2000/svg"
                 className="rounded-lg"
               >
-                <rect width="96" height="96" fill="#1A272D"></rect>
+                <rect width="96" height="96" fill="#000000"></rect>
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"
@@ -216,28 +216,34 @@ export default function LandingPage() {
 
             <div className="hidden md:flex items-center gap-8">
               <Link
-                href="#features"
+                href="/about"
                 className="text-sm font-medium hover:text-primary"
               >
-                Features
+                About
               </Link>
               <Link
-                href="#marketplace"
+                href="/marketplace"
                 className="text-sm font-medium hover:text-primary"
               >
                 Marketplace
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Pricing
               </Link>
               <Link
                 href="/experts"
                 className="text-sm font-medium hover:text-primary"
               >
                 Experts
+              </Link>
+              <Link
+                href="/pricing"
+                className="text-sm font-medium hover:text-primary"
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/contact"
+                className="text-sm font-medium hover:text-primary"
+              >
+                Contact
               </Link>
             </div>
 

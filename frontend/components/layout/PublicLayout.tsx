@@ -30,7 +30,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   xmlns="http://www.w3.org/2000/svg"
                   className="rounded-lg"
                 >
-                  <rect width="96" height="96" fill="#1A272D"></rect>
+                  <rect width="96" height="96" fill="#000000"></rect>
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
