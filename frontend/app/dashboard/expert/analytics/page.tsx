@@ -13,7 +13,7 @@ import {
   TrendingUp, 
   TrendingDown, 
   Package, 
-  DollarSign, 
+  Euro, 
   ShoppingCart,
   Eye,
   Star,
@@ -229,9 +229,9 @@ export default function ExpertAnalyticsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-EU', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 0
     }).format(amount)
   }
@@ -262,7 +262,7 @@ export default function ExpertAnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(analyticsData.totalRevenue)}</div>
@@ -296,7 +296,7 @@ export default function ExpertAnalyticsPage() {
             <div className="text-2xl font-bold">
               {analyticsData.totalOrders > 0 
                 ? formatCurrency(analyticsData.totalRevenue / analyticsData.totalOrders)
-                : '$0'
+                : formatCurrency(0)
               }
             </div>
             <p className="text-xs text-muted-foreground">Per transaction</p>
@@ -353,7 +353,7 @@ export default function ExpertAnalyticsPage() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <Euro className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No revenue data for this period</p>
                 </div>
               )}

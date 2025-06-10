@@ -67,7 +67,7 @@ const milestones = [
   },
   {
     date: 'Q3 2023',
-    title: '$1.5M Seed Round',
+    title: '€1.5M Seed Round',
     description: 'Led by prominent Silicon Valley angels'
   },
   {
@@ -88,7 +88,7 @@ const milestones = [
   {
     date: 'Q1 2025',
     title: 'Series A (Raising)',
-    description: 'Targeting $10M to scale globally'
+    description: 'Targeting €10M to scale globally'
   }
 ]
 

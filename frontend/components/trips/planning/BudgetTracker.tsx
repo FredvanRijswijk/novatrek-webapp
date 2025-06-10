@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, DollarSign, TrendingUp, PieChart, Wallet, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Euro, TrendingUp, PieChart, Wallet, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -34,6 +34,7 @@ import {
 import { Trip, Budget, Expense } from '@/types/travel';
 import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { cn } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { useFirebase } from '@/lib/firebase/context';
 

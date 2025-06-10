@@ -154,18 +154,18 @@ function PlanCard({ planKey, isCurrentPlan, isYearly, onSelect, loading, recomme
             <>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-4xl font-bold">
-                  ${isYearly ? monthlyEquivalent.toFixed(2) : price.toFixed(2)}
+                  €{isYearly ? monthlyEquivalent.toFixed(2) : price.toFixed(2)}
                 </span>
                 <span className="text-muted-foreground">/month</span>
               </div>
               {isYearly && (
                 <div className="mt-2 space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    Billed annually at ${plan.yearlyPrice?.toFixed(2)}
+                    Billed annually at €{plan.yearlyPrice?.toFixed(2)}
                   </p>
                   {savings > 0 && (
                     <p className="text-sm text-green-600 font-medium">
-                      Save ${savings.toFixed(0)} per year
+                      Save €{savings.toFixed(0)} per year
                     </p>
                   )}
                 </div>

@@ -389,7 +389,7 @@ export default function TravelPreferencesForm({ onComplete }: { onComplete?: () 
                 </Label>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm w-20">Min: ${preferences.budgetRange?.min || 0}</span>
+                    <span className="text-sm w-20">Min: €{preferences.budgetRange?.min || 0}</span>
                     <Slider
                       value={[preferences.budgetRange?.min || 0]}
                       onValueChange={([value]) => 
@@ -404,7 +404,7 @@ export default function TravelPreferencesForm({ onComplete }: { onComplete?: () 
                     />
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm w-20">Max: ${preferences.budgetRange?.max || 5000}</span>
+                    <span className="text-sm w-20">Max: €{preferences.budgetRange?.max || 5000}</span>
                     <Slider
                       value={[preferences.budgetRange?.max || 5000]}
                       onValueChange={([value]) => 

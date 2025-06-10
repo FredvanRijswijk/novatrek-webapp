@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     // Create payment intent on the connected account with platform fee
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
-      currency: product.currency || 'usd',
+      currency: product.currency || 'eur',
       payment_method_types: ['card'],
       metadata: {
         product_id: productId,

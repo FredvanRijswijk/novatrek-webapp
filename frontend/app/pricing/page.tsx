@@ -7,11 +7,12 @@ import { PublicLayout } from '@/components/layout/PublicLayout'
 import { Check, Sparkles, ArrowRight } from 'lucide-react'
 import { track } from '@vercel/analytics'
 import { useRouter } from 'next/navigation'
+import { formatPrice } from '@/lib/utils/currency'
 
 const pricingPlans = [
   {
     name: 'Free',
-    price: '$0',
+    price: formatPrice(0),
     description: 'Perfect for casual travelers',
     features: [
       '1 active trip',
@@ -25,7 +26,7 @@ const pricingPlans = [
   },
   {
     name: 'Basic',
-    price: '$9.99',
+    price: formatPrice(9.99),
     period: '/month',
     description: 'For regular travelers',
     features: [
@@ -43,7 +44,7 @@ const pricingPlans = [
   },
   {
     name: 'Pro',
-    price: '$29.99',
+    price: formatPrice(29.99),
     period: '/month',
     description: 'For travel enthusiasts',
     features: [

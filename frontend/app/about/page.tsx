@@ -294,6 +294,7 @@ export default function AboutPage() {
       </section>
 
       {/* Team */}
+      {/* Hidden for now
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -323,6 +324,7 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+      */}
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-primary text-primary-foreground">

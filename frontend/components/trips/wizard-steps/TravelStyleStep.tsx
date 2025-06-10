@@ -9,7 +9,7 @@ import {
   Wallet, 
   Home, 
   Heart, 
-  DollarSign,
+  Euro,
   Utensils,
   Camera,
   Mountain,
@@ -203,7 +203,7 @@ export function TravelStyleStep({ formData, updateFormData, userProfile }: Trave
           <div>
             <Label htmlFor="minBudget">Minimum Budget</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="minBudget"
                 type="number"
@@ -217,7 +217,7 @@ export function TravelStyleStep({ formData, updateFormData, userProfile }: Trave
           <div>
             <Label htmlFor="maxBudget">Maximum Budget</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="maxBudget"
                 type="number"
@@ -233,13 +233,13 @@ export function TravelStyleStep({ formData, updateFormData, userProfile }: Trave
             <select
               id="currency"
               className="w-full px-3 py-2 border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800"
-              value={formData.budgetRange?.currency || 'USD'}
+              value={formData.budgetRange?.currency || 'EUR'}
               onChange={(e) => updateFormData({
                 budgetRange: { ...formData.budgetRange, currency: e.target.value }
               })}
             >
-              <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
+              <option value="USD">USD ($)</option>
               <option value="GBP">GBP (£)</option>
               <option value="JPY">JPY (¥)</option>
               <option value="CAD">CAD ($)</option>

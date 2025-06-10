@@ -161,11 +161,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/investors" className="hover:text-primary">
-                    Investors
-                  </Link>
-                </li>
-                <li>
                   <Link href="/contact" className="hover:text-primary">
                     Contact
                   </Link>

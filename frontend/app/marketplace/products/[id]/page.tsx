@@ -24,7 +24,7 @@ import {
   Shield,
   Award,
   MessageCircle,
-  DollarSign,
+  Euro,
   Sparkles,
   Info,
   Globe,
@@ -113,9 +113,9 @@ export default function ProductDetailPage({ params }: PageProps) {
   }
 
   const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-EU', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(cents / 100)

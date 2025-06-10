@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         amount: product.price,
         platformFee: platformFeeAmount,
         sellerEarnings: expertEarnings,
-        currency: product.currency || 'usd',
+        currency: product.currency || 'eur',
         status: 'pending',
         customerDetails: {
           name: customerDetails.name,

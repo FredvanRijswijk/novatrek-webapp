@@ -19,7 +19,7 @@ import {
   Star,
   MessageSquare,
   Calendar,
-  DollarSign,
+  Euro,
   Globe,
   Shield,
   Zap,
@@ -36,6 +36,7 @@ import {
   BarChart3,
   Sun,
 } from "lucide-react";
+import { formatPrice } from "@/lib/utils/currency";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useState } from "react";
 import Link from "next/link";
@@ -67,7 +68,7 @@ const features = [
       "Save travel inspiration from anywhere on the web. Our browser extension and email integration capture everything.",
   },
   {
-    icon: DollarSign,
+    icon: Euro,
     title: "Smart Budget Tracking",
     description:
       "Track expenses by category, split costs with travel companions, and stay within budget with real-time insights.",
@@ -104,7 +105,7 @@ const expertFeatures = [
 const pricingPlans = [
   {
     name: "Free",
-    price: "$0",
+    price: formatPrice(0),
     description: "Perfect for casual travelers",
     features: [
       "1 active trip",
@@ -117,7 +118,7 @@ const pricingPlans = [
   },
   {
     name: "Basic",
-    price: "$9.99",
+    price: formatPrice(9.99),
     period: "/month",
     description: "For regular travelers",
     features: [
@@ -133,7 +134,7 @@ const pricingPlans = [
   },
   {
     name: "Pro",
-    price: "$29.99",
+    price: formatPrice(29.99),
     period: "/month",
     description: "For travel enthusiasts",
     features: [
