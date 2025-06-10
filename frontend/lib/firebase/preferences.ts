@@ -149,9 +149,17 @@ function getDefaultPreferences(): Partial<TravelPreferences> {
 export async function markPreferencesAsUsed(userId: string): Promise<void> {
   try {
     const prefsRef = doc(db, PREFERENCES_COLLECTION, userId)
-    await updateDoc(prefsRef, {
-      lastUsedAt: serverTimestamp(),
-    })
+    // Check if document exists first
+    const prefsSnap = await getDoc(prefsRef)
+    
+    if (prefsSnap.exists()) {
+      await updateDoc(prefsRef, {
+        lastUsedAt: serverTimestamp(),
+      })
+    } else {
+      // If preferences don't exist, don't try to update
+      console.warn('Preferences document does not exist for user:', userId)
+    }
   } catch (error) {
     console.error('Error updating last used timestamp:', error)
   }

@@ -5,9 +5,10 @@ import { RecommendationModel } from '@/lib/models/recommendations';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -32,7 +33,7 @@ export async function PATCH(
     }
 
     // Update recommendation status
-    await RecommendationModel.updateRecommendationStatus(params.id, status);
+    await RecommendationModel.updateRecommendationStatus(id, status);
 
     return NextResponse.json({ success: true });
 

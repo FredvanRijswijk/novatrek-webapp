@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Save to NovaTrek</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Login View -->
+    <div id="login-view" class="view hidden">
+      <div class="header">
+        <img src="icon-48.png" alt="NovaTrek" class="logo">
+        <h1>NovaTrek</h1>
+      </div>
+      <p class="subtitle">Save travel inspiration from anywhere</p>
+      
+      <div class="login-prompt">
+        <p>Please log in to save content</p>
+        <button id="login-btn" class="btn btn-primary">
+          Log in to NovaTrek
+        </button>
+      </div>
+    </div>
+
+    <!-- Logged In View -->
+    <div id="main-view" class="view hidden">
+      <div class="header">
+        <img src="icon-48.png" alt="NovaTrek" class="logo">
+        <h1>Save to NovaTrek</h1>
+      </div>
+
+      <div class="save-form">
+        <div class="current-page">
+          <div class="page-title" id="page-title"></div>
+          <div class="page-url" id="page-url"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Add a note (optional)</label>
+          <textarea id="notes" placeholder="Why is this interesting?"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="tags">Tags</label>
+          <input type="text" id="tags" placeholder="restaurant, tokyo, must-try">
+        </div>
+
+        <div class="form-group">
+          <label for="trip-select">Add to trip</label>
+          <select id="trip-select">
+            <option value="">Someday/Maybe</option>
+            <!-- Trips will be loaded here -->
+          </select>
+        </div>
+
+        <div class="actions">
+          <button id="save-btn" class="btn btn-primary">
+            <span class="btn-text">Save</span>
+            <span class="spinner hidden">●●●</span>
+          </button>
+          <button id="quick-save-btn" class="btn btn-secondary">
+            Quick Save
+          </button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <a href="#" id="open-dashboard">Open Dashboard</a>
+        <a href="#" id="logout">Logout</a>
+      </div>
+    </div>
+
+    <!-- Success View -->
+    <div id="success-view" class="view hidden">
+      <div class="success-icon">✓</div>
+      <h2>Saved!</h2>
+      <p>This page has been saved to your travel inbox</p>
+      <button id="view-in-app" class="btn btn-secondary">View in App</button>
+      <button id="save-another" class="btn btn-link">Save Another</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

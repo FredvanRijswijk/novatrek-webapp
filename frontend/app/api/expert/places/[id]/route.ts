@@ -5,9 +5,10 @@ import { RecommendationModel } from '@/lib/models/recommendations';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -26,7 +27,7 @@ export async function DELETE(
     }
 
     // Delete the saved place
-    await RecommendationModel.deleteExpertSavedPlace(params.id);
+    await RecommendationModel.deleteExpertSavedPlace(id);
 
     return NextResponse.json({ success: true });
 

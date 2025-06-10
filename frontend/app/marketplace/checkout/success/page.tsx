@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useFirebase } from '@/lib/firebase/context'
 import { MarketplaceModelEnhanced as MarketplaceModel } from '@/lib/models/marketplace-enhanced'
@@ -12,7 +12,7 @@ import { CheckCircle, Download, MessageCircle, Calendar, ArrowRight } from 'luci
 import Link from 'next/link'
 import confetti from 'canvas-confetti'
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useFirebase()
@@ -200,5 +200,13 @@ export default function CheckoutSuccessPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }

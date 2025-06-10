@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react'
 export default function ExtensionAuthPage() {
   const { user, isAuthenticated } = useFirebase()
   const [status, setStatus] = useState<'checking' | 'success' | 'error'>('checking')
+  const [tokenData, setTokenData] = useState<{ token: string; userId: string } | null>(null)
 
   useEffect(() => {
     async function handleAuth() {
@@ -28,13 +29,44 @@ export default function ExtensionAuthPage() {
         tokenDiv.style.display = 'none'
         document.body.appendChild(tokenDiv)
         
+        console.log('[Extension Auth] Token element created with ID:', user.uid)
+        console.log('[Extension Auth] Token element:', document.getElementById('extension-auth-token'))
+        
+        // Store token data for the client script
+        setTokenData({ token, userId: user.uid })
+        
+        // Send token via multiple methods to ensure extension receives it
+        const sendTokenToExtension = () => {
+          // Method 1: PostMessage to window
+          window.postMessage({
+            type: 'NOVATREK_AUTH_TOKEN',
+            token,
+            userId: user.uid
+          }, '*')
+          
+          // Method 2: Custom event
+          const event = new CustomEvent('novatrek-auth', {
+            detail: { token, userId: user.uid }
+          })
+          window.dispatchEvent(event)
+          
+          console.log('[Extension Auth] Sent token via postMessage and custom event')
+        }
+        
+        // Send immediately and after delays
+        sendTokenToExtension()
+        setTimeout(sendTokenToExtension, 500)
+        setTimeout(sendTokenToExtension, 1000)
+        
         setStatus('success')
         
         // Show success message
         setTimeout(() => {
           // The extension should close this tab
-          // If it doesn't, we'll close it ourselves
-          window.close()
+          // If it doesn't, we'll close it ourselves after a longer delay
+          setTimeout(() => {
+            window.close()
+          }, 5000)
         }, 2000)
       } catch (error) {
         console.error('Failed to get auth token:', error)

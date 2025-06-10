@@ -15,6 +15,7 @@ if (remoteConfig) {
     feature_group_travel: false,
     feature_ai_itinerary_optimization: true,
     feature_photo_uploads: true,
+    feature_investors_page: false,
     
     // Configuration values
     max_trip_photos: 50,
@@ -33,6 +34,7 @@ export interface FeatureFlags {
   groupTravel: boolean
   aiItineraryOptimization: boolean
   photoUploads: boolean
+  investorsPage: boolean
 }
 
 // Configuration interface
@@ -64,6 +66,7 @@ export function getFeatureFlags(): FeatureFlags {
       groupTravel: false,
       aiItineraryOptimization: true,
       photoUploads: true,
+      investorsPage: false,
     }
   }
   
@@ -72,6 +75,7 @@ export function getFeatureFlags(): FeatureFlags {
     groupTravel: getValue(remoteConfig, 'feature_group_travel').asBoolean(),
     aiItineraryOptimization: getValue(remoteConfig, 'feature_ai_itinerary_optimization').asBoolean(),
     photoUploads: getValue(remoteConfig, 'feature_photo_uploads').asBoolean(),
+    investorsPage: getValue(remoteConfig, 'feature_investors_page').asBoolean(),
   }
 }
 

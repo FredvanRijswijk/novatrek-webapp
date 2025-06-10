@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:no-lint": "SKIP_ENV_VALIDATION=true SKIP_TS_CHECK=true next build --no-lint",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "build:preview": "./scripts/build-preview.sh",
+    "build:preview:setup": "./scripts/build-preview.sh --setup",
     "create-admin": "tsx scripts/create-admin.ts",
     "migrate:references": "tsx scripts/migrate-to-references.ts"
   },

@@ -3,11 +3,7 @@ import { sendEmail } from '@/lib/email/resend';
 import { renderEmailTemplate } from '@/lib/email/render';
 import * as templates from '@/lib/email/templates';
 import * as textTemplates from '@/lib/email/templates-text';
-import { getAuth } from 'firebase-admin/auth';
-import { initAdmin } from '@/lib/firebase/admin';
-
-// Initialize Firebase Admin
-initAdmin();
+import { getAdminAuth } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +15,8 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.split('Bearer ')[1];
     try {
-      await getAuth().verifyIdToken(token);
+      const adminAuth = getAdminAuth();
+      await adminAuth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }

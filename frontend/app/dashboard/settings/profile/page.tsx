@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useFirebase } from '@/lib/firebase/context'
 import { updateProfile } from 'firebase/auth'
-import { doc, updateDoc, getDoc } from 'firebase/firestore'
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -158,15 +158,15 @@ export default function ProfilePage() {
         photoURL: profile.photoURL,
       })
 
-      // Update Firestore user document
-      await updateDoc(doc(db, 'users', user.uid), {
+      // Update Firestore user document (use setDoc with merge to handle non-existent docs)
+      await setDoc(doc(db, 'users', user.uid), {
         displayName: profile.displayName,
         photoURL: profile.photoURL,
         bio: profile.bio,
         location: profile.location,
         languages: profile.languages,
         updatedAt: new Date(),
-      })
+      }, { merge: true })
 
       toast.success('Profile updated successfully')
     } catch (error) {
@@ -204,11 +204,11 @@ export default function ProfilePage() {
       // Update Firebase Auth profile
       await updateProfile(user, { photoURL })
       
-      // Update Firestore
-      await updateDoc(doc(db, 'users', user.uid), {
+      // Update Firestore (use setDoc with merge to handle non-existent docs)
+      await setDoc(doc(db, 'users', user.uid), {
         photoURL,
         updatedAt: new Date()
-      })
+      }, { merge: true })
       
       toast.success('Photo uploaded successfully', { id: toastId })
     } catch (error) {

@@ -6,9 +6,10 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -21,6 +22,9 @@ export async function PATCH(
     
     // Check if user is admin
     const adminDb = getAdminDb();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 });
+    }
     const adminDoc = await adminDb.collection('admin_users').doc(decodedToken.uid).get();
     
     if (!adminDoc.exists || !adminDoc.data()?.isActive) {
@@ -31,7 +35,7 @@ export async function PATCH(
     const { featured } = await request.json();
 
     // Update recommendation featured status
-    const docRef = doc(db, 'place_recommendations', params.id);
+    const docRef = doc(db, 'place_recommendations', id);
     await updateDoc(docRef, {
       featured: !!featured,
       updatedAt: serverTimestamp()

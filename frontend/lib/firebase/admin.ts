@@ -25,12 +25,20 @@ function initializeAdmin() {
     let serviceAccount;
     
     // Try multiple paths for the service account file
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.USE_PROD_FIREBASE === 'true';
+    const fileName = isProduction 
+      ? 'novatrek-app-firebase-adminsdk-prod.json'
+      : 'novatrek-app-firebase-adminsdk.json';
+    
     const possiblePaths = [
       process.env.FIREBASE_SERVICE_ACCOUNT_KEY_FILE,
+      fileName,
+      `./${fileName}`,
+      join(process.cwd(), fileName),
+      join(process.cwd(), 'frontend', fileName),
+      // Fallback to old filenames
       'novatrek-dev-firebase-adminsdk.json',
-      './novatrek-dev-firebase-adminsdk.json',
-      join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json'),
-      join(process.cwd(), 'frontend', 'novatrek-dev-firebase-adminsdk.json')
+      join(process.cwd(), 'novatrek-dev-firebase-adminsdk.json')
     ].filter(Boolean);
     
     for (const path of possiblePaths) {
@@ -49,8 +57,20 @@ function initializeAdmin() {
     
     // If not found in files, try environment variable
     if (!serviceAccount && process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      console.log('Service account loaded from env variable');
+      try {
+        // Try to parse as base64 first
+        const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY, 'base64').toString();
+        serviceAccount = JSON.parse(decoded);
+        console.log('Service account loaded from base64 env variable');
+      } catch (e) {
+        // If base64 fails, try direct JSON parse
+        try {
+          serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+          console.log('Service account loaded from JSON env variable');
+        } catch (e2) {
+          console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', e2);
+        }
+      }
     }
     
     // Validate service account has required fields

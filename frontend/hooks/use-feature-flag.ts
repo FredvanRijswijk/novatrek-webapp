@@ -53,6 +53,7 @@ export function useFeatureFlags(): FeatureFlags & { loading: boolean } {
     groupTravel: false,
     aiItineraryOptimization: true,
     photoUploads: true,
+    investorsPage: false,
   })
   const [loading, setLoading] = useState(true)
 

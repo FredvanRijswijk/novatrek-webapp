@@ -1,0 +1,23 @@
+{
+  "name": "novatrek-safari-extension",
+  "version": "1.0.0",
+  "description": "Safari extension for NovaTrek - Save travel inspiration from any website",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "watch": "node scripts/watch.js",
+    "clean": "rm -rf dist",
+    "icons": "node scripts/generate-icons.js",
+    "icons:app": "node scripts/generate-app-icons.js",
+    "build:all": "npm run build && npm run icons",
+    "sync": "node scripts/sync-to-xcode.js",
+    "build:sync": "node scripts/build-and-sync.js",
+    "dev": "npm run build:sync && npm run watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.5",
+    "@types/chrome": "^0.0.251",
+    "@types/webextension-polyfill": "^0.10.7",
+    "typescript": "^5.2.2"
+  },
+  "license": "MIT"
+}

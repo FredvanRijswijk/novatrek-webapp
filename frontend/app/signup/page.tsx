@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useFirebase } from "@/lib/firebase"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import Link from "next/link"
 import { 
   Plane, 
@@ -23,7 +23,7 @@ import { signInWithGoogle, signUpWithEmail, getAuthErrorMessage } from "@/lib/fi
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-export default function SignUpPage() {
+function SignUpContent() {
   const { isAuthenticated } = useFirebase()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -342,5 +342,13 @@ export default function SignUpPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <SignUpContent />
+    </Suspense>
   )
 }

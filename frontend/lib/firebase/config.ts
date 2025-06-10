@@ -1,4 +1,4 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 
@@ -53,8 +53,15 @@ let db: Firestore
 
 const initializeFirebase = () => {
   if (!app) {
-    const config = getFirebaseConfig()
-    app = initializeApp(config)
+    const existingApps = getApps()
+    if (existingApps.length > 0) {
+      // Use existing app
+      app = existingApps[0]
+    } else {
+      // Initialize new app
+      const config = getFirebaseConfig()
+      app = initializeApp(config)
+    }
     auth = getAuth(app)
     db = getFirestore(app)
   }

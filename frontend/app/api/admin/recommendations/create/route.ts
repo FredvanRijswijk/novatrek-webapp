@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
     
     // Check if user is admin
     const adminDb = getAdminDb();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 });
+    }
     const adminDoc = await adminDb.collection('admin_users').doc(decodedToken.uid).get();
     
     if (!adminDoc.exists || !adminDoc.data()?.isActive) {

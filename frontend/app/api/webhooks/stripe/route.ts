@@ -14,7 +14,7 @@ import {
   sendExpertNewOrderEmailServer
 } from '@/lib/email/server';
 import { stripePlans } from '@/lib/stripe/plans';
-import { handleConnectWebhookV2, isAccountOnboardedV2 } from '@/lib/stripe/connect-v2';
+import { handleConnectWebhook, isAccountOnboarded } from '@/lib/stripe/connect';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -86,15 +86,7 @@ export async function POST(req: NextRequest) {
       // Stripe Connect Account Events
       case 'account.updated': {
         const account = event.data.object as Stripe.Account;
-        // Try v2 handler first
-        const v2Result = await handleConnectWebhookV2(event);
-        if (v2Result.data) {
-          // If v2 handler processed it, update our database
-          await handleAccountUpdatedV2(account, v2Result.data);
-        } else {
-          // Fall back to v1 handler
-          await handleAccountUpdated(account);
-        }
+        await handleAccountUpdated(account);
         break;
       }
 
@@ -112,13 +104,7 @@ export async function POST(req: NextRequest) {
 
       case 'capability.updated': {
         const capability = event.data.object as Stripe.Capability;
-        // Handle v2 capability updates
-        const v2Result = await handleConnectWebhookV2(event);
-        if (v2Result.data) {
-          await handleCapabilityUpdatedV2(capability, v2Result.data);
-        } else {
-          await handleCapabilityUpdated(capability);
-        }
+        await handleCapabilityUpdated(capability);
         break;
       }
 

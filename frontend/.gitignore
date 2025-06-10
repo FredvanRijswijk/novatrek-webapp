@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 novatrek-dev-firebase-adminsdk.json
+novatrek-app-firebase-adminsdk-prod.json
+service-account-base64.txt
+service-account-base64-dev.txt

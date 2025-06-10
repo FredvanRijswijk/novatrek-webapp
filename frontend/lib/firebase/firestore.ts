@@ -60,7 +60,8 @@ export const updateDocument = async <T extends Partial<DocumentData>>(
   data: T
 ): Promise<void> => {
   const docRef = doc(db, collectionName, docId)
-  await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() })
+  // Use setDoc with merge:true to handle cases where document might not exist
+  await setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true })
 }
 
 export const deleteDocument = async (

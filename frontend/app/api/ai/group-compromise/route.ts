@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { groupCompromiseFlow } from '@/lib/ai/genkit-setup'
+import { groupCompromiseFlow } from '@/lib/ai/genkit-wrapper'
 import { generateGroupCompromise } from '@/lib/ai/vertex-firebase'
 
 export const runtime = 'nodejs'

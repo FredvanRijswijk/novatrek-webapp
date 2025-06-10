@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useFirebase } from '@/lib/firebase'
 import { signInWithEmail, signInWithGoogle, getAuthErrorMessage } from '@/lib/firebase/auth'
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading, isAuthenticated } = useFirebase()
@@ -192,5 +192,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

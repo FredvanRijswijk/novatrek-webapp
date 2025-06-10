@@ -1,11 +1,29 @@
-import { genkit } from '@genkit-ai/core'
-import { firebase } from '@genkit-ai/firebase'
-import { vertexAI, gemini20Flash, gemini20FlashLite } from '@genkit-ai/vertexai'
+let genkit: any
+let enableFirebaseTelemetry: any
+let vertexAI: any
+let gemini20Flash: any
+let gemini20FlashLite: any
 
-// Initialize Genkit with Firebase and Vertex AI plugins
-export const ai = genkit({
+try {
+  // Try to import Genkit modules
+  const genkitCore = require('@genkit-ai/core')
+  const firebaseModule = require('@genkit-ai/firebase')
+  const vertexModule = require('@genkit-ai/vertexai')
+  
+  genkit = genkitCore.genkit
+  enableFirebaseTelemetry = firebaseModule.enableFirebaseTelemetry
+  vertexAI = vertexModule.vertexAI
+  gemini20Flash = vertexModule.gemini20Flash
+  gemini20FlashLite = vertexModule.gemini20FlashLite
+} catch (error) {
+  console.warn('Genkit modules not available during build:', error)
+}
+
+import { SYSTEM_PROMPTS } from './vertex-config'
+
+// Initialize Genkit with Vertex AI plugin
+export const ai = genkit ? genkit({
   plugins: [
-    firebase(),
     vertexAI({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
       location: 'europe-west3',
@@ -13,7 +31,17 @@ export const ai = genkit({
   ],
   // Enable observability for monitoring
   enableTracingAndMetrics: true,
-})
+}) : {
+  defineFlow: () => () => Promise.resolve({}),
+  run: () => Promise.resolve({}),
+} as any
+
+// Enable Firebase telemetry if needed
+if (process.env.NODE_ENV === 'production' && enableFirebaseTelemetry) {
+  enableFirebaseTelemetry({
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  }).catch(console.error)
+}
 
 // Define flows for different AI tasks
 export const travelChatFlow = ai.defineFlow(
@@ -236,5 +264,3 @@ Format as JSON matching the output schema.`,
   }
 )
 
-// Import system prompts
-import { SYSTEM_PROMPTS } from './vertex-config'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { optimizeItineraryFlow } from '@/lib/ai/genkit-setup'
+import { optimizeItineraryFlow } from '@/lib/ai/genkit-wrapper'
 import { optimizeItinerary } from '@/lib/ai/vertex-firebase'
 
 export const runtime = 'nodejs'

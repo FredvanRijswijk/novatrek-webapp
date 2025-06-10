@@ -39,12 +39,13 @@ const PRODUCT_TYPES = {
   }
 }
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { user } = useFirebase()
   const [loading, setLoading] = useState(false)
   const [loadingProduct, setLoadingProduct] = useState(true)
   const [expert, setExpert] = useState<any>(null)
+  const [productId, setProductId] = useState<string | null>(null)
   const [product, setProduct] = useState<MarketplaceProduct | null>(null)
   const [error, setError] = useState('')
   
@@ -71,9 +72,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     status: 'active' as 'draft' | 'active' | 'inactive'
   })
 
+  // Resolve params
+  useEffect(() => {
+    params.then(resolvedParams => {
+      setProductId(resolvedParams.id)
+    })
+  }, [params])
+
   useEffect(() => {
     async function loadData() {
-      if (!user) return
+      if (!user || !productId) return
 
       try {
         // Load expert data
@@ -85,7 +93,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         setExpert(expertData)
 
         // Load product data
-        const productRef = doc(db, 'marketplace_products', params.id)
+        const productRef = doc(db, 'marketplace_products', productId)
         const productSnap = await getDoc(productRef)
         
         if (!productSnap.exists()) {
@@ -138,7 +146,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
 
     loadData()
-  }, [user, params.id, router])
+  }, [user, productId, router])
 
   const handleAddItem = (field: 'destinations' | 'included' | 'highlights' | 'tags') => {
     const currentField = `current${field.charAt(0).toUpperCase() + field.slice(1).replace(/s$/, '')}` as keyof typeof formData
@@ -204,7 +212,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!expert || !product || !validateForm()) return
+    if (!expert || !product || !productId || !validateForm()) return
 
     setLoading(true)
     setError('')
@@ -230,7 +238,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         updatedAt: new Date()
       }
 
-      await updateDoc(doc(db, 'marketplace_products', params.id), updatedData)
+      await updateDoc(doc(db, 'marketplace_products', productId), updatedData)
       toast.success('Product updated successfully')
       router.push('/dashboard/expert/products')
 

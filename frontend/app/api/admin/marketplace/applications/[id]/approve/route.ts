@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb, adminAuth } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { generateSlug, generateUniqueSlug } from '@/lib/utils/slug'
 import { 
   sendExpertApplicationApprovedEmailServer,
@@ -9,9 +9,10 @@ import {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: applicationId } = await params;
     // Verify authentication
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -19,6 +20,7 @@ export async function POST(
     }
 
     const token = authHeader.split('Bearer ')[1]
+    const adminAuth = getAdminAuth()
     const decodedToken = await adminAuth.verifyIdToken(token)
     
     // Verify admin status
@@ -27,9 +29,12 @@ export async function POST(
     }
 
     const { action, reason, infoNeeded } = await request.json()
-    const applicationId = params.id
 
     // Get the application
+    const adminDb = getAdminDb()
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database initialization failed' }, { status: 500 })
+    }
     const applicationRef = adminDb.collection('marketplace_applications').doc(applicationId)
     const applicationDoc = await applicationRef.get()
     

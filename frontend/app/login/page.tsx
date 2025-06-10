@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useFirebase } from "@/lib/firebase"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
 import Link from "next/link"
 import { 
   Plane, 
@@ -25,20 +25,28 @@ import {
   AlertCircle
 } from "lucide-react"
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { isAuthenticated } = useFirebase()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  
+  // Check if this is an extension login
+  const isExtensionLogin = searchParams.get('from') === 'extension'
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard')
+      if (isExtensionLogin) {
+        router.push('/extension-auth')
+      } else {
+        router.push('/dashboard')
+      }
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, isExtensionLogin])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
@@ -326,5 +334,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

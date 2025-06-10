@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,10 +12,7 @@ import {
   Sparkles, 
   Target,
   Rocket,
-  Heart,
   Shield,
-  Award,
-  TrendingUp,
   CheckCircle,
   ArrowRight
 } from 'lucide-react'
@@ -119,7 +115,7 @@ export default function AboutPage() {
               Redefining Travel Planning
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              We're on a mission to make travel planning smarter, easier, and more personalized 
+              We&apos;re on a mission to make travel planning smarter, easier, and more personalized 
               using the power of AI and human expertise.
             </p>
             <div className="flex gap-4 justify-center">
@@ -176,13 +172,13 @@ export default function AboutPage() {
               <h2 className="text-3xl md:text-4xl font-bold mb-6">Our Story</h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  NovaTrek was born from a simple observation: planning a trip shouldn't be stressful. 
+                  NovaTrek was born from a simple observation: planning a trip shouldn&apos;t be stressful. 
                   As avid travelers ourselves, we experienced firsthand the overwhelming process of 
                   researching destinations, comparing options, and coordinating with travel companions.
                 </p>
                 <p>
                   We realized that while AI was transforming industries, travel planning remained 
-                  largely manual and fragmented. That's when we decided to build NovaTrek - a platform 
+                  largely manual and fragmented. That&apos;s when we decided to build NovaTrek - a platform 
                   that combines the efficiency of AI with the irreplaceable value of human expertise.
                 </p>
                 <p>
@@ -212,7 +208,7 @@ export default function AboutPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Mission & Vision</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              We're building the future of travel planning, one trip at a time.
+              We&apos;re building the future of travel planning, one trip at a time.
             </p>
           </div>
           
@@ -344,8 +340,8 @@ export default function AboutPage() {
             Join Us on Our Journey
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Whether you're a traveler seeking your next adventure or an expert ready to share 
-            your knowledge, there's a place for you at NovaTrek.
+            Whether you&apos;re a traveler seeking your next adventure or an expert ready to share 
+            your knowledge, there&apos;s a place for you at NovaTrek.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 

@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { track } from '@vercel/analytics'
 import { PublicLayout } from '@/components/layout/PublicLayout'
+import { FeatureFlag } from '@/components/feature-flag/FeatureFlag'
+import { notFound } from 'next/navigation'
 import { 
   TrendingUp, 
   Users, 
@@ -143,7 +145,11 @@ const advantages = [
 
 export default function InvestorsPage() {
   return (
-    <PublicLayout>
+    <FeatureFlag 
+      feature="investorsPage" 
+      fallback={notFound}
+    >
+      <PublicLayout>
       {/* Hero Section */}
       <section className="relative py-20 px-4 bg-gradient-to-br from-primary/10 via-primary/5 to-background">
         <div className="max-w-7xl mx-auto">
@@ -573,5 +579,6 @@ export default function InvestorsPage() {
         </div>
       </section>
     </PublicLayout>
+    </FeatureFlag>
   )
 }
