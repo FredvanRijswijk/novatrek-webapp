@@ -37,7 +37,7 @@ import {
   Sun,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils/currency";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useState } from "react";
 import Link from "next/link";
 import { track } from "@vercel/analytics";
@@ -190,87 +190,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <svg
-                width="48"
-                height="48"
-                viewBox="0 0 96 96"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="rounded-lg"
-              >
-                <rect width="96" height="96" fill="#000000"></rect>
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M48.5 68.8082C60.2682 68.8082 69.8082 59.2682 69.8082 47.5C69.8082 35.7318 60.2682 26.1918 48.5 26.1918C36.7318 26.1918 27.1918 35.7318 27.1918 47.5C27.1918 59.2682 36.7318 68.8082 48.5 68.8082ZM48.5 78C65.3447 78 79 64.3447 79 47.5C79 30.6553 65.3447 17 48.5 17C31.6553 17 18 30.6553 18 47.5C18 64.3447 31.6553 78 48.5 78Z"
-                  fill="white"
-                ></path>
-              </svg>
-              <span className="text-2xl font-bold">NovaTrek</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-8">
-              <Link
-                href="/about"
-                className="text-sm font-medium hover:text-primary"
-              >
-                About
-              </Link>
-              <Link
-                href="/marketplace"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Marketplace
-              </Link>
-              <Link
-                href="/experts"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Experts
-              </Link>
-              <Link
-                href="/pricing"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/contact"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Contact
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              <Button 
-                variant="ghost" 
-                onClick={() => {
-                  track("click", { button: "nav_sign_in", page: "homepage" });
-                  router.push("/login");
-                }}
-              >
-                Sign In
-              </Button>
-              <Button 
-                onClick={() => {
-                  track("click", { button: "nav_get_started", page: "homepage" });
-                  router.push("/signup");
-                }}
-              >
-                Get Started
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <PublicLayout>
 
       {/* Hero Section */}
       <section className="pt-20 pb-32 px-4">
@@ -282,21 +202,21 @@ export default function LandingPage() {
             </span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             Plan Smarter,
             <br />
             Travel Better
           </h1>
 
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto px-4">
             NovaTrek combines AI intelligence with human expertise to create
             personalized travel experiences. From planning to booking to sharing
             memories, we've got you covered.
           </p>
 
           {/* Email CTA */}
-          <form onSubmit={handleGetStarted} className="max-w-md mx-auto mb-8">
-            <div className="flex gap-2">
+          <form onSubmit={handleGetStarted} className="max-w-md mx-auto mb-8 px-4">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -629,15 +549,15 @@ export default function LandingPage() {
       <section id="pricing" className="py-20 px-4 bg-muted/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground">
               Choose the plan that fits your travel style
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, index) => (
               <Card
                 key={index}
@@ -697,15 +617,15 @@ export default function LandingPage() {
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
               Loved by Travelers Worldwide
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground">
               See what our community has to say
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <Card key={index}>
                 <CardHeader>
@@ -738,10 +658,10 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20 px-4 bg-primary text-primary-foreground">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
             Ready to Transform Your Travel Experience?
           </h2>
-          <p className="text-xl mb-8 opacity-90">
+          <p className="text-base md:text-xl mb-8 opacity-90">
             Join thousands of travelers who plan smarter with NovaTrek
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -771,105 +691,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-4 bg-background border-t">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Plane className="w-6 h-6 text-primary" />
-                <span className="text-lg font-bold">NovaTrek</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                AI-powered travel planning for the modern explorer.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="#features" className="hover:text-primary">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#pricing" className="hover:text-primary">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/marketplace" className="hover:text-primary">
-                    Marketplace
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/experts" className="hover:text-primary">
-                    Find Experts
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/about" className="hover:text-primary">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/blog" className="hover:text-primary">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/careers" className="hover:text-primary">
-                    Careers
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/investors" className="hover:text-primary">
-                    Investors
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-primary">
-                    Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link href="/privacy" className="hover:text-primary">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-primary">
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/cookies" className="hover:text-primary">
-                    Cookie Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            © 2024 NovaTrek. All rights reserved.
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PublicLayout>
   );
 }
