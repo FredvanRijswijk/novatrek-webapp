@@ -48,10 +48,29 @@ export async function GET(req: NextRequest) {
 
     // Verify token and check admin status
     const decodedToken = await auth.verifyIdToken(token);
-    const adminDoc = await db.collection('admins').doc(decodedToken.uid).get();
     
-    if (!adminDoc.exists || !adminDoc.data()?.permissions?.users?.includes('read')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check if user has admin claims
+    const hasAdminClaim = decodedToken.admin === true;
+    if (!hasAdminClaim) {
+      return NextResponse.json({ error: 'Forbidden - Not an admin' }, { status: 403 });
+    }
+    
+    // Check admin permissions in Firestore
+    const adminDoc = await db.collection('admin_users').doc(decodedToken.uid).get();
+    
+    if (!adminDoc.exists || !adminDoc.data()?.isActive) {
+      return NextResponse.json({ error: 'Forbidden - Admin not active' }, { status: 403 });
+    }
+    
+    // Check if admin has permission to read users
+    const adminData = adminDoc.data();
+    const permissions = adminData?.permissions || [];
+    const hasUserPermission = permissions.some((perm: any) => 
+      perm.resource === 'users' && perm.actions.includes('read')
+    );
+    
+    if (!hasUserPermission) {
+      return NextResponse.json({ error: 'Forbidden - No user read permission' }, { status: 403 });
     }
 
     // Get query parameters
@@ -331,10 +350,29 @@ export async function PATCH(req: NextRequest) {
 
     // Verify token and check admin status
     const decodedToken = await auth.verifyIdToken(token);
-    const adminDoc = await db.collection('admins').doc(decodedToken.uid).get();
     
-    if (!adminDoc.exists || !adminDoc.data()?.permissions?.users?.includes('update')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check if user has admin claims
+    const hasAdminClaim = decodedToken.admin === true;
+    if (!hasAdminClaim) {
+      return NextResponse.json({ error: 'Forbidden - Not an admin' }, { status: 403 });
+    }
+    
+    // Check admin permissions in Firestore
+    const adminDoc = await db.collection('admin_users').doc(decodedToken.uid).get();
+    
+    if (!adminDoc.exists || !adminDoc.data()?.isActive) {
+      return NextResponse.json({ error: 'Forbidden - Admin not active' }, { status: 403 });
+    }
+    
+    // Check if admin has permission to update users
+    const adminData = adminDoc.data();
+    const permissions = adminData?.permissions || [];
+    const hasUserPermission = permissions.some((perm: any) => 
+      perm.resource === 'users' && perm.actions.includes('update')
+    );
+    
+    if (!hasUserPermission) {
+      return NextResponse.json({ error: 'Forbidden - No user update permission' }, { status: 403 });
     }
 
     const body = await req.json();
