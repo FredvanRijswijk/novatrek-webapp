@@ -80,7 +80,7 @@ const timeline = [
 const team = [
   {
     name: 'Fred van Rijswijk',
-    role: 'Co-Founder & CEO',
+    role: 'Founder',
     bio: 'Former owner No Nasties and AttiqLab with a passion for sustainable travel.',
     image: '/team/fred.jpg'
   },
@@ -139,6 +139,9 @@ export default function AboutPage() {
       {/* Stats Section */}
       <section className="py-16 px-4 border-b">
         <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12 text-muted-foreground">
+            The journey to...
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
@@ -300,9 +303,9 @@ export default function AboutPage() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="flex justify-center">
             {team.map((member, index) => (
-              <Card key={index} className="text-center">
+              <Card key={index} className="text-center max-w-sm">
                 <CardHeader>
                   <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
                     <span className="text-2xl font-bold text-primary">

@@ -1,18 +1,18 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { Plane } from 'lucide-react'
-import { track } from '@vercel/analytics'
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Plane } from "lucide-react";
+import { track } from "@vercel/analytics";
 
 interface PublicLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function PublicLayout({ children }: PublicLayoutProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,19 +77,19 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => {
-                  track('click', { button: 'nav_sign_in', page: 'public' })
-                  router.push("/login")
+                  track("click", { button: "nav_sign_in", page: "public" });
+                  router.push("/login");
                 }}
               >
                 Sign In
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
-                  track('click', { button: 'nav_get_started', page: 'public' })
-                  router.push("/signup")
+                  track("click", { button: "nav_get_started", page: "public" });
+                  router.push("/signup");
                 }}
               >
                 Get Started
@@ -100,9 +100,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
 
       {/* Footer */}
       <footer className="py-12 px-4 bg-background border-t">
@@ -198,10 +196,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           </div>
 
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            © 2024 NovaTrek. All rights reserved.
+            © {new Date().getFullYear()} NovaTrek. All rights reserved.
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

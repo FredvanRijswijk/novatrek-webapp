@@ -1,20 +1,19 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Pricing - NovaTrek | Simple, Transparent Pricing',
-  description: 'Choose the perfect plan for your travel needs. Start free, upgrade anytime. No hidden fees.',
-  keywords: 'NovaTrek pricing, travel planning pricing, subscription plans, free trial',
+  title: 'Pricing',
+  description: 'Choose the perfect plan for your travel needs. Start free with AI-powered trip planning, upgrade for unlimited features. No hidden fees.',
+  keywords: 'NovaTrek pricing, travel planning pricing, subscription plans, free trial, AI travel planner cost',
   openGraph: {
     title: 'NovaTrek Pricing - Start Planning for Free',
-    description: 'Simple, transparent pricing for AI-powered travel planning. Free plan available.',
+    description: 'Simple, transparent pricing for AI-powered travel planning. Free plan available with unlimited trip creation.',
     type: 'website',
-    url: 'https://novatrek.app/pricing',
     images: [
       {
-        url: 'https://novatrek.app/og-pricing.jpg',
+        url: '/api/og?title=Simple%20Pricing%20Plans&description=Start%20free%2C%20upgrade%20anytime.%20No%20hidden%20fees&page=pricing',
         width: 1200,
         height: 630,
-        alt: 'NovaTrek Pricing'
+        alt: 'NovaTrek Pricing Plans'
       }
     ]
   },
@@ -22,7 +21,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'NovaTrek Pricing - Simple & Transparent',
     description: 'Choose the perfect plan for your travel needs. Start free today.',
-    images: ['https://novatrek.app/og-pricing.jpg']
+    images: ['/api/og?title=Simple%20Pricing%20Plans&description=Start%20free%2C%20upgrade%20anytime.%20No%20hidden%20fees&page=pricing']
   }
 }
 
