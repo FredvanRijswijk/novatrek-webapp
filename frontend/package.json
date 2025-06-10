@@ -12,6 +12,7 @@
     "build:preview": "./scripts/build-preview.sh",
     "build:preview:setup": "./scripts/build-preview.sh --setup",
     "create-admin": "tsx scripts/create-admin.ts",
+    "create-admin:prod": "tsx scripts/create-admin-prod.ts",
     "migrate:references": "tsx scripts/migrate-to-references.ts"
   },
   "dependencies": {
