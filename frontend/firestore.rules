@@ -19,10 +19,34 @@ service cloud.firestore {
       return expertRef is path && 
              get(expertRef).data.userId == userId;
     }
+    
+    // Check if user has admin permissions
+    function hasAdminPermission(permission) {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions[permission].hasAny(['read', 'update', 'create', 'delete']);
+    }
+    
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
 
     // Users collection - supports both patterns
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (
+        // Users can read their own data
+        request.auth.uid == userId ||
+        // Admins can read all users
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions.users.hasAny(['read'])
+      );
+      
+      allow write: if request.auth != null && (
+        // Users can write their own data
+        request.auth.uid == userId ||
+        // Admins can update users if they have update permission
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions.users.hasAny(['update']))
+      );
       
       // Allow webhook updates to subscription data (for development)
       allow write: if request.resource.data.keys().hasAll(['subscription', 'updatedAt']) 
@@ -33,6 +57,22 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if true; // For webhook writes in development
       }
+    }
+    
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if request.auth != null && (
+        // Admins can read their own record
+        request.auth.uid == adminId ||
+        // Super admins can read all admin records
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin')
+      );
+      
+      // Only super admins can write to admin records
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin';
     }
     
     // Travel Preferences - supports both patterns
@@ -47,7 +87,9 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
         // Shared trip access
-        exists(/databases/$(database)/documents/tripShares/$(tripId))
+        exists(/databases/$(database)/documents/tripShares/$(tripId)) ||
+        // Admin access for user management
+        hasAdminPermission('users')
       );
       
       allow create: if request.auth != null && 

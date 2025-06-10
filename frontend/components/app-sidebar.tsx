@@ -17,6 +17,7 @@ import {
   Shield,
   HelpCircle,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -75,6 +76,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Admin Dashboard",
         url: "/dashboard/admin/marketplace",
         icon: ShieldCheck,
+      },
+      {
+        title: "Users",
+        url: "/dashboard/admin/users",
+        icon: Users,
       },
       {
         title: "Applications",

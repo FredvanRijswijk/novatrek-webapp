@@ -74,6 +74,10 @@ interface DashboardStats {
   thisMonthRevenue: number
   lastMonthRevenue: number
   revenueGrowth: number
+  totalUsers: number
+  activeUsers: number
+  verifiedUsers: number
+  subscribedUsers: number
 }
 
 export default function MarketplaceAdminDashboard() {
@@ -90,7 +94,11 @@ export default function MarketplaceAdminDashboard() {
     pendingApplications: 0,
     thisMonthRevenue: 0,
     lastMonthRevenue: 0,
-    revenueGrowth: 0
+    revenueGrowth: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    verifiedUsers: 0,
+    subscribedUsers: 0
   })
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [topExperts, setTopExperts] = useState<any[]>([])
@@ -105,6 +113,25 @@ export default function MarketplaceAdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
+      // Fetch user stats from API
+      let userStats = { total: 0, active: 0, verified: 0, subscribed: 0 }
+      if (user) {
+        try {
+          const token = await user.getIdToken()
+          const response = await fetch('/api/admin/users?limit=1', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            userStats = data.stats
+          }
+        } catch (error) {
+          console.error('Error fetching user stats:', error)
+        }
+      }
+
       // Load stats
       const [
         expertsSnapshot,
@@ -161,7 +188,11 @@ export default function MarketplaceAdminDashboard() {
         pendingApplications: pendingAppsSnapshot.data().count,
         thisMonthRevenue,
         lastMonthRevenue,
-        revenueGrowth
+        revenueGrowth,
+        totalUsers: userStats.total,
+        activeUsers: userStats.active,
+        verifiedUsers: userStats.verified,
+        subscribedUsers: userStats.subscribed
       })
 
       // Load recent transactions
@@ -243,7 +274,7 @@ export default function MarketplaceAdminDashboard() {
 
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -306,10 +337,23 @@ export default function MarketplaceAdminDashboard() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.verifiedUsers} verified ({stats.subscribedUsers} subscribed)
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-7">
         <Button variant="outline" asChild>
           <Link href="/dashboard/admin/marketplace/analytics">
             <BarChart className="mr-2 h-4 w-4" />
@@ -344,6 +388,12 @@ export default function MarketplaceAdminDashboard() {
           <Link href="/dashboard/admin/marketplace/settings">
             <Settings className="mr-2 h-4 w-4" />
             Settings
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/admin/users">
+            <Users className="mr-2 h-4 w-4" />
+            Users
           </Link>
         </Button>
       </div>
