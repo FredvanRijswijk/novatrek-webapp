@@ -13,10 +13,10 @@
       "has": [
         {
           "type": "host",
-          "value": "www.novatrek.app"
+          "value": "novatrek.app"
         }
       ],
-      "destination": "https://novatrek.app/:path*",
+      "destination": "https://www.novatrek.app/:path*",
       "permanent": true
     }
   ],

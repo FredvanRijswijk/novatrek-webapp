@@ -1,31 +1,33 @@
 # CORS Fix Guide for www.novatrek.app
 
 ## Problem
-The Firebase authentication is configured to allow requests from `https://novatrek.app` but users are accessing the site from `https://www.novatrek.app`, causing CORS errors.
+The Firebase authentication is configured to allow requests from `https://novatrek.app` but we want to use `https://www.novatrek.app` as the primary domain.
 
 ## Solutions
 
-### Option 1: Add www domain to Firebase (Recommended)
+### Option 1: Add www domain to Firebase (Required)
 1. Go to Firebase Console: https://console.firebase.google.com
 2. Select your project (novatrek-app)
 3. Go to **Authentication** → **Settings** → **Authorized domains**
 4. Add `www.novatrek.app` to the list of authorized domains
 5. Save the changes
 
-### Option 2: Configure domain redirect in Vercel
-Redirect all traffic from `www.novatrek.app` to `novatrek.app`:
+### Option 2: Configure domain redirect in Vercel (Already implemented)
+Redirect all traffic from `novatrek.app` to `www.novatrek.app`:
 
-1. In your Vercel project settings
-2. Go to **Domains**
-3. Add redirect rule from `www.novatrek.app` → `novatrek.app`
-
-Or add to `vercel.json`:
+The `vercel.json` file has been updated with:
 ```json
 {
   "redirects": [
     {
-      "source": "https://www.novatrek.app/(.*)",
-      "destination": "https://novatrek.app/$1",
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "novatrek.app"
+        }
+      ],
+      "destination": "https://www.novatrek.app/:path*",
       "permanent": true
     }
   ]
