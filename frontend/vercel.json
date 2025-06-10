@@ -7,6 +7,19 @@
   "env": {
     "NODE_ENV": "production"
   },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.novatrek.app"
+        }
+      ],
+      "destination": "https://novatrek.app/:path*",
+      "permanent": true
+    }
+  ],
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
