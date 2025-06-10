@@ -51,57 +51,45 @@ const values = [
 
 const timeline = [
   {
-    year: '2023',
+    year: '2024',
     title: 'The Beginning',
     description: 'NovaTrek was founded with a simple mission: make travel planning effortless using AI.'
   },
   {
-    year: '2024 Q1',
+    year: '2025 Q1',
     title: 'AI Integration',
     description: 'Launched our proprietary AI travel assistant powered by GPT-4 and Gemini models.'
   },
   {
-    year: '2024 Q2',
+    year: '2025 Q2',
     title: 'Expert Marketplace',
     description: 'Introduced the marketplace connecting travelers with verified travel experts worldwide.'
   },
-  {
-    year: '2024 Q3',
-    title: 'Group Travel Features',
-    description: 'Released AI-powered group compromise engine for seamless multi-person trip planning.'
-  },
-  {
-    year: '2024 Q4',
-    title: 'Global Expansion',
-    description: 'Expanded to 150+ countries with localized recommendations and expert coverage.'
-  }
+  // {
+  //   year: '2025 Q3',
+  //   title: 'Group Travel Features',
+  //   description: 'Released AI-powered group compromise engine for seamless multi-person trip planning.'
+  // },
+  // {
+  //   year: '2025 Q4',
+  //   title: 'Global Expansion',
+  //   description: 'Expanded to 150+ countries with localized recommendations and expert coverage.'
+  // }
 ]
 
 const team = [
   {
-    name: 'Sarah Chen',
+    name: 'Fred van Rijswijk',
     role: 'Co-Founder & CEO',
-    bio: 'Former Google product lead with a passion for sustainable travel.',
-    image: '/team/sarah.jpg'
+    bio: 'Former owner No Nasties and AttiqLab with a passion for sustainable travel.',
+    image: '/team/fred.jpg'
   },
-  {
-    name: 'Marcus Rodriguez',
-    role: 'Co-Founder & CTO',
-    bio: 'AI researcher and engineer, previously at OpenAI and Meta.',
-    image: '/team/marcus.jpg'
-  },
-  {
-    name: 'Emily Watson',
-    role: 'Head of Travel',
-    bio: '15+ years in travel industry, certified travel advisor and destination expert.',
-    image: '/team/emily.jpg'
-  },
-  {
-    name: 'David Kim',
-    role: 'Head of Product',
-    bio: 'Product design veteran from Airbnb and Booking.com.',
-    image: '/team/david.jpg'
-  }
+  // {
+  //   name: 'Kirsten Rademaker',
+  //   role: 'Co-Founder & CFO',
+  //   bio: 'Former owner No Nasties with a passion for the world and travel.',
+  //   image: '/team/kirsten.jpg'
+  // }
 ]
 
 export default function AboutPage() {
