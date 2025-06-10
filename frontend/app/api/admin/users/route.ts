@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdmin } from '@/lib/firebase/admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 import logger from '@/lib/logging/server-logger';
 
@@ -40,9 +38,13 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const app = await initializeAdmin();
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    const auth = getAdminAuth();
+    const db = getAdminDb();
+
+    if (!db) {
+      logger.error('api', 'Firebase Admin DB not initialized');
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
 
     // Verify token and check admin status
     const decodedToken = await auth.verifyIdToken(token);
@@ -79,18 +81,49 @@ export async function GET(req: NextRequest) {
       // Check if user is admin
       const isAdminDoc = await db.collection('admins').doc(userRecord.uid).get();
 
-      // Get user's trip count
-      const tripsSnapshot = await db.collection('trips')
-        .where('userId', '==', userRecord.uid)
-        .select()
-        .get();
-
-      // Get user's last trip date
-      const lastTripSnapshot = await db.collection('trips')
-        .where('userId', '==', userRecord.uid)
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
+      // Get user's trip count and last trip date
+      let tripCount = 0;
+      let lastTripDate = null;
+      
+      try {
+        // First try with userRef (new format)
+        const tripsRefSnapshot = await db.collection('trips')
+          .where('userRef', '==', db.doc(`users/${userRecord.uid}`))
+          .get();
+        
+        tripCount = tripsRefSnapshot.size;
+        
+        if (tripCount > 0) {
+          // Get the most recent trip
+          const sortedTrips = tripsRefSnapshot.docs.sort((a, b) => {
+            const aDate = a.data().createdAt?.toDate() || new Date(0);
+            const bDate = b.data().createdAt?.toDate() || new Date(0);
+            return bDate.getTime() - aDate.getTime();
+          });
+          lastTripDate = sortedTrips[0].data().createdAt?.toDate().toISOString() || null;
+        }
+      } catch (e) {
+        // Fallback to userId (legacy format)
+        try {
+          const tripsSnapshot = await db.collection('trips')
+            .where('userId', '==', userRecord.uid)
+            .get();
+          
+          tripCount = tripsSnapshot.size;
+          
+          if (tripCount > 0) {
+            // Get the most recent trip
+            const sortedTrips = tripsSnapshot.docs.sort((a, b) => {
+              const aDate = a.data().createdAt?.toDate() || new Date(0);
+              const bDate = b.data().createdAt?.toDate() || new Date(0);
+              return bDate.getTime() - aDate.getTime();
+            });
+            lastTripDate = sortedTrips[0].data().createdAt?.toDate().toISOString() || null;
+          }
+        } catch (err) {
+          console.error('Error fetching trips:', err);
+        }
+      }
 
       const user: UserWithMetadata = {
         uid: userRecord.uid,
@@ -112,9 +145,8 @@ export async function GET(req: NextRequest) {
           plan: userData.subscription.plan || 'free'
         } : { status: 'free', plan: 'free' },
         stats: {
-          tripCount: tripsSnapshot.size,
-          lastTripDate: !lastTripSnapshot.empty ? 
-            lastTripSnapshot.docs[0].data().createdAt?.toDate().toISOString() : null
+          tripCount,
+          lastTripDate
         }
       };
 
@@ -134,15 +166,50 @@ export async function GET(req: NextRequest) {
         const userDoc = await db.collection('users').doc(userRecord.uid).get();
         const userData = userDoc.data();
         const isAdminDoc = await db.collection('admins').doc(userRecord.uid).get();
-        const tripsSnapshot = await db.collection('trips')
-          .where('userId', '==', userRecord.uid)
-          .select()
-          .get();
-        const lastTripSnapshot = await db.collection('trips')
-          .where('userId', '==', userRecord.uid)
-          .orderBy('createdAt', 'desc')
-          .limit(1)
-          .get();
+        
+        // Get user's trip count and last trip date
+        let tripCount = 0;
+        let lastTripDate = null;
+        
+        try {
+          // First try with userRef (new format)
+          const tripsRefSnapshot = await db.collection('trips')
+            .where('userRef', '==', db.doc(`users/${userRecord.uid}`))
+            .get();
+          
+          tripCount = tripsRefSnapshot.size;
+          
+          if (tripCount > 0) {
+            // Get the most recent trip
+            const sortedTrips = tripsRefSnapshot.docs.sort((a, b) => {
+              const aDate = a.data().createdAt?.toDate() || new Date(0);
+              const bDate = b.data().createdAt?.toDate() || new Date(0);
+              return bDate.getTime() - aDate.getTime();
+            });
+            lastTripDate = sortedTrips[0].data().createdAt?.toDate().toISOString() || null;
+          }
+        } catch (e) {
+          // Fallback to userId (legacy format)
+          try {
+            const tripsSnapshot = await db.collection('trips')
+              .where('userId', '==', userRecord.uid)
+              .get();
+            
+            tripCount = tripsSnapshot.size;
+            
+            if (tripCount > 0) {
+              // Get the most recent trip
+              const sortedTrips = tripsSnapshot.docs.sort((a, b) => {
+                const aDate = a.data().createdAt?.toDate() || new Date(0);
+                const bDate = b.data().createdAt?.toDate() || new Date(0);
+                return bDate.getTime() - aDate.getTime();
+              });
+              lastTripDate = sortedTrips[0].data().createdAt?.toDate().toISOString() || null;
+            }
+          } catch (err) {
+            console.error('Error fetching trips:', err);
+          }
+        }
 
         const user: UserWithMetadata = {
           uid: userRecord.uid,
@@ -164,9 +231,8 @@ export async function GET(req: NextRequest) {
             plan: userData.subscription.plan || 'free'
           } : { status: 'free', plan: 'free' },
           stats: {
-            tripCount: tripsSnapshot.size,
-            lastTripDate: !lastTripSnapshot.empty ? 
-              lastTripSnapshot.docs[0].data().createdAt?.toDate().toISOString() : null
+            tripCount,
+            lastTripDate
           }
         };
 
@@ -255,9 +321,13 @@ export async function PATCH(req: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const app = await initializeAdmin();
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    const auth = getAdminAuth();
+    const db = getAdminDb();
+
+    if (!db) {
+      logger.error('api', 'Firebase Admin DB not initialized');
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
 
     // Verify token and check admin status
     const decodedToken = await auth.verifyIdToken(token);
