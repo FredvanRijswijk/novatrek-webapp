@@ -267,8 +267,8 @@ export function ActivitySearchModal({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col">
-          <SheetHeader className="pb-4">
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden flex flex-col p-0">
+          <SheetHeader className="px-6 pt-6 pb-4">
             <SheetTitle>Add Activity</SheetTitle>
             <SheetDescription>
               Search and add activities for {destination} on {date.toLocaleDateString()}
@@ -276,201 +276,202 @@ export function ActivitySearchModal({
           </SheetHeader>
 
           {/* Fixed search and filters section */}
-          <div className="space-y-4 pb-4">
+          <div className="px-6 space-y-4">
             {/* Search Bar */}
             <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search hotels, activities, attractions, restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchActivities()}
-                className="pl-9"
-              />
-            </div>
-            <Button onClick={searchActivities} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Search'
-              )}
-            </Button>
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filters:</span>
-            </div>
-            
-            <Select value={selectedType} onValueChange={(value: any) => setSelectedType(value)}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {activityTypes.map(type => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {getActivityIcon(type.value)} {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={priceRange} onValueChange={(value: any) => setPriceRange(value)}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Price Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Prices</SelectItem>
-                <SelectItem value="budget">💵 Budget (&lt; $30)</SelectItem>
-                <SelectItem value="moderate">💵💵 Moderate ($30-100)</SelectItem>
-                <SelectItem value="expensive">💵💵💵 Expensive (&gt; $100)</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedType('all');
-                setPriceRange('all');
-                setLocationPreference('all');
-                setFamilyPreference('all');
-                if (hasSearched) {
-                  searchActivities();
-                }
-              }}
-            >
-              Clear Filters
-            </Button>
-          </div>
-
-          {/* Family Preference */}
-          <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-            <Label className="text-sm font-medium">Suitable For</Label>
-            <RadioGroup value={familyPreference} onValueChange={(value: any) => setFamilyPreference(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="all" id="all-ages" />
-                <Label htmlFor="all-ages" className="font-normal cursor-pointer">
-                  All Ages
-                </Label>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search hotels, activities, attractions, restaurants..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchActivities()}
+                  className="pl-9"
+                />
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="family" id="family" />
-                <Label htmlFor="family" className="font-normal cursor-pointer flex items-center gap-2">
-                  <Baby className="h-4 w-4" />
-                  Family with Children
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="adults" id="adults" />
-                <Label htmlFor="adults" className="font-normal cursor-pointer flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Adults Only
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Weather Alert and Location Preference */}
-          {weather && (
-            <div className="space-y-3">
-              <Alert className={cn(
-                "py-2",
-                weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
-              )}>
-                <div className="flex items-center gap-2">
-                  {getWeatherIcon()}
-                  <AlertDescription className="flex-1">
-                    <span className="font-medium">{weather.temperature}°C</span> - {weather.description}
-                    {weather.recommendation?.reason && (
-                      <span className="ml-2 text-muted-foreground">
-                        ({weather.recommendation.reason})
-                      </span>
-                    )}
-                  </AlertDescription>
-                </div>
-              </Alert>
-
-              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                <Label className="text-sm font-medium">Activity Location Preference</Label>
-                <RadioGroup value={locationPreference} onValueChange={(value: any) => setLocationPreference(value)}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="all" id="all" />
-                    <Label htmlFor="all" className="font-normal cursor-pointer flex items-center gap-2">
-                      All Activities
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="indoor" id="indoor" />
-                    <Label htmlFor="indoor" className="font-normal cursor-pointer flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      Indoor Activities
-                      {getWeatherBasedSuggestion() === 'indoor' && (
-                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                      )}
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="outdoor" id="outdoor" />
-                    <Label htmlFor="outdoor" className="font-normal cursor-pointer flex items-center gap-2">
-                      <Trees className="h-4 w-4" />
-                      Outdoor Activities
-                      {getWeatherBasedSuggestion() === 'outdoor' && (
-                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                      )}
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Results */}
-        <ScrollArea className="flex-1">
-          <div className="space-y-3 pr-4">
-            {loading ? (
-              <div className="text-center py-8">
-                <Loader2 className="h-12 w-12 mx-auto mb-3 animate-spin text-primary" />
-                <p className="text-muted-foreground">Searching for activities in {destination}...</p>
-              </div>
-            ) : !hasSearched ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-lg font-medium">Find Amazing Activities</p>
-                <p className="text-sm mt-1">Search for attractions, restaurants, and experiences</p>
-                {!location && (
-                  <p className="text-sm mt-2 text-amber-600">
-                    ⚠️ Location coordinates needed for accurate results
-                  </p>
+              <Button onClick={searchActivities} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Search'
                 )}
+              </Button>
+            </div>
+
+            {/* Filters */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                <span>Filters</span>
               </div>
-            ) : activities.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No activities found</p>
-                <p className="text-sm mt-1">Try adjusting your search or filters</p>
-              </div>
-            ) : (
-              activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className={cn(
-                    "border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer",
-                    activity.isRecommended && "border-primary/50 bg-primary/5"
-                  )}
-                  onClick={() => handleActivitySelect(activity)}
+              <div className="flex flex-wrap gap-2">
+                <Select value={selectedType} onValueChange={(value: any) => setSelectedType(value)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {activityTypes.map(type => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {getActivityIcon(type.value)} {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={priceRange} onValueChange={(value: any) => setPriceRange(value)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Price Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="budget">💵 Budget (&lt; $30)</SelectItem>
+                    <SelectItem value="moderate">💵💵 Moderate ($30-100)</SelectItem>
+                    <SelectItem value="expensive">💵💵💵 Expensive (&gt; $100)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedType('all');
+                    setPriceRange('all');
+                    setLocationPreference('all');
+                    setFamilyPreference('all');
+                    if (hasSearched) {
+                      searchActivities();
+                    }
+                  }}
                 >
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+
+            {/* Family Preference */}
+            <div className="bg-muted/50 p-3 rounded-lg">
+              <Label className="text-sm font-medium mb-2 block">Suitable For</Label>
+              <RadioGroup value={familyPreference} onValueChange={(value: any) => setFamilyPreference(value)} className="grid grid-cols-3 gap-2">
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="all" id="all-ages" />
+                  <Label htmlFor="all-ages" className="font-normal cursor-pointer text-sm">
+                    All Ages
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="family" id="family" />
+                  <Label htmlFor="family" className="font-normal cursor-pointer flex items-center gap-1 text-sm">
+                    <Baby className="h-3 w-3" />
+                    Family
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <RadioGroupItem value="adults" id="adults" />
+                  <Label htmlFor="adults" className="font-normal cursor-pointer flex items-center gap-1 text-sm">
+                    <Users className="h-3 w-3" />
+                    Adults Only
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Weather Alert and Location Preference */}
+            {weather && (
+              <div className="space-y-3">
+                <Alert className={cn(
+                  "py-2",
+                  weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
+                )}>
+                  <div className="flex items-center gap-2">
+                    {getWeatherIcon()}
+                    <AlertDescription className="flex-1">
+                      <span className="font-medium">{weather.temperature}°C</span> - {weather.description}
+                      {weather.recommendation?.reason && (
+                        <span className="ml-2 text-muted-foreground">
+                          ({weather.recommendation.reason})
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </div>
+                </Alert>
+
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <Label className="text-sm font-medium mb-2 block">Activity Location Preference</Label>
+                  <RadioGroup value={locationPreference} onValueChange={(value: any) => setLocationPreference(value)} className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="all" id="all" />
+                      <Label htmlFor="all" className="font-normal cursor-pointer text-sm">
+                        All Activities
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="indoor" id="indoor" />
+                      <Label htmlFor="indoor" className="font-normal cursor-pointer flex items-center gap-1 text-sm">
+                        <Home className="h-3 w-3" />
+                        Indoor
+                        {getWeatherBasedSuggestion() === 'indoor' && (
+                          <Badge variant="secondary" className="text-xs ml-1">Rec</Badge>
+                        )}
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="outdoor" id="outdoor" />
+                      <Label htmlFor="outdoor" className="font-normal cursor-pointer flex items-center gap-1 text-sm">
+                        <Trees className="h-3 w-3" />
+                        Outdoor
+                        {getWeatherBasedSuggestion() === 'outdoor' && (
+                          <Badge variant="secondary" className="text-xs ml-1">Rec</Badge>
+                        )}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Results */}
+          <ScrollArea className="flex-1">
+            <div className="px-6 space-y-3 pb-6">
+              {loading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-12 w-12 mx-auto mb-3 animate-spin text-primary" />
+                  <p className="text-muted-foreground">Searching for activities in {destination}...</p>
+                </div>
+              ) : !hasSearched ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium">Find Amazing Activities</p>
+                  <p className="text-sm mt-1">Search for attractions, restaurants, and experiences</p>
+                  {!location && (
+                    <p className="text-sm mt-2 text-amber-600">
+                      ⚠️ Location coordinates needed for accurate results
+                    </p>
+                  )}
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No activities found</p>
+                  <p className="text-sm mt-1">Try adjusting your search or filters</p>
+                </div>
+              ) : (
+                activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className={cn(
+                      "border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer",
+                      activity.isRecommended && "border-primary/50 bg-primary/5"
+                    )}
+                    onClick={() => handleActivitySelect(activity)}
+                  >
                   {/* Recommendation banner */}
                   {activity.isRecommended && (
                     <div className="flex items-center gap-2 mb-3 pb-3 border-b">
