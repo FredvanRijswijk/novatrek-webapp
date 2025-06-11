@@ -71,21 +71,54 @@ export default function ProfilePage() {
 
     try {
       // Load from Firestore user document
-      const userDoc = await getDoc(doc(db, 'users', user.uid))
-      const userData = userDoc.data()
-
-      setProfile({
-        displayName: user.displayName || '',
-        photoURL: user.photoURL || '/avatars/default-avatar.svg',
-        bio: userData?.bio || '',
-        location: userData?.location || '',
-        languages: userData?.languages || [],
-        stats: userData?.stats,
-        privacy: userData?.privacy || {
-          profileVisibility: 'private',
-          showStats: true
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        // Create user document if it doesn't exist
+        const initialData = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '/avatars/default-avatar.svg',
+          bio: '',
+          location: '',
+          languages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          subscription: null,
+          privacy: {
+            profileVisibility: 'private',
+            showStats: true
+          }
         }
-      })
+        
+        await setDoc(userDocRef, initialData)
+        
+        setProfile({
+          displayName: initialData.displayName,
+          photoURL: initialData.photoURL,
+          bio: initialData.bio,
+          location: initialData.location,
+          languages: initialData.languages,
+          privacy: initialData.privacy
+        })
+      } else {
+        const userData = userDoc.data()
+        
+        setProfile({
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '/avatars/default-avatar.svg',
+          bio: userData?.bio || '',
+          location: userData?.location || '',
+          languages: userData?.languages || [],
+          stats: userData?.stats,
+          privacy: userData?.privacy || {
+            profileVisibility: 'private',
+            showStats: true
+          }
+        })
+      }
     } catch (error) {
       console.error('Error loading profile:', error)
       // Fallback to auth profile
