@@ -52,10 +52,12 @@ interface Message {
 }
 
 interface PlanningContext {
-  destination?: string;
+  destinations?: string[]; // Support multiple destinations
+  destination?: string; // Keep for backward compatibility
   duration?: number;
   budget?: string;
   travelers?: number;
+  travelType?: 'solo' | 'romantic' | 'family' | 'friends' | 'group';
   interests?: string[];
   accommodation?: string;
   transport?: string;
@@ -95,8 +97,8 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       suggestions: [
         "Plan a 7-day trip to Japan",
         "I want a romantic weekend in Paris",
-        "Family vacation to Orlando theme parks",
-        "Backpacking through Southeast Asia"
+        "Family trip to Rome, Venice, and Florence",
+        "Backpacking through Thailand, Vietnam, and Cambodia"
       ]
     }]);
 
@@ -190,12 +192,18 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
               User preferences: ${JSON.stringify(preferences)}
               
               Help the user plan their trip step by step. Extract key information like:
-              - Destination
+              - Destination(s) - note: users may want to visit multiple cities/countries
               - Travel dates (when they want to go)
               - Duration
               - Budget
-              - Number of travelers
+              - Number of travelers and travel type (solo, romantic, family, friends)
               - Interests and preferences
+              
+              Special instructions:
+              - If user mentions "romantic", "honeymoon", or "couple", assume 2 travelers
+              - If user mentions "family", assume 4 travelers unless specified
+              - Support multi-destination trips (e.g., "Paris and Rome", "Japan then Korea")
+              - If user says "weekend", assume 3 days (Friday-Sunday)
               
               If the user hasn't specified when they want to travel, ask them for their preferred travel dates or timeframe.
               When you have enough information, suggest a day-by-day itinerary with specific activities, restaurants, and accommodations.
@@ -295,10 +303,8 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
         suggestions: generateSuggestions(updatedContext)
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Check if we have enough info to create a trip
-      if (updatedContext.destination && updatedContext.duration && updatedContext.budget) {
+      // Check if we have enough info to create a trip BEFORE adding message to state
+      if ((updatedContext.destination || updatedContext.destinations) && updatedContext.duration && updatedContext.budget) {
         // Use extracted start date or default to 7 days from now
         const tripStartDate = updatedContext.startDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const tripEndDate = new Date(tripStartDate.getTime() + (updatedContext.duration * 24 * 60 * 60 * 1000));
@@ -317,9 +323,16 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
               activities: 0,
               miscellaneous: 0
             }
-          }
+          },
+          travelers: updatedContext.travelers || 1,
+          // Store the AI response content for later use
+          aiItinerary: fullResponse
         };
+        
+        console.log('Trip data ready for creation:', assistantMessage.tripData);
       }
+
+      setMessages(prev => [...prev, assistantMessage]);
 
     } catch (error) {
       console.error('Error in chat:', error);
@@ -345,13 +358,47 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
     // Simple extraction logic - in production, this would use NLP
     const lowerMessage = message.toLowerCase();
     
-    // Extract destination
-    const destinations = ['japan', 'paris', 'london', 'new york', 'bali', 'thailand', 'italy', 'spain'];
-    destinations.forEach(dest => {
-      if (lowerMessage.includes(dest)) {
-        context.destination = dest.charAt(0).toUpperCase() + dest.slice(1);
+    // First remove date-related phrases to avoid false matches
+    let cleanedMessage = lowerMessage
+      .replace(/start(?:ing)?\s+on\s+\d+\s+\w+/gi, '')
+      .replace(/from\s+\d+\s+\w+/gi, '')
+      .replace(/begin(?:ning)?\s+\d+\s+\w+/gi, '');
+    
+    // Extract destinations (support multiple with "then", "and", "to", arrow)
+    const allDestinations = ['japan', 'tokyo', 'kyoto', 'osaka', 'paris', 'london', 'new york', 'bali', 'thailand', 'bangkok', 
+                           'italy', 'rome', 'venice', 'florence', 'milan', 'naples', 'spain', 'barcelona', 'madrid', 
+                           'amsterdam', 'berlin', 'munich', 'singapore', 'hong kong', 'dubai', 'istanbul', 'athens', 
+                           'prague', 'vienna', 'budapest', 'lisbon', 'porto', 'dublin', 'edinburgh'];
+    
+    const foundDestinations: string[] = [];
+    allDestinations.forEach(dest => {
+      if (cleanedMessage.includes(dest)) {
+        const properName = dest.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        if (!foundDestinations.includes(properName)) {
+          foundDestinations.push(properName);
+        }
       }
     });
+    
+    if (foundDestinations.length > 0) {
+      context.destinations = foundDestinations;
+      context.destination = foundDestinations[0]; // Keep first for backward compatibility
+    }
+    
+    // Detect travel type and infer traveler count
+    if (lowerMessage.includes('romantic') || lowerMessage.includes('honeymoon') || lowerMessage.includes('couple')) {
+      context.travelType = 'romantic';
+      context.travelers = 2;
+    } else if (lowerMessage.includes('family')) {
+      context.travelType = 'family';
+      context.travelers = context.travelers || 4; // Default to 4 for family if not specified
+    } else if (lowerMessage.includes('solo') || lowerMessage.includes('alone')) {
+      context.travelType = 'solo';
+      context.travelers = 1;
+    } else if (lowerMessage.includes('friends') || lowerMessage.includes('group')) {
+      context.travelType = lowerMessage.includes('friends') ? 'friends' : 'group';
+      context.travelers = context.travelers || 4; // Default to 4 for group if not specified
+    }
     
     // Extract duration
     const durationMatch = message.match(/(\d+)\s*(day|week|night)/i);
@@ -361,13 +408,18 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       context.duration = unit.includes('week') ? num * 7 : num;
     }
     
+    // Weekend detection
+    if (lowerMessage.includes('weekend')) {
+      context.duration = 3; // Friday to Sunday
+    }
+    
     // Extract budget
     const budgetMatch = message.match(/\$?\d+(?:,\d+)?(?:\s*(?:per|\/)\s*day)?|\$?\d+k/i);
     if (budgetMatch) {
       context.budget = budgetMatch[0];
     }
     
-    // Extract travelers
+    // Extract specific traveler count (overrides travel type inference)
     const travelersMatch = message.match(/(\d+)\s*(?:people|persons|travelers|adults)/i);
     if (travelersMatch) {
       context.travelers = parseInt(travelersMatch[1]);
@@ -376,12 +428,29 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
     // Extract dates
     const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
     const monthRegex = months.join('|');
-    const dateMatch = message.match(new RegExp(`(${monthRegex})\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?`, 'i'));
+    
+    // Try multiple date patterns
+    // Pattern 1: "11 september" or "september 11" 
+    // Also look for "on 11 september", "start on 11 september", etc.
+    const dateMatch1 = message.match(new RegExp(`(?:on\\s+|start\\s+on\\s+|from\\s+|starting\\s+)?(\\d{1,2})\\s+(${monthRegex})(?:\\s+(\\d{4}))?`, 'i'));
+    const dateMatch2 = message.match(new RegExp(`(?:on\\s+|start\\s+on\\s+|from\\s+|starting\\s+)?(${monthRegex})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?`, 'i'));
+    
+    let dateMatch = dateMatch1 || dateMatch2;
     
     if (dateMatch) {
-      const monthIndex = months.indexOf(dateMatch[1].toLowerCase());
-      const day = parseInt(dateMatch[2]);
-      const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+      let monthIndex, day, year;
+      
+      if (dateMatch1) {
+        // Format: "11 september" - groups shifted by 1 due to optional prefix
+        day = parseInt(dateMatch1[1]);
+        monthIndex = months.indexOf(dateMatch1[2].toLowerCase());
+        year = dateMatch1[3] ? parseInt(dateMatch1[3]) : new Date().getFullYear();
+      } else {
+        // Format: "september 11" - groups shifted by 1 due to optional prefix
+        monthIndex = months.indexOf(dateMatch2[1].toLowerCase());
+        day = parseInt(dateMatch2[2]);
+        year = dateMatch2[3] ? parseInt(dateMatch2[3]) : new Date().getFullYear();
+      }
       
       // If the date is in the past this year, assume next year
       const potentialDate = new Date(year, monthIndex, day);
@@ -396,7 +465,25 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       context.startDate = nextMonth;
+    } else if (lowerMessage.includes('tomorrow')) {
+      context.startDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (lowerMessage.includes('this weekend')) {
+      // Get next Friday
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
+      context.startDate = new Date(today.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
     }
+    
+    // Debug log
+    console.log('Extracted context:', {
+      message,
+      destinations: context.destinations,
+      startDate: context.startDate,
+      travelers: context.travelers,
+      duration: context.duration,
+      budget: context.budget
+    });
     
     return context;
   };
@@ -428,17 +515,87 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
     }
 
     try {
+      // Get the planning context to access traveler count and destinations
+      const numTravelers = (tripData as any).travelers || 1;
+      const destinations = planningContext.destinations || [];
+      
+      // Create travelers array based on the number
+      const travelers = [{
+        id: user.uid,
+        name: user.displayName || user.email || 'Me',
+        email: user.email || undefined,
+        relationship: 'self' as const
+      }];
+      
+      // Add additional travelers if needed
+      for (let i = 1; i < numTravelers; i++) {
+        travelers.push({
+          id: `traveler-${i}`,
+          name: `Traveler ${i + 1}`,
+          relationship: planningContext.travelType === 'romantic' ? 'partner' : 
+                       planningContext.travelType === 'family' ? 'family' : 'friend' as const
+        });
+      }
+      
+      // Create title based on destinations
+      const title = destinations.length > 1 
+        ? `Trip to ${destinations.join(' → ')}`
+        : `Trip to ${tripData.destination?.name || destinations[0] || 'Unknown'}`;
+      
+      // If we have multiple destinations, create the destinations array
+      let destinationsArray;
+      if (destinations.length > 1) {
+        const dayPerDestination = Math.floor((tripData.duration || 7) / destinations.length);
+        let currentDate = new Date(tripData.startDate || new Date());
+        
+        destinationsArray = destinations.map((dest, index) => {
+          const arrivalDate = new Date(currentDate);
+          currentDate.setDate(currentDate.getDate() + dayPerDestination);
+          const departureDate = new Date(currentDate);
+          
+          return {
+            destination: { name: dest } as any,
+            arrivalDate,
+            departureDate,
+            order: index
+          };
+        });
+      }
+      
+      // Extract the AI itinerary content
+      const { aiItinerary, ...tripDataWithoutExtra } = tripData as any;
+      
+      // Create AI recommendation from the itinerary content
+      const aiRecommendations = aiItinerary ? [{
+        id: `ai-rec-${Date.now()}`,
+        type: 'itinerary' as const,
+        content: {
+          fullItinerary: aiItinerary,
+          planningContext,
+          userMessage: input // Just store the user's request
+        },
+        reasoning: 'Initial AI-generated itinerary based on user requirements',
+        confidence: 0.9,
+        createdAt: new Date(),
+        applied: false
+      }] : [];
+      
+      console.log('Creating trip with AI recommendations:', {
+        aiRecommendations,
+        aiItinerary: aiItinerary?.substring(0, 200) + '...',
+        destinations,
+        travelers
+      });
+      
       const tripId = await TripModel.create({
-        ...tripData,
+        ...tripDataWithoutExtra,
         userId: user.uid,
-        title: `Trip to ${tripData.destination?.name}`,
+        title,
         status: 'planning',
-        travelers: [{
-          id: user.uid,
-          name: user.displayName || user.email || 'Me',
-          email: user.email || undefined,
-          relationship: 'self'
-        }],
+        travelers,
+        destinations: destinationsArray,
+        description: `AI-planned ${destinations.length > 1 ? 'multi-destination' : ''} trip generated from chat`,
+        aiRecommendations,
         itinerary: [] // This will be overridden by TripModel.create anyway
       } as Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>);
 
@@ -697,16 +854,18 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
           <CardContent className="space-y-3">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                {planningContext.destination ? (
+                {(planningContext.destination || planningContext.destinations) ? (
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 ) : (
                   <div className="h-4 w-4 rounded-full border-2" />
                 )}
-                <span className="text-sm">Destination</span>
+                <span className="text-sm">Destination{planningContext.destinations && planningContext.destinations.length > 1 ? 's' : ''}</span>
               </div>
-              {planningContext.destination && (
+              {(planningContext.destinations || planningContext.destination) && (
                 <div className="ml-6 text-sm text-muted-foreground">
-                  {planningContext.destination}
+                  {planningContext.destinations && planningContext.destinations.length > 0 
+                    ? planningContext.destinations.join(' → ')
+                    : planningContext.destination}
                 </div>
               )}
             </div>

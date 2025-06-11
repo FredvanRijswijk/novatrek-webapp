@@ -401,7 +401,7 @@ export default function TripPlanningPage() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">
-                {activeTab === 'chat' && <TripChat trip={trip} />}
+                {activeTab === 'chat' && <TripChat trip={trip} onUpdate={setTrip} />}
               </TabsContent>
             </Tabs>
           </div>

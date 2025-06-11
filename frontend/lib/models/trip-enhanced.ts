@@ -34,10 +34,10 @@ export class TripModelEnhanced {
   static async create(tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     // Create user reference if userId is provided
     let enhancedData: any = {
-      ...tripData,
       status: 'planning',
       itinerary: [],
       aiRecommendations: [],
+      ...tripData, // Spread tripData after defaults so it can override them
     }
 
     // Add user reference alongside userId for new documents
@@ -201,5 +201,13 @@ export class TripModelEnhanced {
 
     const expenses = (trip.expenses || []).filter(exp => exp.id !== expenseId)
     await this.update(tripId, { expenses })
+  }
+
+  // Calculate trip duration in days
+  static getDuration(trip: Trip): number {
+    const startDate = new Date(trip.startDate)
+    const endDate = new Date(trip.endDate)
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
   }
 }
