@@ -194,32 +194,65 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
         throw new Error('Failed to get response');
       }
 
-      // Handle streaming response
+      // Handle streaming response from Vercel AI SDK
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
       
       let fullResponse = '';
       const decoder = new TextDecoder();
+      let buffer = '';
       
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
         
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.trim() === '') continue;
+          
+          // Vercel AI SDK format: "0:chunk text"
+          if (line.match(/^\d+:/)) {
+            const colonIndex = line.indexOf(':');
+            const content = line.slice(colonIndex + 1);
+            
+            // Remove quotes if present
+            if (content.startsWith('"') && content.endsWith('"')) {
+              fullResponse += JSON.parse(content);
+            } else {
+              fullResponse += content;
+            }
+          }
+          // Standard SSE format: "data: {...}"
+          else if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            
             try {
-              const data = JSON.parse(line.slice(6));
-              if (data.text) {
-                fullResponse += data.text;
-              }
+              const parsed = JSON.parse(data);
+              // Handle different response formats
+              const text = parsed.text || parsed.content || parsed.delta?.text || parsed.delta?.content || '';
+              fullResponse += text;
             } catch (e) {
-              // Skip invalid JSON
+              console.error('Failed to parse SSE data:', data);
             }
           }
         }
+      }
+      
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        console.log('Remaining buffer:', buffer);
+      }
+      
+      console.log('Full response:', fullResponse);
+      
+      if (!fullResponse.trim()) {
+        throw new Error('No response content received from AI');
       }
       
       // Extract planning context from response
@@ -248,7 +281,17 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       }
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in chat:', error);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `I'm sorry, I encountered an error while processing your request. ${error instanceof Error ? error.message : 'Please try again.'}`,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
       toast.error('Failed to get response. Please try again.');
     } finally {
       setIsLoading(false);
