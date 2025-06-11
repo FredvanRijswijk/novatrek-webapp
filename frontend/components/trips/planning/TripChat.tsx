@@ -81,17 +81,28 @@ const getContextualSuggestions = (trip: Trip, enhanced?: EnhancedTripContext | n
   // Fallback to basic suggestions
   const suggestions = [];
   
+  // Check if trip has accommodation
+  const hasAccommodation = trip.itinerary?.some(day => day.accommodations && day.accommodations.length > 0);
+  if (!hasAccommodation) {
+    const nights = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24));
+    suggestions.push(`Find hotels in ${getDestinationName(trip)} for ${nights} nights`);
+    suggestions.push(`Show me accommodations near the city center with breakfast included`);
+  }
+  
   // Check if trip has few activities
   const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
   if (totalActivities < 3) {
     suggestions.push(`What are the must-see attractions in ${getDestinationName(trip)}?`);
-    suggestions.push(`Suggest activities for a ${trip.travelers.length} person trip`);
+    suggestions.push(`Create a complete itinerary with hotels and activities`);
   }
 
   // Budget-related suggestions
   if (trip.budget) {
+    const nights = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24));
     suggestions.push(`Find budget-friendly restaurants in ${getDestinationName(trip)}`);
-    suggestions.push('How can I save money on this trip?');
+    if (!hasAccommodation && nights > 0) {
+      suggestions.push(`Find hotels under $${Math.floor((trip.budget.breakdown.accommodation || trip.budget.total * 0.3) / nights)}/night`);
+    }
   }
 
   // Date-specific suggestions
@@ -615,7 +626,22 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
            
            ${requestedDay ? `The user is asking for activities specifically for Day ${requestedDay} of their trip. 
            Please provide activities ONLY for Day ${requestedDay} in a structured JSON format.` : 
-           'Provide specific, actionable advice and suggestions.'}`;
+           'Provide specific, actionable advice and suggestions.'}
+           
+           IMPORTANT: When the user asks for hotels or accommodations:
+           1. Mark them with type: "accommodation" in the JSON
+           2. Include price per night in the cost field
+           3. Hotels don't need specific time slots (no startTime needed)
+           4. Format them as activities so they can be added to the itinerary
+           
+           Example hotel format in JSON:
+           {
+             "name": "Hotel Name",
+             "type": "accommodation",
+             "description": "Description",
+             "cost": { "amount": 150, "currency": "USD", "perPerson": false },
+             "location": { "name": "Hotel Address" }
+           }`;
 
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
