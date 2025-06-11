@@ -1,484 +1,359 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { verifyIdToken } from '@/lib/firebase/admin'
-import { Activity } from '@/types/travel'
-import { WeatherServerClient } from '@/lib/weather/server-client'
-import { RecommendationModel } from '@/lib/models/recommendations'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyIdToken, adminDb } from '@/lib/firebase/admin';
 
-// Activity type mapping to Google Places types
-const activityTypeToPlaceTypes: Record<string, string[]> = {
-  sightseeing: ['tourist_attraction', 'point_of_interest', 'establishment'],
-  dining: ['restaurant', 'cafe', 'bakery', 'bar'],
-  activity: ['amusement_park', 'aquarium', 'bowling_alley', 'gym', 'stadium'],
-  shopping: ['shopping_mall', 'store', 'clothing_store', 'jewelry_store'],
-  entertainment: ['movie_theater', 'night_club', 'casino', 'theater'],
-  cultural: ['museum', 'art_gallery', 'library', 'church', 'hindu_temple', 'mosque', 'synagogue'],
-  outdoor: ['park', 'hiking_trail', 'beach', 'campground', 'zoo'],
-  wellness: ['spa', 'beauty_salon', 'hair_care'],
-  accommodation: ['lodging', 'hotel', 'motel', 'resort', 'guest_house', 'hostel', 'bed_and_breakfast']
-}
-
-// Indoor/Outdoor classification
-const indoorActivities = ['shopping', 'cultural', 'wellness', 'entertainment', 'accommodation']
-const outdoorActivities = ['outdoor', 'sightseeing']
-const mixedActivities = ['dining', 'activity'] // Can be either
-
-// Family-friendly classification
-const familyFriendlyTypes = [
-  'amusement_park', 'aquarium', 'zoo', 'park', 'museum', 
-  'beach', 'bowling_alley', 'movie_theater', 'restaurant',
-  'tourist_attraction', 'playground', 'theme_park'
-]
-
-const adultsOnlyTypes = [
-  'bar', 'night_club', 'casino', 'winery', 'brewery',
-  'spa', 'wine_bar', 'cocktail_bar'
-]
-
-// Estimated duration by activity type (in minutes)
-const estimatedDurations: Record<string, number> = {
-  sightseeing: 120,
-  dining: 90,
-  activity: 180,
-  shopping: 120,
-  entertainment: 150,
-  cultural: 120,
-  outdoor: 240,
-  wellness: 120,
-  accommodation: 30 // Check-in/check-out time
-}
-
-// Price level to estimated cost mapping
-const priceLevelToCost: Record<number, { min: number; max: number }> = {
-  0: { min: 0, max: 0 },        // Free
-  1: { min: 5, max: 15 },       // Inexpensive
-  2: { min: 15, max: 40 },      // Moderate
-  3: { min: 40, max: 80 },      // Expensive
-  4: { min: 80, max: 200 }      // Very Expensive
-}
-
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Check authentication - try both header and cookie
-    const authHeader = request.headers.get('authorization')
-    const cookieStore = await cookies()
-    const cookieToken = cookieStore.get('firebaseIdToken')
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
     
-    const token = authHeader?.replace('Bearer ', '') || cookieToken?.value
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Verify the token
+    const decodedToken = await verifyIdToken(token);
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    try {
-      await verifyIdToken(token)
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const userId = decodedToken.uid;
 
-    const { 
-      location, 
-      activityType, 
-      searchQuery, 
-      budget,
-      date,
-      timeOfDay,
-      preferIndoorActivities,
-      preferOutdoorActivities,
-      familyFriendly
-    } = await request.json()
+    const searchParams = request.nextUrl.searchParams;
+    const queryText = searchParams.get('query') || '';
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const radius = parseInt(searchParams.get('radius') || '5000');
+    const types = searchParams.get('types')?.split(',') || [];
+    const minRating = parseFloat(searchParams.get('minRating') || '0');
+    const priceLevel = searchParams.get('priceLevel')?.split(',').map(Number) || [];
+    const userPreferences = searchParams.get('userPreferences') 
+      ? JSON.parse(searchParams.get('userPreferences')!) 
+      : null;
 
-    if (!location || !location.lat || !location.lng) {
-      return NextResponse.json(
-        { error: 'Location coordinates required' },
-        { status: 400 }
-      )
-    }
-
-    // Build search query
-    let query = searchQuery || ''
-    if (activityType && !searchQuery) {
-      // Add activity type to query if no specific search
-      query = activityType === 'dining' ? 'restaurant' : activityType
-    }
-
-    // Add time-based modifiers
-    if (timeOfDay === 'morning' && activityType === 'dining') {
-      query = 'breakfast ' + query
-    } else if (timeOfDay === 'evening' && activityType === 'dining') {
-      query = 'dinner ' + query
-    }
-
-    // Get place types for the activity
-    const types = activityTypeToPlaceTypes[activityType] || []
-    const typeString = types.length > 0 ? types[0] : undefined
-
-    // Use Google Places Text Search API
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    if (!apiKey) {
-      throw new Error('Google Maps API key not configured')
-    }
-
-    const searchUrl = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json')
-    searchUrl.searchParams.set('query', query)
-    searchUrl.searchParams.set('location', `${location.lat},${location.lng}`)
-    searchUrl.searchParams.set('radius', '5000')
-    if (typeString) {
-      searchUrl.searchParams.set('type', typeString)
-    }
-    searchUrl.searchParams.set('key', apiKey)
-
-    const searchResponse = await fetch(searchUrl.toString())
-    const searchData = await searchResponse.json()
-
-    if (searchData.status !== 'OK' && searchData.status !== 'ZERO_RESULTS') {
-      console.error('Google Places API error:', searchData.status)
-      throw new Error('Failed to search places')
-    }
-
-    const results = searchData.results || []
-
-    // Get recommendations first (expert + NovaTrek)
-    let recommendations: Activity[] = []
-    try {
-      // Extract city from the first result or search query
-      let city = ''
-      if (results.length > 0 && results[0].address_components) {
-        const cityComponent = results[0].address_components.find((component: any) => 
-          component.types.includes('locality') || component.types.includes('administrative_area_level_1')
-        )
-        city = cityComponent?.long_name || ''
-      }
-      
-      if (city) {
-        const [expertRecs, novatrekRecs] = await Promise.all([
-          RecommendationModel.getRecommendationsByCity(city, activityType, 5),
-          RecommendationModel.getNovaTrekRecommendations(city, activityType, 5)
-        ])
-        
-        // Convert recommendations to Activity format
-        recommendations = [...expertRecs, ...novatrekRecs].map(rec => ({
-          id: `rec_${rec.id}`,
-          googlePlaceId: rec.googlePlaceId,
-          name: rec.name,
-          description: rec.description || rec.reason || '',
-          type: (rec.type || activityType || 'activity') as Activity['type'],
-          location: {
-            name: rec.location.address,
-            address: rec.location.address,
-            coordinates: rec.location.coordinates,
-            placeId: rec.googlePlaceId
-          },
-          rating: rec.rating,
-          tags: [
-            ...rec.tags,
-            rec.recommendedBy.type === 'expert' ? 'expert-pick' : 'novatrek-pick',
-            `Recommended by ${rec.recommendedBy.name}`
-          ],
-          images: rec.images || [],
-          openingHours: rec.openingHours,
-          phone: rec.phone,
-          website: rec.website,
-          aiGenerated: false,
-          userAdded: false,
-          isRecommended: true,
-          recommendedBy: rec.recommendedBy,
-          recommendationReason: rec.reason,
-          tips: rec.tips,
-          highlights: rec.highlights
-        } as Activity))
-        
-        // Increment view counts
-        await Promise.all(
-          [...expertRecs, ...novatrekRecs].map(rec => 
-            RecommendationModel.incrementRecommendationStat(rec.id, 'viewCount')
-          )
-        )
-      }
-    } catch (error) {
-      console.error('Error fetching recommendations:', error)
-      // Continue without recommendations
-    }
-
-    // Get weather data if we need to filter by indoor/outdoor
-    let weatherData = null
-    let weatherRecommendation = null
-    
-    console.log('Weather fetch conditions:', { date, preferIndoorActivities, shouldFetchWeather: date && !preferIndoorActivities })
-    
-    if (date && !preferIndoorActivities) {
-      // Only fetch weather if not already preferring indoor
-      try {
-        console.log('Attempting to fetch weather data for date:', date)
-        const weatherClient = WeatherServerClient.getInstance()
-        weatherData = await weatherClient.getWeather(
-          location.lat,
-          location.lng,
-          new Date(date)
-        )
-        
-        if (weatherData) {
-          console.log('Weather data received:', weatherData)
-          weatherRecommendation = WeatherServerClient.getActivityRecommendation(weatherData)
-        } else {
-          console.log('No weather data returned')
-        }
-      } catch (weatherError) {
-        console.error('Error fetching weather:', weatherError)
-        // Continue without weather data
-      }
-    }
-
-    // Determine activity preference
-    const shouldPreferIndoor = preferIndoorActivities || 
-                              (weatherRecommendation?.preferIndoor && 
-                               weatherRecommendation.severity !== 'low' &&
-                               !preferOutdoorActivities)
-    
-    const shouldPreferOutdoor = preferOutdoorActivities ||
-                               (!preferIndoorActivities && 
-                                weatherRecommendation && 
-                                !weatherRecommendation.preferIndoor)
-
-    // Get place types for filtering
-    let targetTypes = activityTypeToPlaceTypes[activityType] || []
-    
-    // If preferring indoor and no specific type selected, use indoor types
-    if (shouldPreferIndoor && !activityType) {
-      targetTypes = [
-        ...activityTypeToPlaceTypes.shopping,
-        ...activityTypeToPlaceTypes.cultural,
-        ...activityTypeToPlaceTypes.entertainment,
-        ...activityTypeToPlaceTypes.wellness
-      ]
-    }
-    
-    // If preferring outdoor and no specific type selected, use outdoor types
-    if (shouldPreferOutdoor && !activityType) {
-      targetTypes = [
-        ...activityTypeToPlaceTypes.outdoor,
-        ...activityTypeToPlaceTypes.sightseeing,
-        'park', 'beach', 'hiking_area', 'natural_feature'
-      ]
-    }
-
-    // Transform and enhance results
-    const activities: Activity[] = results
-      .filter((place: any) => {
-        // Filter by activity type if specified
-        if (targetTypes.length > 0 && place.types) {
-          return place.types.some((type: string) => targetTypes.includes(type))
-        }
-        
-        // Additional filtering for indoor preference
-        if (shouldPreferIndoor && activityType) {
-          // If we need indoor activities, filter out definitely outdoor types
-          if (outdoorActivities.includes(activityType)) {
-            return false
-          }
-        }
-        
-        // Filter by family-friendly preference
-        if (familyFriendly !== null && place.types) {
-          const placeTypes = place.types as string[]
-          
-          if (familyFriendly === true) {
-            // Exclude adults-only places
-            if (placeTypes.some((type: string) => adultsOnlyTypes.includes(type))) {
-              return false
-            }
-          } else if (familyFriendly === false) {
-            // Only include places that might be adults-oriented
-            // Don't exclude restaurants as they can be upscale/romantic
-            const hasAdultType = placeTypes.some((type: string) => adultsOnlyTypes.includes(type))
-            const hasFamilyType = placeTypes.some((type: string) => 
-              ['playground', 'amusement_park', 'theme_park', 'zoo', 'aquarium'].includes(type)
-            )
-            
-            // Exclude obvious family places when looking for adults-only
-            if (hasFamilyType && !hasAdultType) {
-              return false
-            }
-          }
-        }
-        
-        return true
+    // Search from multiple sources in parallel
+    const [googleResults, expertRecommendations, novatrekActivities] = await Promise.all([
+      searchGooglePlaces({
+        query: queryText,
+        location: lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined,
+        radius,
+        types,
+        minRating
+      }),
+      searchExpertRecommendations({
+        query: queryText,
+        location: lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined,
+        types,
+        radius
+      }),
+      searchNovatrekActivities({
+        query: queryText,
+        types,
+        userPreferences
       })
-      .map((place: any) => {
-        // Determine the actual type based on place types if activityType is not set
-        let finalActivityType = activityType
-        if (!finalActivityType && place.types) {
-          // Check if this is a hotel/accommodation
-          const accommodationTypes = ['lodging', 'hotel', 'motel', 'resort', 'guest_house', 'hostel', 'bed_and_breakfast']
-          if (place.types.some((t: string) => accommodationTypes.includes(t))) {
-            finalActivityType = 'accommodation'
-          }
-        }
-        
-        // Debug logging for hotels
-        if (place.types?.includes('lodging') || place.name.toLowerCase().includes('hotel')) {
-          console.log('🏨 Hotel detected:', {
-            name: place.name,
-            types: place.types,
-            finalActivityType,
-            originalActivityType: activityType
-          })
-        }
-        
-        // Estimate costs based on price level
-        const priceLevel = place.price_level || 2
-        const costEstimate = priceLevelToCost[priceLevel]
-        
-        // Calculate cost based on activity type
-        let estimatedCost = (costEstimate.min + costEstimate.max) / 2
-        if (finalActivityType === 'dining') {
-          estimatedCost = estimatedCost * 1.5 // Adjust for meals
-        } else if (finalActivityType === 'accommodation') {
-          estimatedCost = estimatedCost * 2 // Hotels show per night pricing
-        }
+    ]);
 
-        // Generate activity times based on time of day
-        let startTime = '10:00'
-        if (timeOfDay === 'morning') startTime = '09:00'
-        else if (timeOfDay === 'afternoon') startTime = '14:00'
-        else if (timeOfDay === 'evening') startTime = '18:00'
+    // Merge and rank results
+    const mergedResults = mergeAndRankResults(
+      googleResults,
+      expertRecommendations,
+      novatrekActivities,
+      userPreferences
+    );
 
-        const duration = estimatedDurations[finalActivityType] || 120
+    // Apply additional filters
+    const filteredResults = mergedResults.filter(result => {
+      if (minRating && result.rating < minRating) return false;
+      if (priceLevel.length && result.priceLevel && !priceLevel.includes(result.priceLevel)) return false;
+      return true;
+    });
 
-        return {
-          id: place.place_id,
-          name: place.name,
-          description: place.editorial_summary?.overview || 
-                      `Visit ${place.name} - ${place.types?.[0]?.replace(/_/g, ' ') || 'Popular destination'}`,
-          type: (finalActivityType || 'activity') as Activity['type'],
-          location: {
-            address: place.formatted_address || place.vicinity,
-            coordinates: {
-              lat: place.geometry.location.lat,
-              lng: place.geometry.location.lng
-            },
-            googlePlaceId: place.place_id
-          },
-          startTime,
-          endTime: '', // Will be calculated based on duration
-          duration,
-          cost: {
-            amount: estimatedCost,
-            currency: 'USD',
-            perPerson: true
-          },
-          rating: place.rating,
-          aiGenerated: false,
-          userAdded: false,
-          tags: [
-            finalActivityType,
-            ...(place.types?.slice(0, 3).map((t: string) => t.replace(/_/g, ' ')) || []),
-            // Add family-friendly tags
-            ...(place.types?.some((t: string) => familyFriendlyTypes.includes(t)) ? ['family-friendly'] : []),
-            ...(place.types?.some((t: string) => adultsOnlyTypes.includes(t)) ? ['adults-only'] : [])
-          ].filter(Boolean),
-          images: place.photos?.map((photo: any) => ({
-            url: `/api/places/photo?name=${photo.name || photo.photo_reference}&maxWidth=800`,
-            caption: place.name
-          })) || []
-        }
-      })
-      .filter(activity => {
-        // Filter by budget if specified
-        if (budget && activity.cost) {
-          return activity.cost.amount <= budget
-        }
-        return true
-      })
-      .slice(0, 20) // Limit to 20 results
-
-    // Sort by rating (if available)
-    activities.sort((a, b) => (b.rating || 0) - (a.rating || 0))
-
-    // Add unique AI-generated suggestion if we have results
-    if (activities.length > 0 && activities.length < 10) {
-      const aiSuggestion = await generateUniqueActivity(
-        location,
-        activityType,
-        budget,
-        timeOfDay
-      )
-      if (aiSuggestion) {
-        activities.splice(3, 0, aiSuggestion) // Insert as 4th result
+    return NextResponse.json({
+      results: filteredResults.slice(0, 20), // Top 20 results
+      total: filteredResults.length,
+      sources: {
+        google: googleResults.length,
+        experts: expertRecommendations.length,
+        novatrek: novatrekActivities.length
       }
-    }
-
-    // Sort activities based on preference
-    if (shouldPreferIndoor || shouldPreferOutdoor) {
-      activities.sort((a, b) => {
-        const aIsIndoor = indoorActivities.includes(a.type) || 
-                         (a.tags?.some(tag => tag.includes('indoor')) ?? false)
-        const bIsIndoor = indoorActivities.includes(b.type) || 
-                         (b.tags?.some(tag => tag.includes('indoor')) ?? false)
-        
-        const aIsOutdoor = outdoorActivities.includes(a.type) || 
-                          (a.tags?.some(tag => 
-                            ['park', 'beach', 'hiking', 'trail', 'garden', 'outdoor'].some(term => 
-                              tag.toLowerCase().includes(term)
-                            )
-                          ) ?? false)
-        const bIsOutdoor = outdoorActivities.includes(b.type) || 
-                          (b.tags?.some(tag => 
-                            ['park', 'beach', 'hiking', 'trail', 'garden', 'outdoor'].some(term => 
-                              tag.toLowerCase().includes(term)
-                            )
-                          ) ?? false)
-        
-        // Sort based on preference
-        if (shouldPreferIndoor) {
-          if (aIsIndoor && !bIsIndoor) return -1
-          if (!aIsIndoor && bIsIndoor) return 1
-        } else if (shouldPreferOutdoor) {
-          if (aIsOutdoor && !bIsOutdoor) return -1
-          if (!aIsOutdoor && bIsOutdoor) return 1
-        }
-        
-        // Then sort by rating
-        return (b.rating || 0) - (a.rating || 0)
-      })
-    }
-
-    // Combine recommendations first, then regular results
-    const allActivities = [
-      ...recommendations,
-      ...activities.filter(activity => 
-        !recommendations.some(rec => rec.googlePlaceId === activity.googlePlaceId)
-      )
-    ].slice(0, 20) // Keep total limit
-
-    return NextResponse.json({ 
-      activities: allActivities,
-      weather: weatherData ? {
-        condition: weatherData.condition,
-        temperature: weatherData.temp,
-        description: weatherData.description,
-        recommendation: weatherRecommendation
-      } : undefined,
-      hasRecommendations: recommendations.length > 0
-    })
+    });
 
   } catch (error) {
-    console.error('Activity search error:', error)
+    console.error('Activity search error:', error);
     return NextResponse.json(
       { error: 'Failed to search activities' },
       { status: 500 }
-    )
+    );
   }
 }
 
-// Generate unique AI-powered activity suggestions
-async function generateUniqueActivity(
-  location: { lat: number; lng: number },
-  activityType: string,
-  budget?: number,
-  timeOfDay?: string
-): Promise<Activity | null> {
-  // This will be implemented in Phase 3
-  // For now, return null
-  return null
+async function searchGooglePlaces(params: any) {
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (params.query) searchParams.append('query', params.query);
+    if (params.location) {
+      searchParams.append('location', `${params.location.lat},${params.location.lng}`);
+    }
+    searchParams.append('radius', params.radius.toString());
+    if (params.types?.length) {
+      searchParams.append('type', params.types.join('|'));
+    }
+    
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?${searchParams}&key=${apiKey}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    return data.results?.map((place: any) => ({
+      id: place.place_id,
+      name: place.name,
+      description: place.editorial_summary?.text,
+      location: {
+        lat: place.geometry.location.lat,
+        lng: place.geometry.location.lng,
+        address: place.formatted_address
+      },
+      rating: place.rating,
+      reviews: place.user_ratings_total,
+      priceLevel: place.price_level,
+      photos: place.photos?.slice(0, 3).map((p: any) => ({
+        reference: p.photo_reference,
+        width: p.width,
+        height: p.height
+      })),
+      types: place.types,
+      openingHours: place.opening_hours,
+      source: 'google'
+    })) || [];
+  } catch (error) {
+    console.error('Google Places search error:', error);
+    return [];
+  }
+}
+
+async function searchExpertRecommendations(params: any) {
+  try {
+    // Query expert recommendations from Firestore
+    const recommendationsQuery = adminDb
+      .collection('expertRecommendations')
+      .where('status', '==', 'published');
+    
+    // Note: Firestore doesn't support combining array-contains-any with other queries efficiently
+    // In production, you'd use a more sophisticated indexing strategy
+    
+    const snapshot = await recommendationsQuery.get();
+    const recommendations: any[] = [];
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      // Filter by types if provided
+      if (params.types?.length && data.categories) {
+        const hasMatchingType = params.types.some((type: string) => 
+          data.categories.includes(type)
+        );
+        if (!hasMatchingType) return;
+      }
+      
+      // Basic text matching if query provided
+      if (params.query && !data.name.toLowerCase().includes(params.query.toLowerCase()) &&
+          !data.description?.toLowerCase().includes(params.query.toLowerCase())) {
+        return;
+      }
+      
+      recommendations.push({
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        location: data.location,
+        rating: data.expertRating || 5,
+        expertRating: data.expertRating,
+        expertReviews: [{
+          expertId: data.expertId,
+          expertName: data.expertName,
+          rating: data.expertRating,
+          review: data.review,
+          verified: true
+        }],
+        photos: data.photos,
+        types: data.categories,
+        priceLevel: data.priceLevel,
+        bookingUrl: data.bookingUrl,
+        expertRecommended: true,
+        expertTips: data.tips,
+        bestTime: data.bestTime,
+        duration: data.duration,
+        source: 'expert'
+      });
+    });
+    
+    return recommendations;
+  } catch (error) {
+    console.error('Expert recommendations search error:', error);
+    return [];
+  }
+}
+
+async function searchNovatrekActivities(params: any) {
+  try {
+    // Search saved activities from the NovaTrek database
+    const snapshot = await adminDb
+      .collection('activities')
+      .where('featured', '==', true)
+      .orderBy('popularityScore', 'desc')
+      .limit(10)
+      .get();
+    const activities: any[] = [];
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      if (params.query && !data.name.toLowerCase().includes(params.query.toLowerCase())) {
+        return;
+      }
+      
+      activities.push({
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        location: data.location,
+        rating: data.rating,
+        reviews: data.reviewCount,
+        photos: data.photos,
+        types: data.types,
+        popularityScore: data.popularityScore,
+        userSaves: data.saveCount,
+        source: 'novatrek'
+      });
+    });
+    
+    return activities;
+  } catch (error) {
+    console.error('NovaTrek activities search error:', error);
+    return [];
+  }
+}
+
+function mergeAndRankResults(
+  googleResults: any[],
+  expertResults: any[],
+  novatrekResults: any[],
+  userPreferences: any
+) {
+  const merged = new Map();
+  
+  // Start with expert recommendations (highest priority)
+  expertResults.forEach(item => {
+    merged.set(item.id, {
+      ...item,
+      score: 100, // Base expert score
+      sources: ['expert']
+    });
+  });
+  
+  // Add Google results
+  googleResults.forEach(item => {
+    const existing = merged.get(item.id);
+    if (existing) {
+      // Enhance existing expert recommendation with Google data
+      merged.set(item.id, {
+        ...existing,
+        ...item,
+        expertRecommended: existing.expertRecommended,
+        expertReviews: existing.expertReviews,
+        score: existing.score + 20, // Boost for being in both
+        sources: [...existing.sources, 'google']
+      });
+    } else {
+      merged.set(item.id, {
+        ...item,
+        score: calculateGoogleScore(item),
+        sources: ['google']
+      });
+    }
+  });
+  
+  // Add NovaTrek results
+  novatrekResults.forEach(item => {
+    const existing = merged.get(item.id);
+    if (existing) {
+      merged.set(item.id, {
+        ...existing,
+        popularityScore: item.popularityScore,
+        userSaves: item.userSaves,
+        score: existing.score + (item.popularityScore || 0) * 10,
+        sources: [...existing.sources, 'novatrek']
+      });
+    } else {
+      merged.set(item.id, {
+        ...item,
+        score: 50 + (item.popularityScore || 0) * 10,
+        sources: ['novatrek']
+      });
+    }
+  });
+  
+  // Apply user preference scoring
+  if (userPreferences) {
+    for (const [id, item] of merged.entries()) {
+      const preferenceScore = calculatePreferenceScore(item, userPreferences);
+      merged.set(id, {
+        ...item,
+        score: item.score + preferenceScore,
+        preferenceMatch: preferenceScore > 0
+      });
+    }
+  }
+  
+  // Convert to array and sort by score
+  return Array.from(merged.values())
+    .sort((a, b) => b.score - a.score);
+}
+
+function calculateGoogleScore(item: any): number {
+  let score = 50; // Base Google score
+  
+  if (item.rating) {
+    score += item.rating * 5; // Up to 25 points
+  }
+  
+  if (item.reviews > 100) {
+    score += Math.min(10, item.reviews / 50); // Up to 10 points for popularity
+  }
+  
+  return score;
+}
+
+function calculatePreferenceScore(item: any, preferences: any): number {
+  let score = 0;
+  
+  // Match activity types
+  if (preferences.activityTypes && item.types) {
+    const matches = item.types.filter((t: string) => 
+      preferences.activityTypes.some((pref: string) => 
+        t.toLowerCase().includes(pref.toLowerCase())
+      )
+    );
+    score += matches.length * 5;
+  }
+  
+  // Match interests
+  if (preferences.interests && (item.name || item.description)) {
+    const text = `${item.name} ${item.description || ''}`.toLowerCase();
+    preferences.interests.forEach((interest: string) => {
+      if (text.includes(interest.toLowerCase())) {
+        score += 10;
+      }
+    });
+  }
+  
+  // Accessibility match
+  if (preferences.accessibility?.includes('wheelchair') && 
+      item.types?.includes('wheelchair_accessible')) {
+    score += 15;
+  }
+  
+  return score;
 }
