@@ -3,7 +3,7 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { NextRequest } from 'next/server';
 import { verifyIdToken } from '@/lib/firebase/admin';
-import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
+import { AdminTripModel } from '@/lib/firebase/admin-trip';
 import { Activity, Accommodation } from '@/types/travel';
 import { geocodingService } from '@/lib/google-places/geocoding';
 
@@ -89,24 +89,20 @@ export async function POST(req: NextRequest) {
 
     const { messages, tripId, tripContext, userPreferences } = await req.json();
 
-    // Load trip data - check both userId and userRef patterns
+    // Load trip data using Admin SDK
     let trip;
     try {
-      trip = await TripModel.getById(tripId);
+      trip = await AdminTripModel.getById(tripId);
       if (!trip) {
         console.error('Trip not found:', tripId);
         return new Response('Trip not found', { status: 404 });
       }
       
-      // Check ownership - handle both string userId and userRef
-      const tripUserId = trip.userId || (trip as any).userRef?.id;
-      const isOwner = tripUserId === userId;
-      
-      if (!isOwner) {
+      // Check ownership - trip.userId is normalized in AdminTripModel
+      if (trip.userId !== userId) {
         console.error('User does not own trip:', { 
-          tripUserId, 
-          requestUserId: userId,
-          userRef: (trip as any).userRef
+          tripUserId: trip.userId, 
+          requestUserId: userId
         });
         return new Response('Unauthorized to access this trip', { status: 403 });
       }
@@ -152,8 +148,22 @@ Instructions:
           description: 'Search for hotels in a specific location',
           parameters: searchHotelsSchema,
           execute: async ({ location, checkIn, checkOut, priceRange, amenities, rating }) => {
+            console.log('🏨 Hotel Search Request:', {
+              location,
+              checkIn,
+              checkOut,
+              priceRange,
+              amenities,
+              rating
+            });
+
             // Use Google Places API to search for hotels
-            const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+            const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+            if (!apiKey) {
+              console.error('❌ No Google Maps API key found');
+              return { hotels: [], checkIn, checkOut, searchLocation: location };
+            }
+
             const searchUrl = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
             
             let query = `hotels in ${location}`;
@@ -161,33 +171,65 @@ Instructions:
               query += ` with ${amenities.join(' ')}`;
             }
             
+            console.log('🔍 Search query:', query);
+            
             searchUrl.searchParams.set('query', query);
-            searchUrl.searchParams.set('type', 'lodging');
-            searchUrl.searchParams.set('key', apiKey!);
+            // Don't set type parameter as it can limit results
+            // searchUrl.searchParams.set('type', 'lodging');
+            searchUrl.searchParams.set('key', apiKey);
             
-            const response = await fetch(searchUrl.toString());
-            const data = await response.json();
+            console.log('📍 API URL:', searchUrl.toString().replace(apiKey, 'API_KEY_HIDDEN'));
             
-            const hotels = data.results?.slice(0, 5).map((place: any) => ({
-              id: place.place_id,
-              name: place.name,
-              address: place.formatted_address,
-              rating: place.rating,
-              priceLevel: place.price_level,
-              location: {
-                lat: place.geometry.location.lat,
-                lng: place.geometry.location.lng
-              },
-              // Estimate price based on price level
-              estimatedPrice: place.price_level ? place.price_level * 50 + 50 : 100
-            })) || [];
-            
-            return {
-              hotels,
-              checkIn,
-              checkOut,
-              searchLocation: location
-            };
+            try {
+              const response = await fetch(searchUrl.toString());
+              const data = await response.json();
+              
+              console.log('📡 Google Places API Response:', {
+                status: data.status,
+                resultsCount: data.results?.length || 0,
+                errorMessage: data.error_message
+              });
+
+              if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+                console.error('❌ Google Places API Error:', data.status, data.error_message);
+              }
+
+              // Log first few results for debugging
+              if (data.results?.length > 0) {
+                console.log('🏨 Sample results:', data.results.slice(0, 2).map((r: any) => ({
+                  name: r.name,
+                  types: r.types,
+                  rating: r.rating,
+                  price_level: r.price_level
+                })));
+              }
+              
+              const hotels = data.results?.slice(0, 5).map((place: any) => ({
+                id: place.place_id,
+                name: place.name,
+                address: place.formatted_address,
+                rating: place.rating,
+                priceLevel: place.price_level,
+                location: {
+                  lat: place.geometry.location.lat,
+                  lng: place.geometry.location.lng
+                },
+                // Estimate price based on price level
+                estimatedPrice: place.price_level ? place.price_level * 50 + 50 : 100
+              })) || [];
+              
+              console.log(`✅ Returning ${hotels.length} hotels`);
+              
+              return {
+                hotels,
+                checkIn,
+                checkOut,
+                searchLocation: location
+              };
+            } catch (error) {
+              console.error('❌ Error fetching hotels:', error);
+              return { hotels: [], checkIn, checkOut, searchLocation: location };
+            }
           }
         }),
 
@@ -195,30 +237,55 @@ Instructions:
           description: 'Search for activities and attractions',
           parameters: searchActivitiesSchema,
           execute: async ({ location, activityType, date, timeOfDay, duration, budget }) => {
-            // Use existing activity search endpoint
-            const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/activities/search`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                location: trip.destination?.coordinates || trip.destinations?.[0]?.destination.coordinates,
-                activityType,
-                searchQuery: location,
-                budget,
-                date: new Date(date).toISOString(),
-                timeOfDay
-              })
+            console.log('🎯 Activity Search Request:', {
+              location,
+              activityType,
+              date,
+              timeOfDay,
+              duration,
+              budget
             });
 
-            const { activities } = await searchResponse.json();
-            
-            return {
-              activities: activities?.slice(0, 5) || [],
-              date,
-              location
-            };
+            // Use existing activity search endpoint
+            const searchUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/activities/search`;
+            console.log('🔍 Calling activity search API:', searchUrl);
+
+            try {
+              const searchResponse = await fetch(searchUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  location: trip.destination?.coordinates || trip.destinations?.[0]?.destination.coordinates,
+                  activityType,
+                  searchQuery: location,
+                  budget,
+                  date: new Date(date).toISOString(),
+                  timeOfDay
+                })
+              });
+
+              console.log('📡 Activity search response status:', searchResponse.status);
+
+              if (!searchResponse.ok) {
+                console.error('❌ Activity search failed:', searchResponse.status, await searchResponse.text());
+                return { activities: [], date, location };
+              }
+
+              const { activities } = await searchResponse.json();
+              console.log(`✅ Found ${activities?.length || 0} activities`);
+              
+              return {
+                activities: activities?.slice(0, 5) || [],
+                date,
+                location
+              };
+            } catch (error) {
+              console.error('❌ Error searching activities:', error);
+              return { activities: [], date, location };
+            }
           }
         }),
 
@@ -257,7 +324,7 @@ Instructions:
                   amenities: []
                 };
                 
-                await TripModel.addAccommodation(tripId, dayNumber, accommodation);
+                await AdminTripModel.addAccommodation(tripId, dayNumber, accommodation);
                 
                 return {
                   success: true,
@@ -284,7 +351,7 @@ Instructions:
                   userAdded: false
                 };
                 
-                await TripModel.addActivity(tripId, dayNumber, activity);
+                await AdminTripModel.addActivity(tripId, dayNumber, activity);
                 
                 return {
                   success: true,
