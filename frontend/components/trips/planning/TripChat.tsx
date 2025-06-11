@@ -43,6 +43,7 @@ interface Message {
   timestamp: Date;
   suggestions?: string[];
   activities?: any[]; // Store parsed activities from JSON
+  requestedDay?: number; // Track which day was requested for activities
 }
 
 // Quick action suggestions based on trip context
@@ -147,6 +148,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                 const parsedData = JSON.parse(jsonString);
                 if (parsedData.days && Array.isArray(parsedData.days)) {
                   message.activities = parsedData.days;
+                  // Try to detect if this was for a specific day
+                  if (parsedData.days.length === 1) {
+                    message.requestedDay = parsedData.days[0].dayNumber;
+                  }
                 }
               } catch (e) {
                 // Ignore parsing errors
@@ -233,6 +238,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     // Extract which day to apply (if specified)
     const dayMatch = input.toLowerCase().match(/apply day (\d+)/);
     const specificDay = dayMatch ? parseInt(dayMatch[1]) : null;
+    
+    // Check if user is asking for activities for a specific day
+    const askingForDayMatch = input.toLowerCase().match(/(?:activities|suggestions?|things to do|plan)(?:\s+(?:for|on))?\s+day\s+(\d+)/i);
+    const requestedDay = askingForDayMatch ? parseInt(askingForDayMatch[1]) : null;
 
     // Generate unique IDs using timestamp + random string
     const generateId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -326,7 +335,24 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
            \`\`\`
            
            Extract activities, accommodations, and restaurants for ${specificDay ? `Day ${specificDay} only` : 'the requested days'}.`
-        : `You are a helpful travel assistant for a trip to ${context.destination}. The trip is from ${context.dates} for ${context.travelers} travelers with a budget of ${context.budget}. Current planned activities include: ${context.currentActivities.join(', ') || 'none yet'}. Provide specific, actionable advice and suggestions.`;
+        : `You are a helpful travel assistant for a trip to ${context.destination}. The trip is from ${context.dates} for ${context.travelers} travelers with a budget of ${context.budget}. Current planned activities include: ${context.currentActivities.join(', ') || 'none yet'}. 
+           
+           ${requestedDay ? `The user is asking for activities specifically for Day ${requestedDay} of their trip. 
+           Please provide activities ONLY for Day ${requestedDay} in a structured JSON format.
+           Start your response with a brief introduction, then provide the JSON with "dayNumber": ${requestedDay}.
+           
+           Format your response like:
+           "Here are some great activities for Day ${requestedDay} of your trip:
+           
+           \`\`\`json
+           {
+             "days": [{
+               "dayNumber": ${requestedDay},
+               "activities": [...]
+             }]
+           }
+           \`\`\`"
+           ` : 'Provide specific, actionable advice and suggestions.'}`;
 
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -413,7 +439,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === assistantMessage.id 
-                  ? { ...msg, activities: parsedData.days }
+                  ? { ...msg, activities: parsedData.days, requestedDay }
                   : msg
               )
             );
@@ -716,7 +742,11 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                     <div className="space-y-2">
                       <Card className="bg-primary/5 border-primary/20">
                         <CardContent className="p-3">
-                          <p className="text-sm font-medium mb-2">Found activities to add:</p>
+                          <p className="text-sm font-medium mb-2">
+                            {message.requestedDay 
+                              ? `Activities for Day ${message.requestedDay}:`
+                              : 'Found activities to add:'}
+                          </p>
                           {message.activities.map((day, index) => (
                             <div key={index} className="text-xs text-muted-foreground mb-1">
                               Day {day.dayNumber}: {day.activities?.length || 0} activities
@@ -728,7 +758,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                             onClick={async () => {
                               try {
                                 const appliedDays = await applyItineraryToTrip(message.activities!);
-                                toast.success(`Successfully added activities for ${appliedDays.length} days!`);
+                                const dayText = message.requestedDay 
+                                  ? `Day ${message.requestedDay}` 
+                                  : `${appliedDays.length} day${appliedDays.length > 1 ? 's' : ''}`;
+                                toast.success(`Successfully added activities for ${dayText}!`);
                                 // Refresh trip data
                                 if (onUpdate) {
                                   const updatedTrip = await TripModel.getById(trip.id);
@@ -741,7 +774,9 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                             }}
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Save Activities to Itinerary
+                            {message.requestedDay 
+                              ? `Save to Day ${message.requestedDay} Itinerary`
+                              : 'Save Activities to Itinerary'}
                           </Button>
                         </CardContent>
                       </Card>
