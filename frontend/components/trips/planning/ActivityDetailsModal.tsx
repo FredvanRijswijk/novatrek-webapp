@@ -32,6 +32,12 @@ export function ActivityDetailsModal({
   if (!activity) return null;
 
   const handleAdd = () => {
+    console.log('ActivityDetailsModal - Adding activity:', {
+      id: activity.id,
+      name: activity.name,
+      type: activity.type,
+      isAccommodation: activity.type === 'accommodation'
+    });
     onAdd(activity);
     onClose();
   };
@@ -335,7 +341,7 @@ export function ActivityDetailsModal({
         <div className="border-t p-4">
           <Button onClick={handleAdd} className="w-full" size="lg">
             <Plus className="h-4 w-4 mr-2" />
-            Add to Itinerary
+            {activity.type === 'accommodation' ? 'Add Accommodation' : 'Add to Itinerary'}
           </Button>
         </div>
       </DialogContent>

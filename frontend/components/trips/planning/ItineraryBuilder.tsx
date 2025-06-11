@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Clock, MapPin, MoreVertical, GripVertical, Edit2, Trash2, Copy, CalendarPlus } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, MoreVertical, GripVertical, Edit2, Trash2, Copy, CalendarPlus, Star } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -323,36 +323,131 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
   };
 
   const handleSelectActivity = async (activity: Activity) => {
-    if (!selectedDay || !selectedDayData) return;
+    console.log('ItineraryBuilder - handleSelectActivity called:', {
+      activityId: activity.id,
+      activityName: activity.name,
+      activityType: activity.type,
+      isAccommodation: activity.type === 'accommodation',
+      selectedDay: selectedDay,
+      selectedDayData: selectedDayData,
+      itinerary: trip.itinerary
+    });
+    
+    if (!selectedDay) {
+      console.error('No selected day');
+      return;
+    }
+    
+    // Get or create day data
+    let dayData = selectedDayData;
+    let currentItinerary = trip.itinerary || [];
+    
+    if (!dayData) {
+      console.log('Creating day data for selected day');
+      const dayInfo = tripDays.find(d => d.date && isSameDay(d.date, selectedDay));
+      if (!dayInfo) {
+        console.error('Could not find day info for selected day');
+        return;
+      }
+      
+      // Create new day in itinerary
+      dayData = {
+        id: `day_${dayInfo.dayNumber}_${Date.now()}`,
+        tripId: trip.id || '',
+        dayNumber: dayInfo.dayNumber,
+        date: selectedDay,
+        destinationId: dayInfo.destinationId,
+        activities: [],
+        accommodations: [],
+        notes: dayInfo.type === 'travel' 
+          ? `Travel from ${dayInfo.fromDestination} to ${dayInfo.toDestination}`
+          : '',
+      };
+      
+      // Add to itinerary
+      currentItinerary = [...currentItinerary, dayData];
+      await onUpdate({ ...trip, itinerary: currentItinerary });
+    }
 
     try {
       setError(null);
       
-      // Add the activity to the selected day
-      const updatedItinerary = trip.itinerary?.map(day => {
-        if (day.id === selectedDayData.id) {
-          return {
-            ...day,
-            activities: [...(day.activities || []), {
-              ...activity,
-              id: `${activity.id}_${Date.now()}` // Ensure unique ID for multiple instances
-            }],
-          };
+      // Check if this is an accommodation
+      if (activity.type === 'accommodation') {
+        console.log('Processing as accommodation');
+        // Handle accommodations differently
+        const accommodation = {
+          id: `acc_${activity.id}_${Date.now()}`,
+          name: activity.name,
+          type: 'hotel' as const,
+          location: activity.location || {
+            name: activity.name,
+            address: '',
+            coordinates: { lat: 0, lng: 0 }
+          },
+          checkIn: selectedDay,
+          checkOut: new Date(selectedDay.getTime() + 24 * 60 * 60 * 1000), // Next day by default
+          cost: activity.cost?.amount,
+          currency: activity.cost?.currency || 'USD',
+          rating: activity.rating,
+          amenities: activity.tags || []
+        };
+
+        const updatedItinerary = currentItinerary.map(day => {
+          if (day.id === dayData.id) {
+            return {
+              ...day,
+              accommodations: [...(day.accommodations || []), accommodation],
+            };
+          }
+          return day;
+        });
+
+        const updatedTrip = {
+          ...trip,
+          itinerary: updatedItinerary,
+        };
+
+        console.log('Updating trip with accommodation:', {
+          dayId: dayData.id,
+          accommodation: accommodation,
+          updatedItinerary: updatedItinerary
+        });
+
+        // Update local state
+        onUpdate(updatedTrip);
+
+        // Save to database
+        if (trip.id) {
+          await TripModel.update(trip.id, { itinerary: updatedItinerary });
         }
-        return day;
-      });
+      } else {
+        // Add regular activity
+        const updatedItinerary = currentItinerary.map(day => {
+          if (day.id === dayData.id) {
+            return {
+              ...day,
+              activities: [...(day.activities || []), {
+                ...activity,
+                id: `${activity.id}_${Date.now()}` // Ensure unique ID for multiple instances
+              }],
+            };
+          }
+          return day;
+        });
 
-      const updatedTrip = {
-        ...trip,
-        itinerary: updatedItinerary,
-      };
+        const updatedTrip = {
+          ...trip,
+          itinerary: updatedItinerary,
+        };
 
-      // Update local state
-      onUpdate(updatedTrip);
+        // Update local state
+        onUpdate(updatedTrip);
 
-      // Save to database
-      if (trip.id) {
-        await TripModel.update(trip.id, { itinerary: updatedItinerary });
+        // Save to database
+        if (trip.id) {
+          await TripModel.update(trip.id, { itinerary: updatedItinerary });
+        }
       }
 
       setIsAddingActivity(false);
@@ -683,95 +778,189 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
             </div>
           )}
           
-          {selectedDayData?.activities && selectedDayData.activities.length > 0 ? (
-            <div className="space-y-3">
-              {selectedDayData.activities.map((activity) => (
-                <Card key={activity.id} className="border-l-4 border-l-primary">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{activity.name}</h4>
-                          <Badge 
-                            variant="secondary" 
-                            className={cn('text-xs', getActivityTypeColor(activity.type))}
-                          >
-                            {activity.type}
-                          </Badge>
-                        </div>
-                        
-                        {activity.description && (
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {activity.description}
-                          </p>
-                        )}
+          {(selectedDayData?.activities && selectedDayData.activities.length > 0) || 
+           (selectedDayData?.accommodations && selectedDayData.accommodations.length > 0) ? (
+            <div className="space-y-6">
+              {/* Accommodations */}
+              {selectedDayData?.accommodations && selectedDayData.accommodations.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Accommodation</h3>
+                  {selectedDayData.accommodations.map((accommodation) => (
+                    <Card key={accommodation.id} className="border-l-4 border-l-pink-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium">{accommodation.name}</h4>
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs bg-pink-100 text-pink-800"
+                              >
+                                🏨 Accommodation
+                              </Badge>
+                              {accommodation.rating && (
+                                <div className="flex items-center gap-1 text-sm">
+                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  <span>{accommodation.rating}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              {accommodation.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {accommodation.location.address || accommodation.location.name}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Check-in: {format(new Date(accommodation.checkIn), 'MMM d')}
+                              </span>
+                            </div>
 
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          {activity.startTime && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {typeof activity.startTime === 'string' ? activity.startTime : format(activity.startTime, 'HH:mm')}
-                              {activity.endTime && ` - ${typeof activity.endTime === 'string' ? activity.endTime : format(activity.endTime, 'HH:mm')}`}
-                            </span>
-                          )}
-                          {activity.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {activity.location.address || activity.location.name}
-                            </span>
-                          )}
-                        </div>
-
-                        {activity.cost && (
-                          <div className="mt-2">
-                            <span className="text-sm font-medium">
-                              {activity.cost.currency} {activity.cost.amount}
-                            </span>
-                            {activity.cost.perPerson && (
-                              <span className="text-sm text-muted-foreground"> per person</span>
+                            {accommodation.cost && (
+                              <div className="mt-2">
+                                <span className="text-sm font-medium">
+                                  {accommodation.currency || 'USD'} {accommodation.cost}
+                                </span>
+                                <span className="text-sm text-muted-foreground"> per night</span>
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 cursor-move"
-                        >
-                          <GripVertical className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditActivity(activity)}>
-                              <Edit2 className="mr-2 h-4 w-4" />
-                              Edit Activity
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateActivity(selectedDayData.id, activity)}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleRemoveActivity(selectedDayData.id, activity.id)}
+                          <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    const updatedItinerary = trip.itinerary?.map(day => {
+                                      if (day.id === selectedDayData.id) {
+                                        return {
+                                          ...day,
+                                          accommodations: day.accommodations?.filter(a => a.id !== accommodation.id) || []
+                                        };
+                                      }
+                                      return day;
+                                    });
+                                    onUpdate({ ...trip, itinerary: updatedItinerary });
+                                    if (trip.id) {
+                                      TripModel.update(trip.id, { itinerary: updatedItinerary });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Activities */}
+              {selectedDayData?.activities && selectedDayData.activities.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Activities</h3>
+                  {selectedDayData.activities.map((activity) => (
+                    <Card key={activity.id} className="border-l-4 border-l-primary">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium">{activity.name}</h4>
+                              <Badge 
+                                variant="secondary" 
+                                className={cn('text-xs', getActivityTypeColor(activity.type))}
+                              >
+                                {activity.type}
+                              </Badge>
+                            </div>
+                            
+                            {activity.description && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {activity.description}
+                              </p>
+                            )}
+
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              {activity.startTime && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {typeof activity.startTime === 'string' ? activity.startTime : format(activity.startTime, 'HH:mm')}
+                                  {activity.endTime && ` - ${typeof activity.endTime === 'string' ? activity.endTime : format(activity.endTime, 'HH:mm')}`}
+                                </span>
+                              )}
+                              {activity.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {activity.location.address || activity.location.name}
+                                </span>
+                              )}
+                            </div>
+
+                            {activity.cost && (
+                              <div className="mt-2">
+                                <span className="text-sm font-medium">
+                                  {activity.cost.currency} {activity.cost.amount}
+                                </span>
+                                {activity.cost.perPerson && (
+                                  <span className="text-sm text-muted-foreground"> per person</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 cursor-move"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                              <GripVertical className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditActivity(activity)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Activity
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicateActivity(selectedDayData.id, activity)}>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => handleRemoveActivity(selectedDayData.id, activity.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-12">

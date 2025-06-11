@@ -305,14 +305,36 @@ export async function POST(request: NextRequest) {
         return true
       })
       .map((place: any) => {
+        // Determine the actual type based on place types if activityType is not set
+        let finalActivityType = activityType
+        if (!finalActivityType && place.types) {
+          // Check if this is a hotel/accommodation
+          const accommodationTypes = ['lodging', 'hotel', 'motel', 'resort', 'guest_house', 'hostel', 'bed_and_breakfast']
+          if (place.types.some((t: string) => accommodationTypes.includes(t))) {
+            finalActivityType = 'accommodation'
+          }
+        }
+        
+        // Debug logging for hotels
+        if (place.types?.includes('lodging') || place.name.toLowerCase().includes('hotel')) {
+          console.log('🏨 Hotel detected:', {
+            name: place.name,
+            types: place.types,
+            finalActivityType,
+            originalActivityType: activityType
+          })
+        }
+        
         // Estimate costs based on price level
         const priceLevel = place.price_level || 2
         const costEstimate = priceLevelToCost[priceLevel]
         
         // Calculate cost based on activity type
         let estimatedCost = (costEstimate.min + costEstimate.max) / 2
-        if (activityType === 'dining') {
+        if (finalActivityType === 'dining') {
           estimatedCost = estimatedCost * 1.5 // Adjust for meals
+        } else if (finalActivityType === 'accommodation') {
+          estimatedCost = estimatedCost * 2 // Hotels show per night pricing
         }
 
         // Generate activity times based on time of day
@@ -321,14 +343,14 @@ export async function POST(request: NextRequest) {
         else if (timeOfDay === 'afternoon') startTime = '14:00'
         else if (timeOfDay === 'evening') startTime = '18:00'
 
-        const duration = estimatedDurations[activityType] || 120
+        const duration = estimatedDurations[finalActivityType] || 120
 
         return {
           id: place.place_id,
           name: place.name,
           description: place.editorial_summary?.overview || 
                       `Visit ${place.name} - ${place.types?.[0]?.replace(/_/g, ' ') || 'Popular destination'}`,
-          type: activityType as Activity['type'],
+          type: (finalActivityType || 'activity') as Activity['type'],
           location: {
             address: place.formatted_address || place.vicinity,
             coordinates: {
@@ -349,14 +371,14 @@ export async function POST(request: NextRequest) {
           aiGenerated: false,
           userAdded: false,
           tags: [
-            activityType,
+            finalActivityType,
             ...(place.types?.slice(0, 3).map((t: string) => t.replace(/_/g, ' ')) || []),
             // Add family-friendly tags
             ...(place.types?.some((t: string) => familyFriendlyTypes.includes(t)) ? ['family-friendly'] : []),
             ...(place.types?.some((t: string) => adultsOnlyTypes.includes(t)) ? ['adults-only'] : [])
           ].filter(Boolean),
           images: place.photos?.map((photo: any) => ({
-            url: `/api/places/photo?name=${photo.photo_reference}&maxWidth=800`,
+            url: `/api/places/photo?name=${photo.name || photo.photo_reference}&maxWidth=800`,
             caption: place.name
           })) || []
         }

@@ -109,6 +109,16 @@ export function ActivitySearchModal({
       const currentUser = auth.getAuth().currentUser;
       const token = currentUser ? await currentUser.getIdToken() : null;
 
+      // Auto-detect hotel searches
+      let activityType = selectedType === 'all' ? undefined : selectedType;
+      if (!activityType && searchQuery) {
+        const hotelKeywords = ['hotel', 'motel', 'inn', 'resort', 'hostel', 'accommodation', 'lodging', 'stay'];
+        const lowerQuery = searchQuery.toLowerCase();
+        if (hotelKeywords.some(keyword => lowerQuery.includes(keyword))) {
+          activityType = 'accommodation';
+        }
+      }
+
       const response = await fetch('/api/activities/search', {
         method: 'POST',
         headers: {
@@ -117,7 +127,7 @@ export function ActivitySearchModal({
         },
         body: JSON.stringify({
           location,
-          activityType: selectedType === 'all' ? undefined : selectedType,
+          activityType,
           searchQuery: searchQuery || undefined,
           budget: getBudgetLimit(),
           date: date.toISOString(),
