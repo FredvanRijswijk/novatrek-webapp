@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb, Edit2, Trash2, Bookmark, BookmarkCheck, Download } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb, Edit2, Trash2, Bookmark, BookmarkCheck, Download, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -892,25 +892,56 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
             const locationName = activityData.location?.name || activityData.name;
             const geocodedLocation = geocodingResults.get(locationName);
             
-            const activity: Activity = {
-              id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              name: activityData.name,
-              description: activityData.description,
-              type: activityData.type || 'sightseeing',
-              location: {
-                name: activityData.location?.name || activityData.name,
-                address: geocodedLocation?.address || activityData.location?.address || '',
-                coordinates: geocodedLocation?.coordinates || { lat: 0, lng: 0 }
-              },
-              googlePlaceId: geocodedLocation?.placeId,
-              startTime: activityData.startTime,
-              duration: activityData.duration || 120,
-              cost: activityData.cost,
-              aiGenerated: true,
-              userAdded: false
-            };
-            
-            await TripModel.addActivity(trip.id, dayNumber, activity);
+            // Check if this is a hotel/accommodation
+            if (activityData.type === 'accommodation' || 
+                activityData.type === 'hotel' ||
+                activityData.name?.toLowerCase().includes('hotel') ||
+                activityData.name?.toLowerCase().includes('accommodation')) {
+              
+              // Handle as accommodation
+              const accommodation = {
+                id: `accommodation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                name: activityData.name,
+                type: 'hotel' as const,
+                location: {
+                  name: activityData.location?.name || activityData.name,
+                  address: geocodedLocation?.address || activityData.location?.address || '',
+                  coordinates: geocodedLocation?.coordinates || { lat: 0, lng: 0 },
+                  placeId: geocodedLocation?.placeId
+                },
+                checkIn: new Date(trip.startDate),
+                checkOut: new Date(trip.endDate),
+                cost: activityData.cost?.amount,
+                currency: activityData.cost?.currency || 'USD',
+                amenities: [],
+                rating: activityData.rating
+              };
+              
+              // Add accommodation to the trip
+              await TripModel.addAccommodation(trip.id, dayNumber, accommodation);
+              
+            } else {
+              // Handle as regular activity
+              const activity: Activity = {
+                id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                name: activityData.name,
+                description: activityData.description,
+                type: activityData.type || 'sightseeing',
+                location: {
+                  name: activityData.location?.name || activityData.name,
+                  address: geocodedLocation?.address || activityData.location?.address || '',
+                  coordinates: geocodedLocation?.coordinates || { lat: 0, lng: 0 }
+                },
+                googlePlaceId: geocodedLocation?.placeId,
+                startTime: activityData.startTime,
+                duration: activityData.duration || 120,
+                cost: activityData.cost,
+                aiGenerated: true,
+                userAdded: false
+              };
+              
+              await TripModel.addActivity(trip.id, dayNumber, activity);
+            }
           } catch (activityError) {
             console.error(`Error adding activity ${activityData.name}:`, activityError);
             daySuccess = false;
@@ -1363,10 +1394,16 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                             className="flex-1 cursor-pointer space-y-1"
                                           >
                                             <div className="flex items-center gap-2">
-                                              <span className="font-medium text-sm">{activity.name}</span>
+                                              <span className="font-medium text-sm">
+                                                {activity.type === 'accommodation' && '🏨 '}
+                                                {activity.name}
+                                              </span>
                                               {activity.type && (
-                                                <Badge variant="outline" className="text-xs">
-                                                  {activity.type}
+                                                <Badge 
+                                                  variant={activity.type === 'accommodation' ? 'default' : 'outline'} 
+                                                  className="text-xs"
+                                                >
+                                                  {activity.type === 'accommodation' ? 'Hotel' : activity.type}
                                                 </Badge>
                                               )}
                                               {hasConflict && (
@@ -1390,7 +1427,12 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                               </p>
                                             )}
                                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                              {editingTimes[activityKey] ? (
+                                              {activity.type === 'accommodation' ? (
+                                                <span className="flex items-center gap-1">
+                                                  <Home className="h-3 w-3" />
+                                                  {activity.cost ? `${activity.cost.currency} ${activity.cost.amount}/night` : 'Check-in/Check-out for entire stay'}
+                                                </span>
+                                              ) : editingTimes[activityKey] ? (
                                                 <div className="flex items-center gap-2">
                                                   <Input
                                                     type="time"

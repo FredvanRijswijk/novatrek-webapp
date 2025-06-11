@@ -203,6 +203,33 @@ export class TripModelEnhanced {
     await this.update(tripId, { expenses })
   }
 
+  // Add accommodation
+  static async addAccommodation(tripId: string, dayNumber: number, accommodation: any): Promise<void> {
+    const trip = await this.getById(tripId)
+    if (!trip) throw new Error('Trip not found')
+
+    const dayIndex = trip.itinerary.findIndex(day => day.dayNumber === dayNumber)
+    if (dayIndex === -1) {
+      // Create the day if it doesn't exist
+      trip.itinerary.push({
+        id: `day-${Date.now()}`,
+        tripId,
+        date: new Date(trip.startDate),
+        dayNumber,
+        activities: [],
+        accommodations: [accommodation]
+      })
+    } else {
+      // Add to existing day
+      if (!trip.itinerary[dayIndex].accommodations) {
+        trip.itinerary[dayIndex].accommodations = []
+      }
+      trip.itinerary[dayIndex].accommodations!.push(accommodation)
+    }
+
+    await this.update(tripId, { itinerary: trip.itinerary })
+  }
+
   // Calculate trip duration in days
   static getDuration(trip: Trip): number {
     const startDate = new Date(trip.startDate)
