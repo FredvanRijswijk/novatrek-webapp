@@ -117,6 +117,41 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
   // State for selective activity saving
   const [selectedActivities, setSelectedActivities] = useState<{[key: string]: boolean}>({});
   const [expandedMessages, setExpandedMessages] = useState<{[messageId: string]: boolean}>({});
+  
+  // Helper function to get existing activities for a day
+  const getExistingActivitiesForDay = (dayNumber: number): Activity[] => {
+    const dayItinerary = trip.itinerary?.find(day => day.dayNumber === dayNumber);
+    return dayItinerary?.activities || [];
+  };
+  
+  // Helper function to check for time conflicts
+  const hasTimeConflict = (newActivity: any, existingActivities: Activity[]): boolean => {
+    if (!newActivity.startTime) return false;
+    
+    const newStart = newActivity.startTime;
+    const newDuration = newActivity.duration || 60; // Default 60 minutes if not specified
+    
+    // Convert time string to minutes since midnight
+    const timeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    // Calculate end time in minutes
+    const newStartMinutes = timeToMinutes(newStart);
+    const newEndMinutes = newStartMinutes + newDuration;
+    
+    return existingActivities.some(existing => {
+      if (!existing.startTime || typeof existing.startTime !== 'string') return false;
+      
+      const existingStartMinutes = timeToMinutes(existing.startTime);
+      const existingDuration = existing.duration || 60;
+      const existingEndMinutes = existingStartMinutes + existingDuration;
+      
+      // Check for overlap
+      return (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes);
+    });
+  };
 
   // Load chat history when component mounts
   useEffect(() => {
@@ -791,10 +826,20 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                           ) : (
                             // Expanded view - show all activities with checkboxes
                             <div className="space-y-4">
-                              {message.activities.map((day) => (
+                              {message.activities.map((day) => {
+                                const existingActivities = getExistingActivitiesForDay(day.dayNumber);
+                                return (
                                 <div key={day.dayNumber} className="space-y-2">
+                                  {/* Day header with existing activities count */}
                                   <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">Day {day.dayNumber}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">Day {day.dayNumber}</span>
+                                      {existingActivities.length > 0 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {existingActivities.length} existing
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -829,15 +874,46 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                     </Button>
                                   </div>
                                   
+                                  {/* Visual Timeline Preview */}
+                                  <div className="mb-3 p-3 bg-muted/30 rounded-lg">
+                                    <p className="text-xs font-medium mb-2 text-muted-foreground">Current Schedule</p>
+                                    {existingActivities.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {existingActivities
+                                          .sort((a, b) => {
+                                            const timeA = a.startTime ? (typeof a.startTime === 'string' ? a.startTime : '00:00') : '23:59';
+                                            const timeB = b.startTime ? (typeof b.startTime === 'string' ? b.startTime : '00:00') : '23:59';
+                                            return timeA.localeCompare(timeB);
+                                          })
+                                          .map((activity, idx) => (
+                                          <div key={idx} className="flex items-center gap-2 text-xs">
+                                            <Clock className="h-3 w-3 text-muted-foreground" />
+                                            <span className="text-muted-foreground min-w-[45px]">
+                                              {activity.startTime || 'All day'}
+                                            </span>
+                                            <span className="font-medium">{activity.name}</span>
+                                            {activity.duration && (
+                                              <span className="text-muted-foreground">({activity.duration}min)</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground italic">No activities scheduled yet for this day</p>
+                                    )}
+                                  </div>
+                                  
                                   <div className="space-y-2">
                                     {day.activities?.map((activity, actIdx) => {
                                       const activityKey = `${message.id}-${day.dayNumber}-${actIdx}`;
+                                      const hasConflict = hasTimeConflict(activity, existingActivities);
                                       return (
                                         <div 
                                           key={actIdx} 
                                           className={cn(
-                                            "flex items-start gap-3 p-2 rounded-lg transition-colors",
-                                            selectedActivities[activityKey] ? "bg-primary/10" : "hover:bg-muted/50"
+                                            "flex items-start gap-3 p-2 rounded-lg transition-colors relative",
+                                            selectedActivities[activityKey] ? "bg-primary/10" : "hover:bg-muted/50",
+                                            hasConflict && "border border-orange-200 dark:border-orange-800"
                                           )}
                                         >
                                           <Checkbox
@@ -860,6 +936,11 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                               {activity.type && (
                                                 <Badge variant="outline" className="text-xs">
                                                   {activity.type}
+                                                </Badge>
+                                              )}
+                                              {hasConflict && (
+                                                <Badge variant="destructive" className="text-xs">
+                                                  Time conflict
                                                 </Badge>
                                               )}
                                             </div>
@@ -888,7 +969,8 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                     })}
                                   </div>
                                 </div>
-                              ))}
+                              );
+                              })}
                               
                               <div className="flex gap-2 pt-2 border-t">
                                 <Button
