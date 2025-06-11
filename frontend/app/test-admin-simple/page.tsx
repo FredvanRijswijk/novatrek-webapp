@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TestRoute } from '@/components/auth/TestRoute'
 import { useFirebase } from '@/lib/firebase/context'
 import { db } from '@/lib/firebase/config'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
@@ -82,7 +83,8 @@ export default function TestAdminSimplePage() {
   }
 
   return (
-    <div className="container max-w-3xl mx-auto py-8 space-y-6">
+    <TestRoute>
+      <div className="container max-w-3xl mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-bold">Admin Creation Test</h1>
       
       <Card>
@@ -169,6 +171,7 @@ export default function TestAdminSimplePage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </TestRoute>
   )
 }

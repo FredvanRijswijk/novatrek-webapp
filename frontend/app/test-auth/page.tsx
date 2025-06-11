@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TestRoute } from '@/components/auth/TestRoute'
 import { useFirebase } from '@/lib/firebase/context'
 import { auth, db } from '@/lib/firebase/config'
 import { doc, getDoc } from 'firebase/firestore'
@@ -121,7 +122,8 @@ export default function TestAuthPage() {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 space-y-6">
+    <TestRoute>
+      <div className="container max-w-4xl mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Authentication Test Page</h1>
         <Button onClick={forceRefresh} variant="outline" size="sm" disabled={testing}>
@@ -155,6 +157,7 @@ export default function TestAuthPage() {
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       )}
-    </div>
+      </div>
+    </TestRoute>
   )
 }

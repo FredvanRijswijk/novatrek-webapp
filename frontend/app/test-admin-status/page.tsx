@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { TestRoute } from '@/components/auth/TestRoute';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -146,7 +147,8 @@ export default function TestAdminStatusPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
+    <TestRoute>
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Admin Status Debugger</h1>
         <p className="text-muted-foreground">
@@ -312,6 +314,7 @@ export default function TestAdminStatusPage() {
         <p>This page helps diagnose admin authentication issues.</p>
         <p>Check both custom claims and Firestore data to ensure proper admin access.</p>
       </div>
-    </div>
+      </div>
+    </TestRoute>
   );
 }

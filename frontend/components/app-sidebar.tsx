@@ -244,8 +244,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       }] : []),
-      // Show Test section in development
-      ...(process.env.NODE_ENV === 'development' ? [{
+      // Show Test section only in development or for admin users
+      ...((process.env.NODE_ENV === 'development' || isAdminUser) ? [{
         title: "Testing",
         url: "/dashboard/test-subscription",
         icon: Shield,

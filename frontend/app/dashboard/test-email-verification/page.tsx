@@ -1,6 +1,7 @@
 'use client'
 
 import { useFirebase } from '@/lib/firebase/context'
+import { TestRoute } from '@/components/auth/TestRoute'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,7 +30,8 @@ export default function TestEmailVerificationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <TestRoute>
+      <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Email Verification Test</h2>
         <p className="text-muted-foreground">
@@ -131,6 +133,7 @@ export default function TestEmailVerificationPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </TestRoute>
   )
 }

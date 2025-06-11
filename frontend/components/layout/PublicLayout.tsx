@@ -17,9 +17,11 @@ import {
   Euro,
   Mail,
   LogIn,
-  Rocket
+  Rocket,
+  LayoutDashboard
 } from "lucide-react";
 import { track } from "@vercel/analytics";
+import { useFirebase } from "@/lib/firebase/context";
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ interface PublicLayoutProps {
 export function PublicLayout({ children }: PublicLayoutProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const { user, isAuthenticated } = useFirebase();
 
   const navLinks = [
     { href: "/about", label: "About", icon: Info },
@@ -81,23 +84,38 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
               <ThemeToggle />
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  track("click", { button: "nav_sign_in", page: "public" });
-                  router.push("/login");
-                }}
-              >
-                Sign In
-              </Button>
-              <Button
-                onClick={() => {
-                  track("click", { button: "nav_get_started", page: "public" });
-                  router.push("/signup");
-                }}
-              >
-                Get Started
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  onClick={() => {
+                    track("click", { button: "nav_dashboard", page: "public" });
+                    router.push("/dashboard");
+                  }}
+                  className="gap-2"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      track("click", { button: "nav_sign_in", page: "public" });
+                      router.push("/login");
+                    }}
+                  >
+                    Sign In
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      track("click", { button: "nav_get_started", page: "public" });
+                      router.push("/signup");
+                    }}
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu */}
@@ -163,31 +181,48 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
                     {/* Auth Buttons */}
                     <div className="border-t pt-6 pb-6 space-y-3">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full justify-center gap-2"
-                        onClick={() => {
-                          track("click", { button: "mobile_sign_in", page: "public" });
-                          router.push("/login");
-                          setIsOpen(false);
-                        }}
-                      >
-                        <LogIn className="h-5 w-5" />
-                        Sign In
-                      </Button>
-                      <Button
-                        size="lg"
-                        className="w-full justify-center gap-2"
-                        onClick={() => {
-                          track("click", { button: "mobile_get_started", page: "public" });
-                          router.push("/signup");
-                          setIsOpen(false);
-                        }}
-                      >
-                        <Rocket className="h-5 w-5" />
-                        Get Started
-                      </Button>
+                      {isAuthenticated ? (
+                        <Button
+                          size="lg"
+                          className="w-full justify-center gap-2"
+                          onClick={() => {
+                            track("click", { button: "mobile_dashboard", page: "public" });
+                            router.push("/dashboard");
+                            setIsOpen(false);
+                          }}
+                        >
+                          <LayoutDashboard className="h-5 w-5" />
+                          Go to Dashboard
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full justify-center gap-2"
+                            onClick={() => {
+                              track("click", { button: "mobile_sign_in", page: "public" });
+                              router.push("/login");
+                              setIsOpen(false);
+                            }}
+                          >
+                            <LogIn className="h-5 w-5" />
+                            Sign In
+                          </Button>
+                          <Button
+                            size="lg"
+                            className="w-full justify-center gap-2"
+                            onClick={() => {
+                              track("click", { button: "mobile_get_started", page: "public" });
+                              router.push("/signup");
+                              setIsOpen(false);
+                            }}
+                          >
+                            <Rocket className="h-5 w-5" />
+                            Get Started
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </SheetContent>

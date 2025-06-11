@@ -163,6 +163,14 @@ export default function TravelPreferencesForm({ onComplete }: { onComplete?: () 
   const handleSave = async () => {
     if (!user) {
       console.error('No user authenticated')
+      alert('Please sign in to save your preferences')
+      return
+    }
+    
+    // Double-check authentication status
+    if (!user.uid) {
+      console.error('User UID is missing')
+      alert('Authentication error. Please sign out and sign in again.')
       return
     }
     

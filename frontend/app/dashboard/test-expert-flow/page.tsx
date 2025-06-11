@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { TestRoute } from '@/components/auth/TestRoute'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -59,7 +60,8 @@ export default function TestExpertFlowPage() {
   ]
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 space-y-6">
+    <TestRoute>
+      <div className="container max-w-4xl mx-auto py-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Test Expert Onboarding Flow</h1>
         <p className="text-muted-foreground mt-2">
@@ -119,6 +121,7 @@ export default function TestExpertFlowPage() {
           <p className="text-sm">• Test the checkout flow after creating products</p>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </TestRoute>
   )
 }

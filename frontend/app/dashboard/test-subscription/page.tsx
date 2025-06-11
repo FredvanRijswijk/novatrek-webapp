@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { stripePlans } from '@/lib/stripe/plans'
+import { TestRoute } from '@/components/auth/TestRoute'
 
 export default function TestSubscriptionPage() {
   const { user } = useFirebase()
@@ -49,14 +50,17 @@ export default function TestSubscriptionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <TestRoute>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </TestRoute>
     )
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 space-y-6">
+    <TestRoute>
+      <div className="container max-w-4xl mx-auto py-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Test Subscription Upgrades</h1>
         <p className="text-muted-foreground mt-2">
@@ -337,5 +341,6 @@ export default function TestSubscriptionPage() {
         </CardContent>
       </Card>
     </div>
+    </TestRoute>
   )
 }

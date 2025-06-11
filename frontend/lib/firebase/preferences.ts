@@ -20,6 +20,7 @@ export async function getUserPreferences(userId: string): Promise<TravelPreferen
     const prefsSnap = await getDoc(prefsRef)
     
     if (!prefsSnap.exists()) {
+      // Return null for non-existent documents (expected behavior for new users)
       return null
     }
     
@@ -33,7 +34,10 @@ export async function getUserPreferences(userId: string): Promise<TravelPreferen
       lastUsedAt: data.lastUsedAt?.toDate(),
     } as TravelPreferences
   } catch (error) {
-    console.error('Error fetching user preferences:', error)
+    // Only log errors that aren't permission-related for new users
+    if (error instanceof Error && !error.message.includes('Missing or insufficient permissions')) {
+      console.error('Error fetching user preferences:', error)
+    }
     return null
   }
 }
@@ -45,30 +49,33 @@ export async function saveUserPreferences(
 ): Promise<void> {
   try {
     const prefsRef = doc(db, PREFERENCES_COLLECTION, userId)
-    const existingPrefs = await getDoc(prefsRef)
     
     // Remove id field if it exists
     const { id, ...prefsToSave } = preferences as any
     
-    if (existingPrefs.exists()) {
-      // Update existing preferences
-      await updateDoc(prefsRef, {
-        ...prefsToSave,
-        updatedAt: serverTimestamp(),
-        lastUsedAt: serverTimestamp(),
-      })
-    } else {
-      // Create new preferences
-      await setDoc(prefsRef, {
-        ...getDefaultPreferences(),
-        ...prefsToSave,
-        userId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+    // Prepare the full document with defaults
+    const fullPreferences = {
+      ...getDefaultPreferences(),
+      ...prefsToSave,
+      userId,
+      updatedAt: serverTimestamp(),
     }
+    
+    // For new documents, add createdAt
+    if (!prefsToSave.createdAt) {
+      fullPreferences.createdAt = serverTimestamp()
+    }
+    
+    // Use setDoc without merge for better permission handling
+    // This creates the document if it doesn't exist, or overwrites if it does
+    await setDoc(prefsRef, fullPreferences)
+    
   } catch (error) {
     console.error('Error saving user preferences:', error)
+    // Provide more detailed error message
+    if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+      throw new Error('Unable to save preferences. Please ensure you are logged in and try again. If the problem persists, try signing out and signing back in.')
+    }
     throw error
   }
 }
