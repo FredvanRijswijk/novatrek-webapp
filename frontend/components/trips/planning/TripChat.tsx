@@ -29,6 +29,10 @@ import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { ChatModelEnhanced as ChatModel } from '@/lib/models/chat-enhanced';
 import { toast } from 'sonner';
 import { useFirebase } from '@/lib/firebase/context';
+import { TripContextBuilder } from '@/lib/services/trip-context-builder';
+import { SuggestionEngine } from '@/lib/services/suggestion-engine';
+import { useTravelPreferences } from '@/hooks/use-travel-preferences';
+import { EnhancedTripContext, SmartSuggestion } from '@/types/chat-context';
 
 // Lazy load markdown renderer to improve initial load time
 const ReactMarkdown = dynamic(() => import('react-markdown'), {
@@ -59,7 +63,13 @@ interface Message {
 }
 
 // Quick action suggestions based on trip context
-const getContextualSuggestions = (trip: Trip): string[] => {
+const getContextualSuggestions = (trip: Trip, enhanced?: EnhancedTripContext | null): string[] => {
+  if (enhanced) {
+    const engine = new SuggestionEngine(enhanced);
+    return engine.generateQuickPrompts();
+  }
+  
+  // Fallback to basic suggestions
   const suggestions = [];
   
   // Check if trip has few activities
@@ -86,6 +96,8 @@ const getContextualSuggestions = (trip: Trip): string[] => {
 
 export function TripChat({ trip, onUpdate }: TripChatProps) {
   const { user } = useFirebase();
+  const { preferences, loading: preferencesLoading } = useTravelPreferences();
+  
   // Parse dates once at the component level
   const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
   const endDate = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
@@ -101,6 +113,40 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
   }
   
   const getContextualGreeting = () => {
+    if (enhancedContext) {
+      const { progress, budget, issues, userPreferences } = enhancedContext;
+      const totalActivities = enhancedContext.stats.totalActivities;
+      
+      let greeting = `Hi! I'm analyzing your trip to ${enhancedContext.destination}. `;
+      
+      if (totalActivities === 0) {
+        greeting += `Let's start planning your ${progress.totalDays}-day adventure`;
+        if (userPreferences) {
+          greeting += ` based on your ${userPreferences.pacePreference} travel style and interests in ${userPreferences.interests.slice(0, 3).join(', ')}.`;
+        } else {
+          greeting += `. I'll help you discover the best attractions, restaurants, and experiences.`;
+        }
+      } else {
+        greeting += `You've planned ${progress.daysPlanned} out of ${progress.totalDays} days with ${totalActivities} activities. `;
+        
+        if (issues.length > 0) {
+          greeting += `\n\n⚠️ I've noticed ${issues.length} issue${issues.length > 1 ? 's' : ''} that need attention:\n`;
+          greeting += issues.slice(0, 3).map(issue => `• ${issue.message}`).join('\n');
+        }
+        
+        if (progress.emptyDays.length > 0) {
+          greeting += `\n\nYou still need to plan Day${progress.emptyDays.length > 1 ? 's' : ''} ${progress.emptyDays.join(', ')}.`;
+        }
+        
+        if (budget.remaining < budget.total * 0.2) {
+          greeting += `\n\n💰 Budget heads up: You have ${budget.remaining} remaining out of ${budget.total}.`;
+        }
+      }
+      
+      return greeting;
+    }
+    
+    // Fallback to original greeting
     const totalActivities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
     
     if (totalActivities === 0) {
@@ -129,6 +175,8 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
   const [expandedMessages, setExpandedMessages] = useState<{[messageId: string]: boolean}>({});
   const [editingTimes, setEditingTimes] = useState<{[key: string]: {startTime: string; duration: number}}>({});
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [enhancedContext, setEnhancedContext] = useState<EnhancedTripContext | null>(null);
+  const [smartSuggestions, setSmartSuggestions] = useState<SmartSuggestion[]>([]);
   
   // Helper function to get existing activities for a day
   const getExistingActivitiesForDay = (dayNumber: number): Activity[] => {
@@ -253,6 +301,19 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     return duplicate || null;
   };
 
+  // Build enhanced context when trip or preferences change
+  useEffect(() => {
+    if (!preferencesLoading) {
+      const builder = new TripContextBuilder(trip, preferences || undefined);
+      const context = builder.build();
+      setEnhancedContext(context);
+      
+      // Generate smart suggestions
+      const engine = new SuggestionEngine(context);
+      setSmartSuggestions(engine.generateSuggestions());
+    }
+  }, [trip, preferences, preferencesLoading]);
+  
   // Load chat history when component mounts
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -334,7 +395,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
             role: 'assistant',
             content: getContextualGreeting(),
             timestamp: new Date(),
-            suggestions: getContextualSuggestions(trip)
+            suggestions: getContextualSuggestions(trip, enhancedContext)
           });
           
           setMessages(initialMessages);
@@ -349,7 +410,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           role: 'assistant',
           content: getContextualGreeting(),
           timestamp: new Date(),
-          suggestions: getContextualSuggestions(trip)
+          suggestions: getContextualSuggestions(trip, enhancedContext)
         }]);
       } finally {
         setLoadingHistory(false);
@@ -414,8 +475,18 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     }
 
     try {
-      // Prepare context for the AI
-      const context = {
+      // Use enhanced context if available, fallback to basic context
+      const context = enhancedContext ? {
+        tripContext: enhancedContext,
+        quickSummary: {
+          destination: enhancedContext.destination,
+          dates: enhancedContext.dates.formatted,
+          travelers: enhancedContext.travelers.count,
+          budget: `${enhancedContext.budget.total} (${enhancedContext.budget.remaining} remaining)`,
+          progress: `${enhancedContext.progress.daysPlanned}/${enhancedContext.progress.totalDays} days planned`,
+          issues: enhancedContext.issues.length
+        }
+      } : {
         destination: getDestinationName(trip),
         dates: `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`,
         travelers: trip.travelers.length,
@@ -476,24 +547,51 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
            \`\`\`
            
            Extract activities, accommodations, and restaurants for ${specificDay ? `Day ${specificDay} only` : 'the requested days'}.`
-        : `You are a helpful travel assistant for a trip to ${context.destination}. The trip is from ${context.dates} for ${context.travelers} travelers with a budget of ${context.budget}. Current planned activities include: ${context.currentActivities.join(', ') || 'none yet'}. 
+        : enhancedContext ? 
+          `You are an intelligent travel assistant with full context of the trip.
+           
+           Trip Overview:
+           - Destination: ${enhancedContext.destination}
+           - Dates: ${enhancedContext.dates.formatted}
+           - Travelers: ${enhancedContext.travelers.count} (${enhancedContext.travelers.type})
+           - Budget: ${enhancedContext.budget.total} total, ${enhancedContext.budget.remaining} remaining
+           - Progress: ${enhancedContext.progress.daysPlanned}/${enhancedContext.progress.totalDays} days planned
+           
+           ${enhancedContext.userPreferences ? `User Preferences:
+           - Travel style: ${enhancedContext.userPreferences.travelStyle.join(', ')}
+           - Pace: ${enhancedContext.userPreferences.pacePreference}
+           - Interests: ${enhancedContext.userPreferences.interests.join(', ')}
+           - Dietary: ${enhancedContext.userPreferences.dietaryRestrictions.join(', ') || 'None'}
+           - Activity types: ${enhancedContext.userPreferences.activityTypes.join(', ')}` : ''}
+           
+           ${enhancedContext.issues.length > 0 ? `Current Issues:
+           ${enhancedContext.issues.map(issue => `- ${issue.message}`).join('\\n')}` : ''}
+           
+           ${requestedDay ? `The user is asking for activities specifically for Day ${requestedDay}.
+           Context for Day ${requestedDay}:
+           ${(() => {
+             const dayContext = enhancedContext.detailedItinerary.find(d => d.dayNumber === requestedDay);
+             if (dayContext) {
+               return `- ${dayContext.activities.length} activities already planned
+           - Free time slots: ${dayContext.freeTimeSlots.map(s => `${s.start}-${s.end}`).join(', ')}
+           - Meals: Breakfast ${dayContext.hasBreakfast ? '✓' : '✗'}, Lunch ${dayContext.hasLunch ? '✓' : '✗'}, Dinner ${dayContext.hasDinner ? '✓' : '✗'}`;
+             }
+             return 'This day is currently empty.';
+           })()}
+           
+           Please provide activities for Day ${requestedDay} in JSON format that:
+           1. Fit within free time slots
+           2. Match user preferences
+           3. Stay within budget
+           4. Don't conflict with existing activities` : 
+           'Provide personalized recommendations based on the user preferences and trip context.'}
+           
+           Always consider the user's dietary restrictions, interests, pace preference, and remaining budget when making suggestions.`
+        : `You are a helpful travel assistant for a trip to ${context.destination || 'your destination'}. The trip is from ${context.dates || 'upcoming dates'} for ${context.travelers || 1} travelers with a budget of ${context.budget || 'not specified'}. Current planned activities include: ${context.currentActivities?.join(', ') || 'none yet'}. 
            
            ${requestedDay ? `The user is asking for activities specifically for Day ${requestedDay} of their trip. 
-           Please provide activities ONLY for Day ${requestedDay} in a structured JSON format.
-           Start your response with a brief introduction, then provide the JSON with "dayNumber": ${requestedDay}.
-           
-           Format your response like:
-           "Here are some great activities for Day ${requestedDay} of your trip:
-           
-           \`\`\`json
-           {
-             "days": [{
-               "dayNumber": ${requestedDay},
-               "activities": [...]
-             }]
-           }
-           \`\`\`"
-           ` : 'Provide specific, actionable advice and suggestions.'}`;
+           Please provide activities ONLY for Day ${requestedDay} in a structured JSON format.` : 
+           'Provide specific, actionable advice and suggestions.'}`;
 
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -724,7 +822,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
         role: 'assistant',
         content: getContextualGreeting(),
         timestamp: new Date(),
-        suggestions: getContextualSuggestions(trip)
+        suggestions: getContextualSuggestions(trip, enhancedContext)
       }]);
       setSelectedActivities({});
       setExpandedMessages({});
@@ -832,6 +930,27 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           </div>
         </div>
       </div>
+
+      {/* Smart Suggestions Bar */}
+      {smartSuggestions.length > 0 && (
+        <div className="border-b bg-muted/50 p-3">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Suggestions:</span>
+            {smartSuggestions.map((suggestion) => (
+              <Button
+                key={suggestion.id}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap text-xs"
+                onClick={() => setInput(suggestion.text)}
+              >
+                <span className="mr-1">{suggestion.icon}</span>
+                {suggestion.text}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
