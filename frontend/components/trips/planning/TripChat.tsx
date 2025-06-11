@@ -1,12 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Trip, Activity } from '@/types/travel';
@@ -117,6 +127,8 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
   // State for selective activity saving
   const [selectedActivities, setSelectedActivities] = useState<{[key: string]: boolean}>({});
   const [expandedMessages, setExpandedMessages] = useState<{[messageId: string]: boolean}>({});
+  const [editingTimes, setEditingTimes] = useState<{[key: string]: {startTime: string; duration: number}}>({});
+  const [showClearDialog, setShowClearDialog] = useState(false);
   
   // Helper function to get existing activities for a day
   const getExistingActivitiesForDay = (dayNumber: number): Activity[] => {
@@ -695,6 +707,36 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
       setInput(suggestion);
     }
   };
+  
+  const handleClearChat = async () => {
+    try {
+      if (user) {
+        // Delete all chat messages for this trip from the database
+        const messages = await ChatModel.getTripMessages(trip.id);
+        for (const msg of messages) {
+          await ChatModel.delete(msg.id);
+        }
+      }
+      
+      // Clear local state
+      setMessages([{
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: getContextualGreeting(),
+        timestamp: new Date(),
+        suggestions: getContextualSuggestions(trip)
+      }]);
+      setSelectedActivities({});
+      setExpandedMessages({});
+      setEditingTimes({});
+      setShowClearDialog(false);
+      
+      toast.success('Chat history cleared');
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      toast.error('Failed to clear chat history');
+    }
+  };
 
   // Function to apply parsed itinerary to trip
   const applyItineraryToTrip = async (days: any[]): Promise<number[]> => {
@@ -771,12 +813,22 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                 </p>
               </div>
             </div>
-            <ProviderSelector 
-              value={selectedProvider}
-              onChange={setSelectedProvider}
-              showCost={false}
-              size="sm"
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowClearDialog(true)}
+                title="Clear chat history"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <ProviderSelector 
+                value={selectedProvider}
+                onChange={setSelectedProvider}
+                showCost={false}
+                size="sm"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1000,7 +1052,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                         <div 
                                           key={actIdx} 
                                           className={cn(
-                                            "flex items-start gap-3 p-2 rounded-lg transition-colors relative",
+                                            "flex items-start gap-3 p-2 rounded-lg transition-colors relative group",
                                             selectedActivities[activityKey] ? "bg-primary/10" : "hover:bg-muted/50",
                                             hasConflict && "border border-orange-200 dark:border-orange-800",
                                             duplicateActivity && "opacity-60"
@@ -1049,12 +1101,94 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                               </p>
                                             )}
                                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                              {activity.startTime && (
-                                                <span className="flex items-center gap-1">
-                                                  <Clock className="h-3 w-3" />
-                                                  {activity.startTime}
-                                                  {activity.duration && ` (${activity.duration}min)`}
-                                                </span>
+                                              {editingTimes[activityKey] ? (
+                                                <div className="flex items-center gap-2">
+                                                  <Input
+                                                    type="time"
+                                                    value={editingTimes[activityKey].startTime}
+                                                    onChange={(e) => setEditingTimes(prev => ({
+                                                      ...prev,
+                                                      [activityKey]: {
+                                                        ...prev[activityKey],
+                                                        startTime: e.target.value
+                                                      }
+                                                    }))}
+                                                    className="h-6 w-20 text-xs"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  />
+                                                  <Input
+                                                    type="number"
+                                                    value={editingTimes[activityKey].duration}
+                                                    onChange={(e) => setEditingTimes(prev => ({
+                                                      ...prev,
+                                                      [activityKey]: {
+                                                        ...prev[activityKey],
+                                                        duration: parseInt(e.target.value) || 60
+                                                      }
+                                                    }))}
+                                                    className="h-6 w-16 text-xs"
+                                                    placeholder="min"
+                                                    min="15"
+                                                    step="15"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  />
+                                                  <span className="text-xs">min</span>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-6 px-1"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      // Apply the edited time
+                                                      const edited = editingTimes[activityKey];
+                                                      activity.startTime = edited.startTime;
+                                                      activity.duration = edited.duration;
+                                                      setEditingTimes(prev => {
+                                                        const newTimes = { ...prev };
+                                                        delete newTimes[activityKey];
+                                                        return newTimes;
+                                                      });
+                                                    }}
+                                                  >
+                                                    ✓
+                                                  </Button>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-6 px-1"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingTimes(prev => {
+                                                        const newTimes = { ...prev };
+                                                        delete newTimes[activityKey];
+                                                        return newTimes;
+                                                      });
+                                                    }}
+                                                  >
+                                                    ✗
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                activity.startTime && (
+                                                  <button
+                                                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingTimes(prev => ({
+                                                        ...prev,
+                                                        [activityKey]: {
+                                                          startTime: activity.startTime as string,
+                                                          duration: activity.duration || 60
+                                                        }
+                                                      }));
+                                                    }}
+                                                  >
+                                                    <Clock className="h-3 w-3" />
+                                                    {activity.startTime}
+                                                    {activity.duration && ` (${activity.duration}min)`}
+                                                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                  </button>
+                                                )
                                               )}
                                               {activity.cost && (
                                                 <span className="flex items-center gap-1">
@@ -1112,12 +1246,23 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                   className="flex-1"
                                   onClick={async () => {
                                     try {
-                                      // Filter activities based on selection
+                                      // Filter activities based on selection and apply edited times
                                       const selectedDays = message.activities!.map(day => ({
                                         ...day,
                                         activities: day.activities?.filter((_, actIdx) => 
                                           selectedActivities[`${message.id}-${day.dayNumber}-${actIdx}`]
-                                        ) || []
+                                        ).map((activity, actIdx) => {
+                                          const activityKey = `${message.id}-${day.dayNumber}-${actIdx}`;
+                                          // Apply edited times if they exist
+                                          if (editingTimes[activityKey]) {
+                                            return {
+                                              ...activity,
+                                              startTime: editingTimes[activityKey].startTime,
+                                              duration: editingTimes[activityKey].duration
+                                            };
+                                          }
+                                          return activity;
+                                        }) || []
                                       })).filter(day => day.activities.length > 0);
                                       
                                       if (selectedDays.length === 0) {
@@ -1248,6 +1393,24 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           </div>
         </div>
       </div>
+      
+      {/* Clear Chat Dialog */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear all chat messages for this trip? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear History
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

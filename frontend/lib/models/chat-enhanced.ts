@@ -9,6 +9,7 @@ import {
   updateDocument, 
   getDocument, 
   getCollection,
+  deleteDocument,
   subscribeToCollection,
   where,
   orderBy,
@@ -291,5 +292,10 @@ export class ChatModelEnhanced {
       sessionsCount: sessionIds.size,
       tripsWithChat: tripIds.size
     }
+  }
+
+  // Delete a chat message
+  static async delete(messageId: string): Promise<void> {
+    await deleteDocument('chat_messages', messageId)
   }
 }
