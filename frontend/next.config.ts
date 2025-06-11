@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
+        protocol: 'https',
+        hostname: 'www.novatrek.app',
+        pathname: '/**',
+      },
+      
     ],
   },
   // Skip TypeScript errors in preview builds
