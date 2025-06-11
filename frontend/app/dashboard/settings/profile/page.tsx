@@ -20,6 +20,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useTheme } from 'next-themes'
 import { useSubscription } from '@/hooks/use-subscription'
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/plans'
+import { useUserTrips } from '@/hooks/use-trips-hybrid'
 
 interface UserProfile {
   displayName: string
@@ -52,7 +53,11 @@ export default function ProfilePage() {
     location: '',
     languages: [],
   })
-  const [statsLoading, setStatsLoading] = useState(true)
+  const { trips, loading: tripsLoading } = useUserTrips({ 
+    userId: user?.uid,
+    realtime: false 
+  })
+  
   const [tripStats, setTripStats] = useState({
     totalTrips: 0,
     countriesVisited: 0,
@@ -62,9 +67,43 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       loadProfile()
-      loadTripStats()
     }
   }, [user])
+  
+  // Calculate trip stats from loaded trips
+  useEffect(() => {
+    if (!tripsLoading && trips) {
+      const countries = new Set<string>()
+      let upcoming = 0
+      const now = new Date()
+
+      trips.forEach(trip => {
+        // Count countries
+        if (trip.destination?.country) {
+          countries.add(trip.destination.country)
+        }
+        if (trip.destinations) {
+          trip.destinations.forEach((dest: any) => {
+            if (dest.destination?.country) {
+              countries.add(dest.destination.country)
+            }
+          })
+        }
+
+        // Count upcoming trips
+        const startDate = trip.startDate?.toDate ? trip.startDate.toDate() : new Date(trip.startDate)
+        if (startDate > now) {
+          upcoming++
+        }
+      })
+
+      setTripStats({
+        totalTrips: trips.length,
+        countriesVisited: countries.size,
+        upcomingTrips: upcoming,
+      })
+    }
+  }, [trips, tripsLoading])
 
   const loadProfile = async () => {
     if (!user) return
@@ -134,51 +173,6 @@ export default function ProfilePage() {
     }
   }
 
-  const loadTripStats = async () => {
-    if (!user) return
-
-    try {
-      const { collection, query, where, getDocs } = await import('firebase/firestore')
-      const tripsRef = collection(db, 'trips')
-      const q = query(tripsRef, where('userId', '==', user.uid))
-      const snapshot = await getDocs(q)
-      
-      const trips = snapshot.docs.map(doc => doc.data())
-      const countries = new Set<string>()
-      let upcoming = 0
-      const now = new Date()
-
-      trips.forEach(trip => {
-        // Count countries
-        if (trip.destination?.country) {
-          countries.add(trip.destination.country)
-        }
-        if (trip.destinations) {
-          trip.destinations.forEach((dest: any) => {
-            if (dest.destination?.country) {
-              countries.add(dest.destination.country)
-            }
-          })
-        }
-
-        // Count upcoming trips
-        const startDate = trip.startDate?.toDate ? trip.startDate.toDate() : new Date(trip.startDate)
-        if (startDate > now) {
-          upcoming++
-        }
-      })
-
-      setTripStats({
-        totalTrips: trips.length,
-        countriesVisited: countries.size,
-        upcomingTrips: upcoming,
-      })
-    } catch (error) {
-      console.error('Error loading trip stats:', error)
-    } finally {
-      setStatsLoading(false)
-    }
-  }
 
   const handleSave = async () => {
     if (!user) return
@@ -413,7 +407,7 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {statsLoading ? (
+          {tripsLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
