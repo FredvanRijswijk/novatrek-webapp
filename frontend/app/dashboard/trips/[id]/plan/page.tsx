@@ -360,7 +360,10 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {activeTab === 'transport' && <TransportPlanner trip={trip} onUpdate={() => loadTrip()} />}
+                    {activeTab === 'transport' && <TransportPlanner trip={trip} onUpdate={async () => {
+                      const tripData = await TripModel.getById(tripId);
+                      if (tripData) setTrip(tripData);
+                    }} />}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -491,7 +494,7 @@ export default function TripPlanningPage() {
                   variant="outline" 
                   className="w-full justify-start" 
                   size="sm"
-                  onClick={() => setActiveTab('flights')}
+                  onClick={() => setActiveTab('transport')}
                 >
                   <Plane className="mr-2 h-4 w-4" />
                   Add Flight
