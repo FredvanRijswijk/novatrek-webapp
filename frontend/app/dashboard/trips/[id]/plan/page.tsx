@@ -20,6 +20,7 @@ import { format, differenceInDays } from 'date-fns';
 import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { FeatureFlag } from '@/components/feature-flag/FeatureFlag';
 import { DebugFeatureFlags } from '@/components/trips/DebugFeatureFlags';
+import { FEATURE_FLAGS } from '@/lib/feature-flags';
 
 // Lazy load planning components for better performance
 import dynamic from 'next/dynamic';
@@ -44,6 +45,14 @@ const BudgetTracker = dynamic(
 
 const TripChat = dynamic(
   () => import('@/components/trips/planning/TripChat').then(mod => ({ default: mod.TripChat })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+const TripChatV2 = dynamic(
+  () => import('@/components/trips/planning/TripChatV2').then(mod => ({ default: mod.TripChatV2 })),
   { 
     loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
     ssr: false 
@@ -401,7 +410,11 @@ export default function TripPlanningPage() {
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6 h-[calc(100vh-20rem)]">
-                {activeTab === 'chat' && <TripChat trip={trip} onUpdate={setTrip} />}
+                {activeTab === 'chat' && (
+                  FEATURE_FLAGS.AI_CHAT_V2 
+                    ? <TripChatV2 trip={trip} onUpdate={setTrip} />
+                    : <TripChat trip={trip} onUpdate={setTrip} />
+                )}
               </TabsContent>
             </Tabs>
           </div>

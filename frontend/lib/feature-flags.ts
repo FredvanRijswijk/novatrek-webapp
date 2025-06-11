@@ -18,6 +18,7 @@ export const FEATURE_FLAGS = {
   // Other feature flags can be added here
   GROUP_TRAVEL: process.env.NEXT_PUBLIC_ENABLE_GROUP_TRAVEL === 'true' || false,
   AI_CHAT_ENHANCED: process.env.NEXT_PUBLIC_ENABLE_AI_CHAT_ENHANCED === 'true' || false,
+  AI_CHAT_V2: process.env.NEXT_PUBLIC_ENABLE_AI_CHAT_V2 === 'true' || false,
 }
 
 /**
@@ -54,5 +55,6 @@ export function getFeatureFlagStatus(): Record<string, any> {
     },
     groupTravel: FEATURE_FLAGS.GROUP_TRAVEL,
     aiChatEnhanced: FEATURE_FLAGS.AI_CHAT_ENHANCED,
+    aiChatV2: FEATURE_FLAGS.AI_CHAT_V2,
   }
 }
