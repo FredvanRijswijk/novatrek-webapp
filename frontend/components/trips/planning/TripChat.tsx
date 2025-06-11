@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Trip, Activity } from '@/types/travel';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -111,6 +113,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     }
     return DEFAULT_PROVIDER;
   });
+  
+  // State for selective activity saving
+  const [selectedActivities, setSelectedActivities] = useState<{[key: string]: boolean}>({});
+  const [expandedMessages, setExpandedMessages] = useState<{[messageId: string]: boolean}>({});
 
   // Load chat history when component mounts
   useEffect(() => {
@@ -741,43 +747,213 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                   {message.activities && message.activities.length > 0 && (
                     <div className="space-y-2">
                       <Card className="bg-primary/5 border-primary/20">
-                        <CardContent className="p-3">
-                          <p className="text-sm font-medium mb-2">
-                            {message.requestedDay 
-                              ? `Activities for Day ${message.requestedDay}:`
-                              : 'Found activities to add:'}
-                          </p>
-                          {message.activities.map((day, index) => (
-                            <div key={index} className="text-xs text-muted-foreground mb-1">
-                              Day {day.dayNumber}: {day.activities?.length || 0} activities
+                        <CardHeader className="pb-3 pt-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm">
+                              {message.requestedDay 
+                                ? `Activities for Day ${message.requestedDay}`
+                                : 'Suggested Activities'}
+                            </CardTitle>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExpandedMessages(prev => ({
+                                ...prev,
+                                [message.id]: !prev[message.id]
+                              }))}
+                            >
+                              {expandedMessages[message.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        
+                        <CardContent className="pt-0">
+                          {!expandedMessages[message.id] ? (
+                            // Collapsed view - just show summary
+                            <div className="space-y-1">
+                              {message.activities.map((day, index) => (
+                                <div key={index} className="text-xs text-muted-foreground">
+                                  Day {day.dayNumber}: {day.activities?.length || 0} activities
+                                </div>
+                              ))}
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="w-full mt-2"
+                                onClick={() => setExpandedMessages(prev => ({
+                                  ...prev,
+                                  [message.id]: true
+                                }))}
+                              >
+                                View & Select Activities
+                              </Button>
                             </div>
-                          ))}
-                          <Button
-                            size="sm"
-                            className="w-full mt-3"
-                            onClick={async () => {
-                              try {
-                                const appliedDays = await applyItineraryToTrip(message.activities!);
-                                const dayText = message.requestedDay 
-                                  ? `Day ${message.requestedDay}` 
-                                  : `${appliedDays.length} day${appliedDays.length > 1 ? 's' : ''}`;
-                                toast.success(`Successfully added activities for ${dayText}!`);
-                                // Refresh trip data
-                                if (onUpdate) {
-                                  const updatedTrip = await TripModel.getById(trip.id);
-                                  if (updatedTrip) onUpdate(updatedTrip);
-                                }
-                              } catch (error) {
-                                console.error('Error applying activities:', error);
-                                toast.error('Failed to add activities. Please try again.');
-                              }
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            {message.requestedDay 
-                              ? `Save to Day ${message.requestedDay} Itinerary`
-                              : 'Save Activities to Itinerary'}
-                          </Button>
+                          ) : (
+                            // Expanded view - show all activities with checkboxes
+                            <div className="space-y-4">
+                              {message.activities.map((day) => (
+                                <div key={day.dayNumber} className="space-y-2">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium">Day {day.dayNumber}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-xs h-auto py-1 px-2"
+                                      onClick={() => {
+                                        const dayPrefix = `${message.id}-${day.dayNumber}`;
+                                        const allChecked = day.activities?.every((_, idx) => 
+                                          selectedActivities[`${dayPrefix}-${idx}`]
+                                        ) || false;
+                                        
+                                        const updates: {[key: string]: boolean} = {};
+                                        day.activities?.forEach((_, idx) => {
+                                          updates[`${dayPrefix}-${idx}`] = !allChecked;
+                                        });
+                                        
+                                        setSelectedActivities(prev => ({ ...prev, ...updates }));
+                                      }}
+                                    >
+                                      {day.activities?.every((_, idx) => 
+                                        selectedActivities[`${message.id}-${day.dayNumber}-${idx}`]
+                                      ) ? (
+                                        <>
+                                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                                          Deselect All
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Square className="h-3 w-3 mr-1" />
+                                          Select All
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {day.activities?.map((activity, actIdx) => {
+                                      const activityKey = `${message.id}-${day.dayNumber}-${actIdx}`;
+                                      return (
+                                        <div 
+                                          key={actIdx} 
+                                          className={cn(
+                                            "flex items-start gap-3 p-2 rounded-lg transition-colors",
+                                            selectedActivities[activityKey] ? "bg-primary/10" : "hover:bg-muted/50"
+                                          )}
+                                        >
+                                          <Checkbox
+                                            id={activityKey}
+                                            checked={selectedActivities[activityKey] || false}
+                                            onCheckedChange={(checked) => 
+                                              setSelectedActivities(prev => ({
+                                                ...prev,
+                                                [activityKey]: checked as boolean
+                                              }))
+                                            }
+                                            className="mt-0.5"
+                                          />
+                                          <label 
+                                            htmlFor={activityKey}
+                                            className="flex-1 cursor-pointer space-y-1"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium text-sm">{activity.name}</span>
+                                              {activity.type && (
+                                                <Badge variant="outline" className="text-xs">
+                                                  {activity.type}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            {activity.description && (
+                                              <p className="text-xs text-muted-foreground">{activity.description}</p>
+                                            )}
+                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                              {activity.startTime && (
+                                                <span className="flex items-center gap-1">
+                                                  <Clock className="h-3 w-3" />
+                                                  {activity.startTime}
+                                                  {activity.duration && ` (${activity.duration}min)`}
+                                                </span>
+                                              )}
+                                              {activity.cost && (
+                                                <span className="flex items-center gap-1">
+                                                  <DollarSign className="h-3 w-3" />
+                                                  {activity.cost.currency} {activity.cost.amount}
+                                                  {activity.cost.perPerson && '/person'}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </label>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              <div className="flex gap-2 pt-2 border-t">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedActivities({})}
+                                  disabled={Object.keys(selectedActivities).length === 0}
+                                >
+                                  Clear Selection
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={async () => {
+                                    try {
+                                      // Filter activities based on selection
+                                      const selectedDays = message.activities!.map(day => ({
+                                        ...day,
+                                        activities: day.activities?.filter((_, actIdx) => 
+                                          selectedActivities[`${message.id}-${day.dayNumber}-${actIdx}`]
+                                        ) || []
+                                      })).filter(day => day.activities.length > 0);
+                                      
+                                      if (selectedDays.length === 0) {
+                                        toast.error('Please select at least one activity');
+                                        return;
+                                      }
+                                      
+                                      const appliedDays = await applyItineraryToTrip(selectedDays);
+                                      const activityCount = selectedDays.reduce((sum, day) => sum + day.activities.length, 0);
+                                      
+                                      toast.success(`Successfully added ${activityCount} activities!`);
+                                      
+                                      // Clear selections for this message
+                                      setSelectedActivities(prev => {
+                                        const newSelections = { ...prev };
+                                        Object.keys(newSelections).forEach(key => {
+                                          if (key.startsWith(message.id)) {
+                                            delete newSelections[key];
+                                          }
+                                        });
+                                        return newSelections;
+                                      });
+                                      
+                                      // Collapse the message
+                                      setExpandedMessages(prev => ({ ...prev, [message.id]: false }));
+                                      
+                                      // Refresh trip data
+                                      if (onUpdate) {
+                                        const updatedTrip = await TripModel.getById(trip.id);
+                                        if (updatedTrip) onUpdate(updatedTrip);
+                                      }
+                                    } catch (error) {
+                                      console.error('Error applying activities:', error);
+                                      toast.error('Failed to add activities. Please try again.');
+                                    }
+                                  }}
+                                  disabled={!Object.values(selectedActivities).some(Boolean)}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Save Selected Activities ({Object.values(selectedActivities).filter(Boolean).length})
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
