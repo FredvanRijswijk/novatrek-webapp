@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,7 @@ interface Message {
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  activities?: any[]; // Store parsed activities from JSON
 }
 
 // Quick action suggestions based on trip context
@@ -119,12 +120,42 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
         // Load existing chat messages for this trip
         const chatHistory = await ChatModel.getTripMessages(trip.id);
         
-        const loadedMessages: Message[] = chatHistory.map(msg => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          timestamp: msg.createdAt instanceof Date ? msg.createdAt : msg.createdAt.toDate()
-        }));
+        const loadedMessages: Message[] = chatHistory.map(msg => {
+          const message: Message = {
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.createdAt instanceof Date ? msg.createdAt : msg.createdAt.toDate()
+          };
+          
+          // Check if message contains JSON activities
+          if (msg.role === 'assistant') {
+            const jsonMatch = msg.content.match(/```json\n([\s\S]*?)(\n```|$)/);
+            if (jsonMatch && jsonMatch[1]) {
+              try {
+                let jsonString = jsonMatch[1].trim();
+                // Try to fix common JSON issues
+                jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+                if (!jsonString.trim().endsWith('}')) {
+                  const openBraces = (jsonString.match(/{/g) || []).length;
+                  const closeBraces = (jsonString.match(/}/g) || []).length;
+                  const openBrackets = (jsonString.match(/\[/g) || []).length;
+                  const closeBrackets = (jsonString.match(/\]/g) || []).length;
+                  jsonString += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+                  jsonString += '}'.repeat(Math.max(0, openBraces - closeBraces));
+                }
+                const parsedData = JSON.parse(jsonString);
+                if (parsedData.days && Array.isArray(parsedData.days)) {
+                  message.activities = parsedData.days;
+                }
+              } catch (e) {
+                // Ignore parsing errors
+              }
+            }
+          }
+          
+          return message;
+        });
         
         // Check if we need to add initial messages
         if (loadedMessages.length === 0) {
@@ -352,79 +383,88 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           }
         }
         
-        // After streaming is complete, check if we need to apply the itinerary
-        if (isApplyingItinerary) {
-          // Check if response contains JSON
-          const jsonMatch = streamedContent.match(/```json\n([\s\S]*?)(\n```|$)/);
-          
-          if (jsonMatch && jsonMatch[1]) {
-            // Hide the JSON from the user - show a processing message instead
+        // Check if response contains JSON (regardless of whether user is applying itinerary)
+        const jsonMatch = streamedContent.match(/```json\n([\s\S]*?)(\n```|$)/);
+        
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            let jsonString = jsonMatch[1].trim();
+            
+            // Try to fix common JSON issues
+            // Remove trailing comma if present
+            jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+            
+            // Check if JSON might be incomplete (doesn't end with })
+            if (!jsonString.trim().endsWith('}')) {
+              // Try to close open structures
+              const openBraces = (jsonString.match(/{/g) || []).length;
+              const closeBraces = (jsonString.match(/}/g) || []).length;
+              const openBrackets = (jsonString.match(/\[/g) || []).length;
+              const closeBrackets = (jsonString.match(/\]/g) || []).length;
+              
+              // Add missing brackets/braces
+              jsonString += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+              jsonString += '}'.repeat(Math.max(0, openBraces - closeBraces));
+            }
+            
+            const parsedData = JSON.parse(jsonString);
+            
+            // Store the parsed activities data in the message for later use
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === assistantMessage.id 
-                  ? { ...msg, content: `🔄 Processing Day ${specificDay || '1'} activities...` }
+                  ? { ...msg, activities: parsedData.days }
                   : msg
               )
             );
             
-            try {
-              let jsonString = jsonMatch[1].trim();
+            // If user was explicitly applying itinerary, process it immediately
+            if (isApplyingItinerary && parsedData.days && Array.isArray(parsedData.days)) {
+              // Hide the JSON from the user - show a processing message instead
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg.id === assistantMessage.id 
+                    ? { ...msg, content: `🔄 Processing Day ${specificDay || '1'} activities...` }
+                    : msg
+                )
+              );
               
-              // Try to fix common JSON issues
-              // Remove trailing comma if present
-              jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+              // Apply activities to the trip
+              const appliedDays = await applyItineraryToTrip(parsedData.days);
               
-              // Check if JSON might be incomplete (doesn't end with })
-              if (!jsonString.trim().endsWith('}')) {
-                // Try to close open structures
-                const openBraces = (jsonString.match(/{/g) || []).length;
-                const closeBraces = (jsonString.match(/}/g) || []).length;
-                const openBrackets = (jsonString.match(/\[/g) || []).length;
-                const closeBrackets = (jsonString.match(/\]/g) || []).length;
-                
-                // Add missing brackets/braces
-                jsonString += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
-                jsonString += '}'.repeat(Math.max(0, openBraces - closeBraces));
+              // Update AI recommendation to mark as applied
+              if (aiItinerary) {
+                await TripModel.update(trip.id, {
+                  aiRecommendations: trip.aiRecommendations?.map(rec => 
+                    rec.id === aiItinerary.id ? { ...rec, applied: true } : rec
+                  )
+                });
               }
               
-              const parsedData = JSON.parse(jsonString);
+              // Add success message with suggestions for next days
+              const tripDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              const maxAppliedDay = Math.max(...appliedDays);
+              const nextDaySuggestions: string[] = [];
               
-              if (parsedData.days && Array.isArray(parsedData.days)) {
-                // Apply activities to the trip
-                const appliedDays = await applyItineraryToTrip(parsedData.days);
-                
-                // Update AI recommendation to mark as applied
-                if (aiItinerary) {
-                  await TripModel.update(trip.id, {
-                    aiRecommendations: trip.aiRecommendations?.map(rec => 
-                      rec.id === aiItinerary.id ? { ...rec, applied: true } : rec
-                    )
-                  });
+              // Suggest applying next days if available
+              if (maxAppliedDay < tripDays) {
+                for (let i = 1; i <= Math.min(3, tripDays - maxAppliedDay); i++) {
+                  nextDaySuggestions.push(`Apply Day ${maxAppliedDay + i} activities`);
                 }
-                
-                // Add success message with suggestions for next days
-                const tripDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                const maxAppliedDay = Math.max(...appliedDays);
-                const nextDaySuggestions: string[] = [];
-                
-                // Suggest applying next days if available
-                if (maxAppliedDay < tripDays) {
-                  for (let i = 1; i <= Math.min(3, tripDays - maxAppliedDay); i++) {
-                    nextDaySuggestions.push(`Apply Day ${maxAppliedDay + i} activities`);
-                  }
-                }
-                
-                const successMessage: Message = {
-                  id: generateId(),
-                  role: 'assistant',
-                  content: `✅ Great! I've successfully added activities to your trip:\n\n${appliedDays.map(d => `Day ${d}: ${parsedData.days.find(day => day.dayNumber === d)?.activities.length || 0} activities`).join('\n')}\n\nYou can now see them in the Itinerary tab. Feel free to modify or rearrange them as needed!`,
-                  timestamp: new Date(),
-                  suggestions: [...nextDaySuggestions, 'View itinerary', 'Add more activities'].filter(Boolean)
-                };
-                setMessages(prev => [...prev, successMessage]);
               }
-            } catch (parseError) {
-              console.error('Error parsing itinerary JSON:', parseError);
+              
+              const successMessage: Message = {
+                id: generateId(),
+                role: 'assistant',
+                content: `✅ Great! I've successfully added activities to your trip:\n\n${appliedDays.map(d => `Day ${d}: ${parsedData.days.find(day => day.dayNumber === d)?.activities.length || 0} activities`).join('\n')}\n\nYou can now see them in the Itinerary tab. Feel free to modify or rearrange them as needed!`,
+                timestamp: new Date(),
+                suggestions: [...nextDaySuggestions, 'View itinerary', 'Add more activities'].filter(Boolean)
+              };
+              setMessages(prev => [...prev, successMessage]);
+            }
+          } catch (parseError) {
+            console.error('Error parsing itinerary JSON:', parseError);
+            if (isApplyingItinerary) {
               // Replace the processing message with an error
               setMessages(prev => 
                 prev.map(msg => 
@@ -438,11 +478,12 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                 )
               );
             }
-          } else if (streamedContent.toLowerCase().includes('error') || streamedContent.toLowerCase().includes('sorry')) {
-            // AI couldn't process the request properly
+          }
+        } else if (isApplyingItinerary) {
+          // No JSON found but user requested to apply itinerary
+          if (streamedContent.toLowerCase().includes('error') || streamedContent.toLowerCase().includes('sorry')) {
             console.log('AI unable to process itinerary application');
           } else {
-            // No JSON found but user requested to apply itinerary
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === assistantMessage.id 
@@ -669,6 +710,43 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* Show save activities button if message contains activities */}
+                  {message.activities && message.activities.length > 0 && (
+                    <div className="space-y-2">
+                      <Card className="bg-primary/5 border-primary/20">
+                        <CardContent className="p-3">
+                          <p className="text-sm font-medium mb-2">Found activities to add:</p>
+                          {message.activities.map((day, index) => (
+                            <div key={index} className="text-xs text-muted-foreground mb-1">
+                              Day {day.dayNumber}: {day.activities?.length || 0} activities
+                            </div>
+                          ))}
+                          <Button
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={async () => {
+                              try {
+                                const appliedDays = await applyItineraryToTrip(message.activities!);
+                                toast.success(`Successfully added activities for ${appliedDays.length} days!`);
+                                // Refresh trip data
+                                if (onUpdate) {
+                                  const updatedTrip = await TripModel.getById(trip.id);
+                                  if (updatedTrip) onUpdate(updatedTrip);
+                                }
+                              } catch (error) {
+                                console.error('Error applying activities:', error);
+                                toast.error('Failed to add activities. Please try again.');
+                              }
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Save Activities to Itinerary
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
 
                   {message.suggestions && message.suggestions.length > 0 && (
                     <div className="space-y-2">
