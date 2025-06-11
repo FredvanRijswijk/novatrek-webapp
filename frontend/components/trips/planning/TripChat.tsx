@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -151,6 +151,94 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
       // Check for overlap
       return (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes);
     });
+  };
+  
+  // Helper function to check for duplicate activities
+  const isDuplicateActivity = (newActivity: any, existingActivities: Activity[]): Activity | null => {
+    // Normalize strings for comparison
+    const normalize = (str: string): string => {
+      return str.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    };
+    
+    const newNameNormalized = normalize(newActivity.name);
+    
+    // Check for exact or similar names
+    const duplicate = existingActivities.find(existing => {
+      const existingNameNormalized = normalize(existing.name);
+      
+      // Exact match
+      if (existingNameNormalized === newNameNormalized) return true;
+      
+      // Check if one contains the other (e.g., "Eiffel Tower" vs "Visit Eiffel Tower")
+      if (existingNameNormalized.includes(newNameNormalized) || 
+          newNameNormalized.includes(existingNameNormalized)) return true;
+      
+      // Check for common variations
+      const commonWords = ['visit', 'tour', 'see', 'explore', 'goto', 'the', 'at', 'in', 'to', 'a', 'an'];
+      const stripCommonWords = (str: string): string => {
+        let result = str;
+        commonWords.forEach(word => {
+          result = result.replace(new RegExp(`\\b${word}\\b`, 'g'), '');
+        });
+        return result.replace(/\s+/g, ' ').trim();
+      };
+      
+      const newStripped = stripCommonWords(newNameNormalized);
+      const existingStripped = stripCommonWords(existingNameNormalized);
+      
+      // Also check Levenshtein distance for typos
+      const levenshteinDistance = (s1: string, s2: string): number => {
+        const longer = s1.length > s2.length ? s1 : s2;
+        const shorter = s1.length > s2.length ? s2 : s1;
+        
+        if (longer.length === 0) return shorter.length;
+        
+        const editDistance = Array(shorter.length + 1).fill(null).map(() => 
+          Array(longer.length + 1).fill(null)
+        );
+        
+        for (let i = 0; i <= longer.length; i++) {
+          editDistance[0][i] = i;
+        }
+        
+        for (let j = 0; j <= shorter.length; j++) {
+          editDistance[j][0] = j;
+        }
+        
+        for (let j = 1; j <= shorter.length; j++) {
+          for (let i = 1; i <= longer.length; i++) {
+            const indicator = shorter[j - 1] === longer[i - 1] ? 0 : 1;
+            editDistance[j][i] = Math.min(
+              editDistance[j][i - 1] + 1,
+              editDistance[j - 1][i] + 1,
+              editDistance[j - 1][i - 1] + indicator
+            );
+          }
+        }
+        
+        return editDistance[shorter.length][longer.length];
+      };
+      
+      if (newStripped === existingStripped) return true;
+      
+      // Check if very similar (allowing for small typos)
+      const distance = levenshteinDistance(newStripped, existingStripped);
+      const maxLength = Math.max(newStripped.length, existingStripped.length);
+      const similarity = 1 - (distance / maxLength);
+      
+      return similarity > 0.8; // 80% similarity threshold
+    });
+    
+    // Also check by location if available
+    if (!duplicate && newActivity.location?.placeId) {
+      const locationDuplicate = existingActivities.find(existing => 
+        existing.location?.placeId === newActivity.location.placeId ||
+        existing.googlePlaceId === newActivity.location.placeId
+      );
+      if (locationDuplicate) return locationDuplicate;
+    }
+    
+    return duplicate || null;
   };
 
   // Load chat history when component mounts
@@ -907,13 +995,15 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                     {day.activities?.map((activity, actIdx) => {
                                       const activityKey = `${message.id}-${day.dayNumber}-${actIdx}`;
                                       const hasConflict = hasTimeConflict(activity, existingActivities);
+                                      const duplicateActivity = isDuplicateActivity(activity, existingActivities);
                                       return (
                                         <div 
                                           key={actIdx} 
                                           className={cn(
                                             "flex items-start gap-3 p-2 rounded-lg transition-colors relative",
                                             selectedActivities[activityKey] ? "bg-primary/10" : "hover:bg-muted/50",
-                                            hasConflict && "border border-orange-200 dark:border-orange-800"
+                                            hasConflict && "border border-orange-200 dark:border-orange-800",
+                                            duplicateActivity && "opacity-60"
                                           )}
                                         >
                                           <Checkbox
@@ -943,9 +1033,20 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                                   Time conflict
                                                 </Badge>
                                               )}
+                                              {duplicateActivity && (
+                                                <Badge variant="secondary" className="text-xs">
+                                                  Already in itinerary
+                                                </Badge>
+                                              )}
                                             </div>
                                             {activity.description && (
                                               <p className="text-xs text-muted-foreground">{activity.description}</p>
+                                            )}
+                                            {duplicateActivity && (
+                                              <p className="text-xs text-muted-foreground italic mt-1">
+                                                Similar to: "{duplicateActivity.name}" 
+                                                {duplicateActivity.startTime && ` at ${duplicateActivity.startTime}`}
+                                              </p>
                                             )}
                                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                               {activity.startTime && (
@@ -980,6 +1081,31 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                                   disabled={Object.keys(selectedActivities).length === 0}
                                 >
                                   Clear Selection
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Smart selection: deselect duplicates and conflicts
+                                    const smartSelection: {[key: string]: boolean} = {};
+                                    message.activities!.forEach(day => {
+                                      const dayExistingActivities = getExistingActivitiesForDay(day.dayNumber);
+                                      day.activities?.forEach((activity, actIdx) => {
+                                        const key = `${message.id}-${day.dayNumber}-${actIdx}`;
+                                        const isDuplicate = isDuplicateActivity(activity, dayExistingActivities);
+                                        const hasConflict = hasTimeConflict(activity, dayExistingActivities);
+                                        // Only select if not duplicate and no conflict
+                                        if (!isDuplicate && !hasConflict) {
+                                          smartSelection[key] = true;
+                                        }
+                                      });
+                                    });
+                                    setSelectedActivities(smartSelection);
+                                  }}
+                                  title="Automatically select only new activities without conflicts"
+                                >
+                                  <Lightbulb className="h-3 w-3 mr-1" />
+                                  Smart Select
                                 </Button>
                                 <Button
                                   size="sm"
