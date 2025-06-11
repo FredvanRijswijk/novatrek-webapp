@@ -76,7 +76,7 @@ export default function ProfilePage() {
 
       setProfile({
         displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
+        photoURL: user.photoURL || '/avatars/default-avatar.svg',
         bio: userData?.bio || '',
         location: userData?.location || '',
         languages: userData?.languages || [],
@@ -91,7 +91,7 @@ export default function ProfilePage() {
       // Fallback to auth profile
       setProfile({
         displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
+        photoURL: user.photoURL || '/avatars/default-avatar.svg',
         bio: '',
         location: '',
         languages: [],
@@ -155,13 +155,13 @@ export default function ProfilePage() {
       // Update Firebase Auth profile
       await updateProfile(user, {
         displayName: profile.displayName,
-        photoURL: profile.photoURL,
+        photoURL: profile.photoURL || '/avatars/default-avatar.svg',
       })
 
       // Update Firestore user document (use setDoc with merge to handle non-existent docs)
       await setDoc(doc(db, 'users', user.uid), {
         displayName: profile.displayName,
-        photoURL: profile.photoURL,
+        photoURL: profile.photoURL || '/avatars/default-avatar.svg',
         bio: profile.bio,
         location: profile.location,
         languages: profile.languages,
