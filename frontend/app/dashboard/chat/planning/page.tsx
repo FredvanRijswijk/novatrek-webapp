@@ -194,7 +194,33 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
         throw new Error('Failed to get response');
       }
 
-      const data = await response.json();
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      
+      let fullResponse = '';
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) {
+                fullResponse += data.text;
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
       
       // Extract planning context from response
       const updatedContext = extractPlanningContext(input, planningContext);
@@ -204,7 +230,7 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: data.response,
+        content: fullResponse,
         timestamp: new Date(),
         suggestions: generateSuggestions(updatedContext)
       };
