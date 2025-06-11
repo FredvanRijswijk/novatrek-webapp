@@ -10,6 +10,7 @@ import {
   Home, 
   Heart, 
   Euro,
+  DollarSign,
   Utensils,
   Camera,
   Mountain,
