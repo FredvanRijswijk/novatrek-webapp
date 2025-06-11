@@ -279,11 +279,11 @@ export default function TripPlanningPage() {
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-          {/* Main Content */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
+            {/* Main Content */}
+            <div className="space-y-6">
+              {/* Quick Stats */}
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Trip Duration</CardDescription>
                   <CardTitle className="text-2xl">{tripDuration} days</CardTitle>
@@ -324,11 +324,11 @@ export default function TripPlanningPage() {
                   </CardTitle>
                 </CardHeader>
               </Card>
-            </div>
+              </div>
 
             {/* Planning Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
                 <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
                 <TabsTrigger value="transport">Transport</TabsTrigger>
                 <TabsTrigger value="budget">Budget</TabsTrigger>
@@ -400,7 +400,7 @@ export default function TripPlanningPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="chat" className="mt-6">
+              <TabsContent value="chat" className="mt-6 h-[calc(100vh-20rem)]">
                 {activeTab === 'chat' && <TripChat trip={trip} onUpdate={setTrip} />}
               </TabsContent>
             </Tabs>

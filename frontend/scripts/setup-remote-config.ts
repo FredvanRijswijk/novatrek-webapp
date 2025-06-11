@@ -6,7 +6,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(__dirname, '..', 'novatrek-dev-firebase-adminsdk.json')
+const serviceAccountPath = path.join(__dirname, '..', 'novatrek-app-firebase-adminsdk-prod.json')
 
 if (!fs.existsSync(serviceAccountPath)) {
   console.error(`Service account file not found at: ${serviceAccountPath}`)

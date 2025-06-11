@@ -1,0 +1,72 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user owns the trip
+    function userOwnsTrip(tripId) {
+      return request.auth != null && 
+        firestore.exists(/databases/(default)/documents/trips/$(tripId)) &&
+        firestore.get(/databases/(default)/documents/trips/$(tripId)).data.userRef == /databases/(default)/documents/users/$(request.auth.uid);
+    }
+    
+    // User profile photos
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+    
+    // Trip photos - organized by trip ID
+    match /trips/{tripId}/{allPaths=**} {
+      // Allow read if user owns the trip or if trip is shared
+      allow read: if isAuthenticated() && (
+        userOwnsTrip(tripId) ||
+        firestore.exists(/databases/(default)/documents/tripShares/$(tripId))
+      );
+      
+      // Allow write only if user owns the trip
+      allow write: if isAuthenticated() && userOwnsTrip(tripId);
+    }
+    
+    // Public assets (if any)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Marketplace expert photos
+    match /marketplace/experts/{expertId}/{allPaths=**} {
+      allow read: if true; // Public profiles
+      allow write: if isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/marketplace_experts/$(expertId)).data.userId == request.auth.uid;
+    }
+    
+    // Marketplace product photos
+    match /marketplace/products/{productId}/{allPaths=**} {
+      allow read: if true; // Public products
+      allow write: if isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/marketplace_products/$(productId)) &&
+        firestore.get(/databases/(default)/documents/marketplace_products/$(productId)).data.expertRef != null &&
+        firestore.get(firestore.get(/databases/(default)/documents/marketplace_products/$(productId)).data.expertRef).data.userId == request.auth.uid;
+    }
+    
+    // Temporary uploads (auto-cleaned after 24 hours)
+    match /temp/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    // Default: deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

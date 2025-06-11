@@ -253,12 +253,16 @@ export default function SharedTripPage() {
                           {day.activities.map((activity) => (
                             <div key={activity.id} className="flex items-start gap-2 text-sm">
                               <Badge variant="outline" className="mt-0.5">
-                                {activity.time}
+                                {activity.time || activity.startTime || 'All day'}
                               </Badge>
                               <div>
                                 <p className="font-medium">{activity.name}</p>
                                 {activity.location && (
-                                  <p className="text-muted-foreground">{activity.location}</p>
+                                  <p className="text-muted-foreground">
+                                    {typeof activity.location === 'string' 
+                                      ? activity.location 
+                                      : activity.location.name || activity.location.address || 'Location'}
+                                  </p>
                                 )}
                               </div>
                             </div>

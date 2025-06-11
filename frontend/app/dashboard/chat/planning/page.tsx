@@ -728,11 +728,11 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-6">
+    <div className="flex h-full min-h-0 gap-6 p-6">
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <Card className="flex-1 flex flex-col">
-          <CardHeader>
+      <div className="flex-1 flex flex-col min-h-0">
+        <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <CardHeader className="shrink-0">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
               AI Trip Planning Assistant
@@ -742,8 +742,8 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="flex-1 flex flex-col p-0">
-            <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
+          <CardContent className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
+            <ScrollArea className="flex-1 px-6 py-4" ref={scrollAreaRef}>
               <div className="space-y-4">
                 {messages.map(renderMessage)}
                 {isLoading && streamingMessage && (
@@ -796,11 +796,11 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
               </div>
             </ScrollArea>
             
-            <Separator />
+            <Separator className="shrink-0" />
             
             {/* Quick Prompts */}
             {quickPrompts.length > 0 && (
-              <div className="p-4 border-b">
+              <div className="p-4 border-b shrink-0 bg-background/50">
                 <div className="flex gap-2 flex-wrap">
                   {quickPrompts.map((prompt, index) => (
                     <Button
@@ -808,7 +808,7 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
                       variant="outline"
                       size="sm"
                       onClick={() => handleQuickPrompt(prompt)}
-                      className="text-xs"
+                      className="text-xs h-7"
                     >
                       <Lightbulb className="h-3 w-3 mr-1" />
                       {prompt}
@@ -819,7 +819,7 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
             )}
             
             {/* Input Area */}
-            <div className="p-4">
+            <div className="p-4 shrink-0 bg-background">
               <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
                 <Input
                   ref={inputRef}
@@ -829,7 +829,7 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
                   disabled={isLoading}
                   className="flex-1"
                 />
-                <Button type="submit" disabled={isLoading || !input.trim()}>
+                <Button type="submit" disabled={isLoading || !input.trim()} size="default">
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -843,7 +843,7 @@ Or you can just tell me about your dream trip and I'll help you plan it!`,
       </div>
       
       {/* Planning Context Sidebar */}
-      <div className="w-80 space-y-4">
+      <div className="w-80 space-y-4 overflow-y-auto">
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb, Edit2, Trash2 } from 'lucide-react';
+import { Send, Bot, User, Sparkles, MapPin, Calendar, DollarSign, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2, Square, Lightbulb, Edit2, Trash2, Bookmark, BookmarkCheck, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Trip, Activity } from '@/types/travel';
 import { format } from 'date-fns';
+import { QuickActions } from './QuickActions';
+import { ActivityTimeline } from './ActivityTimeline';
+import { ChatMemoryPanel } from './ChatMemory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChatMemoryModel } from '@/lib/models/chat-memory';
+import { doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { ExportTripDialog } from '@/components/trips/ExportTripDialog';
+import { geocodingService } from '@/lib/google-places/geocoding';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { ProviderSelector } from '@/components/ai/ProviderSelector';
@@ -177,6 +186,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [enhancedContext, setEnhancedContext] = useState<EnhancedTripContext | null>(null);
   const [smartSuggestions, setSmartSuggestions] = useState<SmartSuggestion[]>([]);
+  const [currentActivity, setCurrentActivity] = useState<Activity | undefined>(undefined);
+  const [selectedDay, setSelectedDay] = useState<number>(1);
+  const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   // Helper function to get existing activities for a day
   const getExistingActivitiesForDay = (dayNumber: number): Activity[] => {
@@ -311,6 +324,17 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
       // Generate smart suggestions
       const engine = new SuggestionEngine(context);
       setSmartSuggestions(engine.generateSuggestions());
+      
+      // Set current activity (e.g., the next upcoming activity)
+      const now = new Date();
+      const upcomingActivity = context.detailedItinerary
+        .flatMap(day => day.activities)
+        .find(activity => {
+          if (!activity.startTime) return false;
+          const activityDate = new Date(activity.startTime);
+          return activityDate > now;
+        });
+      setCurrentActivity(upcomingActivity);
     }
   }, [trip, preferences, preferencesLoading]);
   
@@ -689,7 +713,7 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
               setMessages(prev => 
                 prev.map(msg => 
                   msg.id === assistantMessage.id 
-                    ? { ...msg, content: `🔄 Processing Day ${specificDay || '1'} activities...` }
+                    ? { ...msg, content: `🔄 Processing Day ${specificDay || '1'} activities...\n🌍 Geocoding locations for accurate placement...` }
                     : msg
                 )
               );
@@ -841,12 +865,33 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     const appliedDays: number[] = [];
     
     try {
+      // Get trip destination coordinates for better geocoding
+      const destinationCoords = trip.destination?.coordinates || 
+        (trip.destinations && trip.destinations[0]?.destination?.coordinates) || 
+        undefined;
+      
       for (const day of days) {
         const dayNumber = day.dayNumber;
         let daySuccess = true;
         
+        // Collect all activities that need geocoding
+        const activitiesToGeocode = day.activities.map((act: any) => ({
+          name: act.location?.name || act.name,
+          address: act.location?.address
+        }));
+        
+        // Batch geocode all activities for this day
+        const geocodingResults = await geocodingService.geocodeMultipleLocations(
+          activitiesToGeocode,
+          destinationCoords
+        );
+        
         for (const activityData of day.activities) {
           try {
+            // Get geocoded location data
+            const locationName = activityData.location?.name || activityData.name;
+            const geocodedLocation = geocodingResults.get(locationName);
+            
             const activity: Activity = {
               id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               name: activityData.name,
@@ -854,9 +899,10 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
               type: activityData.type || 'sightseeing',
               location: {
                 name: activityData.location?.name || activityData.name,
-                address: activityData.location?.address || '',
-                coordinates: { lat: 0, lng: 0 } // We'll need to geocode later
+                address: geocodedLocation?.address || activityData.location?.address || '',
+                coordinates: geocodedLocation?.coordinates || { lat: 0, lng: 0 }
               },
+              googlePlaceId: geocodedLocation?.placeId,
               startTime: activityData.startTime,
               duration: activityData.duration || 120,
               cost: activityData.cost,
@@ -894,10 +940,66 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
     }
   };
 
+  // Handle timeline actions
+  const handleAddActivityFromTimeline = (timeSlot: TimeSlot) => {
+    const prompt = `Suggest activities for Day ${selectedDay} between ${timeSlot.start} and ${timeSlot.end} (${timeSlot.duration} minutes available)`;
+    setInput(prompt);
+    // Focus on chat input
+    setTimeout(() => {
+      const chatInput = document.querySelector('input[placeholder*="Ask about activities"]') as HTMLInputElement;
+      if (chatInput) {
+        chatInput.focus();
+      }
+    }, 100);
+  };
+  
+  const handleEditActivityFromTimeline = (activity: Activity) => {
+    const prompt = `I want to modify "${activity.name}" on Day ${selectedDay}. Can you suggest alternatives or help me adjust the timing?`;
+    setInput(prompt);
+  };
+  
+  const handleSaveToMemory = async (message: Message) => {
+    if (!user) return;
+    
+    try {
+      // Determine memory type based on content
+      let type: 'recommendation' | 'tip' | 'place' | 'note' = 'note';
+      const lowerContent = message.content.toLowerCase();
+      
+      if (lowerContent.includes('restaurant') || lowerContent.includes('food')) {
+        type = 'place';
+      } else if (lowerContent.includes('tip') || lowerContent.includes('advice')) {
+        type = 'tip';
+      } else if (lowerContent.includes('recommend') || lowerContent.includes('suggest')) {
+        type = 'recommendation';
+      }
+      
+      await ChatMemoryModel.createFromMessage(
+        message.content,
+        type,
+        trip.id,
+        user.uid,
+        {
+          day: message.requestedDay || selectedDay,
+          source: {
+            messageId: message.id,
+            timestamp: message.timestamp
+          }
+        }
+      );
+      
+      setSavedMessageIds(prev => new Set(prev).add(message.id));
+      toast.success('Saved to memories');
+    } catch (error) {
+      console.error('Error saving to memory:', error);
+      toast.error('Failed to save memory');
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full min-h-0 bg-background">
       {/* Fixed Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -912,6 +1014,14 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExportDialog(true)}
+                title="Export trip"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -931,34 +1041,69 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
         </div>
       </div>
 
+      {/* Quick Actions Bar */}
+      <div className="shrink-0">
+        <QuickActions
+          currentActivity={currentActivity}
+          userPreferences={preferences || undefined}
+          onActionResult={(prompt) => {
+            setInput(prompt);
+            // Auto-send the message
+            setTimeout(() => {
+              const form = document.querySelector('form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { bubbles: true }));
+              }
+            }, 100);
+          }}
+        />
+      </div>
+
       {/* Smart Suggestions Bar */}
       {smartSuggestions.length > 0 && (
-        <div className="border-b bg-muted/50 p-3">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Suggestions:</span>
-            {smartSuggestions.map((suggestion) => (
-              <Button
-                key={suggestion.id}
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap text-xs"
-                onClick={() => setInput(suggestion.text)}
-              >
-                <span className="mr-1">{suggestion.icon}</span>
-                {suggestion.text}
-              </Button>
-            ))}
+        <div className="border-b bg-muted/50 p-3 shrink-0">
+          <div className="flex flex-wrap items-start gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Suggestions:</span>
+            <div className="flex flex-wrap gap-2">
+              {smartSuggestions.map((suggestion) => (
+                <Button
+                  key={suggestion.id}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setInput(suggestion.text)}
+                >
+                  <span className="mr-1">{suggestion.icon}</span>
+                  {suggestion.text}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Top padding for empty space */}
-        <div className="h-20" />
+      {/* Main Content Area with Tabs */}
+      <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <TabsList className="mx-4 mt-2 grid w-fit grid-cols-3">
+          <TabsTrigger value="chat" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Chat
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Timeline
+          </TabsTrigger>
+          <TabsTrigger value="memories" className="flex items-center gap-2">
+            <Bookmark className="h-4 w-4" />
+            Memories
+          </TabsTrigger>
+        </TabsList>
         
-        <div className="px-4">
-          <div className="space-y-4 max-w-4xl mx-auto">
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="flex-1 overflow-hidden mt-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 py-4">
+              <div className="space-y-4 max-w-4xl mx-auto">
             {loadingHistory ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
@@ -1036,6 +1181,31 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* Save to memory button for assistant messages */}
+                  {message.role === 'assistant' && message.content && (
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7 px-2"
+                        onClick={() => handleSaveToMemory(message)}
+                        disabled={savedMessageIds.has(message.id)}
+                      >
+                        {savedMessageIds.has(message.id) ? (
+                          <>
+                            <BookmarkCheck className="h-3 w-3 mr-1" />
+                            Saved
+                          </>
+                        ) : (
+                          <>
+                            <Bookmark className="h-3 w-3 mr-1" />
+                            Save to memory
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Show save activities button if message contains activities */}
                   {message.activities && message.activities.length > 0 && (
@@ -1464,15 +1634,83 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
                 )}
               </div>
             ))}
+              </div>
+            </div>
+            
+            {/* Bottom padding to ensure last message is visible above input */}
+            <div className="h-32" />
           </div>
-        </div>
+        </TabsContent>
         
-        {/* Bottom padding to ensure last message is visible above input */}
-        <div className="h-32" />
-      </div>
+        {/* Timeline Tab */}
+        <TabsContent value="timeline" className="flex-1 overflow-hidden mt-0">
+          <div className="flex flex-col h-full">
+            {/* Day Selector */}
+            <div className="flex items-center gap-2 px-4 py-2 border-b">
+              <span className="text-sm font-medium">Select Day:</span>
+              <div className="flex gap-1">
+                {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => {
+                  const dayContext = enhancedContext?.detailedItinerary.find(d => d.dayNumber === day);
+                  const hasActivities = (dayContext?.activities.length || 0) > 0;
+                  return (
+                    <Button
+                      key={day}
+                      variant={selectedDay === day ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedDay(day)}
+                      className="relative"
+                    >
+                      Day {day}
+                      {hasActivities && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full" />
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Timeline Component */}
+            <div className="flex-1 overflow-hidden">
+              {enhancedContext && (
+                <ActivityTimeline
+                  dayContext={enhancedContext.detailedItinerary.find(d => d.dayNumber === selectedDay) || {
+                    dayNumber: selectedDay,
+                    date: new Date(startDate.getTime() + (selectedDay - 1) * 24 * 60 * 60 * 1000),
+                    activities: [],
+                    totalCost: 0,
+                    freeTimeSlots: [{ start: '08:00', end: '22:00', duration: 840 }],
+                    hasBreakfast: false,
+                    hasLunch: false,
+                    hasDinner: false
+                  }}
+                  onAddActivity={handleAddActivityFromTimeline}
+                  onEditActivity={handleEditActivityFromTimeline}
+                />
+              )}
+            </div>
+          </div>
+        </TabsContent>
+        
+        {/* Memories Tab */}
+        <TabsContent value="memories" className="flex-1 overflow-hidden mt-0">
+          <ChatMemoryPanel 
+            tripId={trip.id}
+            currentDay={selectedDay}
+            onSelectMemory={(memory) => {
+              // Switch back to chat and populate input
+              const prompt = `Based on my saved memory: "${memory.title}" - ${memory.content}`;
+              setInput(prompt);
+              // Switch to chat tab
+              const chatTab = document.querySelector('[value="chat"]') as HTMLButtonElement;
+              if (chatTab) chatTab.click();
+            }}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Fixed Bottom Input */}
-      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 shrink-0">
         <div className="max-w-4xl mx-auto">
           <form
             onSubmit={(e) => {
@@ -1494,18 +1732,18 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           </form>
 
           {/* Quick Context Chips */}
-          <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2 mt-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {getDestinationName(trip)}
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate max-w-[200px]">{getDestinationName(trip)}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
+              <Calendar className="h-3 w-3 shrink-0" />
               {format(startDate, 'MMM d')} - {format(endDate, 'MMM d')}
             </div>
             {trip.budget && (
               <div className="flex items-center gap-1">
-                <DollarSign className="h-3 w-3" />
+                <DollarSign className="h-3 w-3 shrink-0" />
                 {trip.budget.currency} {trip.budget.total}
               </div>
             )}
@@ -1530,6 +1768,13 @@ export function TripChat({ trip, onUpdate }: TripChatProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Export Dialog */}
+      <ExportTripDialog 
+        trip={trip}
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+      />
     </div>
   );
 }

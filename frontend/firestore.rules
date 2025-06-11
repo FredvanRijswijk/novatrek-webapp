@@ -40,12 +40,20 @@ service cloud.firestore {
         isAdmin()
       );
       
+      // Allow authenticated users to create their own user document
       allow create: if request.auth != null && request.auth.uid == userId;
       
-      allow update, delete: if request.auth != null && (
-        // Users can update/delete their own data
+      allow update: if request.auth != null && (
+        // Users can update their own data
         request.auth.uid == userId ||
-        // Admins can update/delete users
+        // Admins can update users
+        isAdmin()
+      );
+      
+      allow delete: if request.auth != null && (
+        // Users can delete their own data
+        request.auth.uid == userId ||
+        // Admins can delete users
         isAdmin()
       );
       
@@ -85,13 +93,13 @@ service cloud.firestore {
     
     // Trips with User References only
     match /trips/{tripId} {
-      allow read: if request.auth != null && (
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-        // Shared trip access
+      allow read: if 
+        // Authenticated users can read their own trips
+        (request.auth != null && resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Anyone can read if a share document exists (public share link)
         exists(/databases/$(database)/documents/tripShares/$(tripId)) ||
-        // Admin access for user management
-        isAdmin()
-      );
+        // Admin access
+        (request.auth != null && isAdmin());
       
       allow create: if request.auth != null && 
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
@@ -126,9 +134,24 @@ service cloud.firestore {
          request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
       
-      // Messages are immutable
+      // Messages are immutable (no updates allowed)
       allow update: if false;
-      allow delete: if false;
+      
+      // Allow users to delete their own messages
+      allow delete: if request.auth != null && (
+        // Legacy: String userId
+        resource.data.userId == request.auth.uid ||
+        // New: User reference
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Can delete if owns the trip (legacy)
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Can delete if owns the trip (new)
+        (resource.data.tripRef != null &&
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
     }
     
     // Chat Sessions - supports both patterns
@@ -201,15 +224,9 @@ service cloud.firestore {
     
     // Trip Shares with References - supports both patterns
     match /tripShares/{shareId} {
-      allow read: if request.auth != null && (
-        // Owner can read (legacy)
-        request.auth.uid == resource.data.ownerId ||
-        // Owner can read (new)
-        (resource.data.ownerRef != null &&
-         resource.data.ownerRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
-        // Anyone with the token can read (public share)
-        true
-      );
+      // Allow anyone to read trip shares (they need the unique token to access)
+      // This enables public share links to work without authentication
+      allow read: if true;
       
       allow create: if request.auth != null && (
         // Must own the trip being shared
@@ -456,6 +473,26 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
       
       allow update, delete: if false;
+    }
+    
+    // Chat Memories
+    match /chat_memories/{memoryId} {
+      allow read: if request.auth != null && (
+        // User can read their own memories
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // User can read memories for their trips
+        (resource.data.tripRef != null &&
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      allow create: if request.auth != null && 
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      allow update: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      allow delete: if request.auth != null && 
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
     
     // Captures - supports both patterns (userId and userRef)

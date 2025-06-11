@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2, CloudRain, Sun, Cloud, Umbrella, Trees, Home, Baby, Users, ChevronRight, Award, Sparkles } from 'lucide-react';
+import { Search, MapPin, Clock, DollarSign, Star, Filter, X, Loader2, CloudRain, Sun, Cloud, Umbrella, Trees, Home, Baby, Users, ChevronRight, Award, Sparkles, Hotel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -190,7 +190,7 @@ export function ActivitySearchModal({
     }
   }, [isOpen]);
 
-  const getActivityIcon = (type: ActivityType) => {
+  const getActivityIcon = (type: ActivityType | string) => {
     switch (type) {
       case 'sightseeing':
         return '🏛️';
@@ -198,6 +198,8 @@ export function ActivitySearchModal({
         return '🍽️';
       case 'activity':
         return '🎯';
+      case 'accommodation':
+        return '🏨';
       case 'shopping':
         return '🛍️';
       case 'entertainment':
@@ -208,6 +210,8 @@ export function ActivitySearchModal({
         return '🏞️';
       case 'wellness':
         return '🧘';
+      case 'transport':
+        return '🚗';
       default:
         return '📍';
     }
@@ -278,7 +282,7 @@ export function ActivitySearchModal({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Search activities, attractions, restaurants..."
+                placeholder="Search hotels, activities, attractions, restaurants..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchActivities()}

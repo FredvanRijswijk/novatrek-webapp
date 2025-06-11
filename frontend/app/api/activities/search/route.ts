@@ -14,11 +14,12 @@ const activityTypeToPlaceTypes: Record<string, string[]> = {
   entertainment: ['movie_theater', 'night_club', 'casino', 'theater'],
   cultural: ['museum', 'art_gallery', 'library', 'church', 'hindu_temple', 'mosque', 'synagogue'],
   outdoor: ['park', 'hiking_trail', 'beach', 'campground', 'zoo'],
-  wellness: ['spa', 'beauty_salon', 'hair_care']
+  wellness: ['spa', 'beauty_salon', 'hair_care'],
+  accommodation: ['lodging', 'hotel', 'motel', 'resort', 'guest_house', 'hostel', 'bed_and_breakfast']
 }
 
 // Indoor/Outdoor classification
-const indoorActivities = ['shopping', 'cultural', 'wellness', 'entertainment']
+const indoorActivities = ['shopping', 'cultural', 'wellness', 'entertainment', 'accommodation']
 const outdoorActivities = ['outdoor', 'sightseeing']
 const mixedActivities = ['dining', 'activity'] // Can be either
 
@@ -43,7 +44,8 @@ const estimatedDurations: Record<string, number> = {
   entertainment: 150,
   cultural: 120,
   outdoor: 240,
-  wellness: 120
+  wellness: 120,
+  accommodation: 30 // Check-in/check-out time
 }
 
 // Price level to estimated cost mapping
