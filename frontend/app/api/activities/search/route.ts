@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken, adminDb } from '@/lib/firebase/admin';
+import { verifyIdToken, getAdminDb } from '@/lib/firebase/admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -225,7 +225,8 @@ async function searchGooglePlaces(params: any) {
         height: p.height
       })),
       types: place.types,
-      openingHours: place.opening_hours,
+      openingHours: place.opening_hours?.weekday_text || [],
+      isOpenNow: place.opening_hours?.open_now,
       source: 'google'
     })) || [];
   } catch (error) {
@@ -236,6 +237,12 @@ async function searchGooglePlaces(params: any) {
 
 async function searchExpertRecommendations(params: any) {
   try {
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      console.log('Admin DB not initialized for expert recommendations');
+      return [];
+    }
+
     // Query expert recommendations from Firestore
     const recommendationsQuery = adminDb
       .collection('expertRecommendations')
@@ -299,6 +306,12 @@ async function searchExpertRecommendations(params: any) {
 
 async function searchNovatrekActivities(params: any) {
   try {
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      console.log('Admin DB not initialized for NovaTrek activities');
+      return [];
+    }
+
     // Search saved activities from the NovaTrek database
     const snapshot = await adminDb
       .collection('activities')
