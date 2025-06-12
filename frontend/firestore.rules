@@ -2,28 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions for reference validation
-    function isValidUserRef(userRef) {
-      return userRef is path && 
-             exists(userRef) && 
-             get(userRef).data.role != null;
-    }
-    
-    function isValidExpertRef(expertRef) {
-      return expertRef is path && 
-             exists(expertRef) && 
-             get(expertRef).data.isApproved == true;
-    }
-    
+    // Helper function to check if user owns an expert profile
     function userOwnsExpert(userId, expertRef) {
       return expertRef is path && 
              get(expertRef).data.userId == userId;
-    }
-    
-    // Check if user has admin permissions
-    function hasAdminPermission(permission) {
-      return exists(/databases/$(database)/documents/admin_users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.isActive == true;
     }
     
     function isAdmin() {
@@ -91,29 +73,41 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Trips with User References only
+    // Trips - supports both userId and userRef patterns
     match /trips/{tripId} {
       allow read: if 
-        // Authenticated users can read their own trips
+        // Authenticated users can read their own trips (legacy userId)
+        (request.auth != null && resource.data.userId == request.auth.uid) ||
+        // Authenticated users can read their own trips (new userRef)
         (request.auth != null && resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
         // Anyone can read if a share document exists (public share link)
         exists(/databases/$(database)/documents/tripShares/$(tripId)) ||
         // Admin access
         (request.auth != null && isAdmin());
       
-      allow create: if request.auth != null && 
-        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
       
-      allow update: if request.auth != null && 
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
       
-      allow delete: if request.auth != null && 
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
     }
     
     // Chat Messages with References - supports both patterns
     match /chat_messages/{messageId} {
-      allow read: if request.auth != null && (
+      // Allow authenticated users to query/list their messages
+      allow read: if request.auth != null;
+      
+      // Allow get if user owns the message or the associated trip
+      allow get: if request.auth != null && (
         // Legacy: String userId
         request.auth.uid == resource.data.userId ||
         // New: User reference
@@ -137,10 +131,10 @@ service cloud.firestore {
       // Messages are immutable (no updates allowed)
       allow update: if false;
       
-      // Allow users to delete their own messages
+      // Allow users to delete their own messages or messages for their trips
       allow delete: if request.auth != null && (
         // Legacy: String userId
-        resource.data.userId == request.auth.uid ||
+        request.auth.uid == resource.data.userId ||
         // New: User reference
         (resource.data.userRef != null &&
          resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
@@ -150,13 +144,18 @@ service cloud.firestore {
          get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
         // Can delete if owns the trip (new)
         (resource.data.tripRef != null &&
+         exists(resource.data.tripRef) &&
          get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
     }
     
     // Chat Sessions - supports both patterns
     match /chat_sessions/{sessionId} {
-      allow read, write: if request.auth != null && (
+      // Allow authenticated users to query their sessions
+      allow read: if request.auth != null;
+      
+      // Allow operations on owned sessions
+      allow write: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
         (resource.data.userRef != null &&
          resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
@@ -166,6 +165,20 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid ||
         (request.resource.data.userRef != null &&
          request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
+      );
+      
+      // Allow deletion if user owns the session or the associated trip
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        (resource.data.userRef != null &&
+         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Can delete if owns the trip
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        (resource.data.tripRef != null &&
+         exists(resource.data.tripRef) &&
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid))
       );
     }
     
@@ -186,8 +199,21 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow update, delete: if request.auth != null && 
+      allow update: if request.auth != null && 
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      // Allow deletion if user owns the list or the associated trip
+      allow delete: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Also allow if the user owns the trip
+        (resource.data.tripRef != null && 
+         exists(resource.data.tripRef) && 
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Legacy tripId support
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid)
+      );
     }
     
     // Flights with References only
@@ -197,8 +223,21 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow update, delete: if request.auth != null && 
+      allow update: if request.auth != null && 
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      // Allow deletion if user owns the flight or the associated trip
+      allow delete: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Also allow if the user owns the trip
+        (resource.data.tripRef != null && 
+         exists(resource.data.tripRef) && 
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Legacy tripId support
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid)
+      );
     }
     
     // Travel Segments with References only
@@ -218,8 +257,21 @@ service cloud.firestore {
       allow create: if request.auth != null && 
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow update, delete: if request.auth != null && 
+      allow update: if request.auth != null && 
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      // Allow deletion if user owns the segment or the associated trip
+      allow delete: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Also allow if the user owns the trip
+        (resource.data.tripRef != null && 
+         exists(resource.data.tripRef) && 
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Legacy tripId support
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid)
+      );
     }
     
     // Trip Shares with References - supports both patterns
@@ -477,7 +529,11 @@ service cloud.firestore {
     
     // Chat Memories
     match /chat_memories/{memoryId} {
-      allow read: if request.auth != null && (
+      // Allow authenticated users to query
+      allow read: if request.auth != null;
+      
+      // Allow get if user owns the memory or the associated trip
+      allow get: if request.auth != null && (
         // User can read their own memories
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
         // User can read memories for their trips
@@ -491,8 +547,18 @@ service cloud.firestore {
       allow update: if request.auth != null && 
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       
-      allow delete: if request.auth != null && 
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      // Allow deletion if user owns the memory or the associated trip
+      allow delete: if request.auth != null && (
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Can delete if owns the trip
+        (resource.data.tripRef != null &&
+         exists(resource.data.tripRef) &&
+         get(resource.data.tripRef).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Legacy tripId support
+        (resource.data.tripId != null &&
+         exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid)
+      );
     }
     
     // Captures - supports both patterns (userId and userRef)
@@ -565,6 +631,155 @@ service cloud.firestore {
       // Allow webhooks to create (no auth required for webhook endpoints)
       allow create: if true;
       allow update, delete: if false;
+    }
+    
+    // Expert Recommendations
+    match /expertRecommendations/{recommendationId} {
+      allow read: if true; // Public recommendations
+      
+      allow create: if request.auth != null && (
+        // Expert creating recommendation
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) ||
+        // Admin creating recommendation
+        isAdmin()
+      );
+      
+      allow update: if request.auth != null && (
+        // Expert updating their own recommendation
+        (resource.data.expertId == request.auth.uid &&
+         exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid))) ||
+        // Admin access
+        isAdmin()
+      );
+      
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Activities (NovaTrek curated activities)
+    match /activities/{activityId} {
+      allow read: if true; // Public activities
+      
+      allow create, update: if request.auth != null && (
+        // Experts can create/update activities
+        exists(/databases/$(database)/documents/marketplace_experts/$(request.auth.uid)) ||
+        // Admin access
+        isAdmin()
+      );
+      
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Trip Days subcollection
+    match /trips/{tripId}/days/{dayId} {
+      allow read: if request.auth != null && (
+        // User owns the parent trip (legacy userId)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        // User owns the parent trip (new userRef)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Admin access
+        isAdmin()
+      );
+      
+      allow create, update, delete: if request.auth != null && (
+        // User owns the parent trip (legacy userId)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        // User owns the parent trip (new userRef)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
+      
+      // Activities sub-subcollection
+      match /activities/{activityId} {
+        allow read: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+          // Admin access
+          isAdmin()
+        );
+        
+        allow create, update, delete: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+        );
+      }
+      
+      // Accommodations sub-subcollection
+      match /accommodations/{accommodationId} {
+        allow read: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+          // Admin access
+          isAdmin()
+        );
+        
+        allow create, update, delete: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+        );
+      }
+      
+      // Transportation sub-subcollection
+      match /transportation/{transportId} {
+        allow read: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+          // Admin access
+          isAdmin()
+        );
+        
+        allow create, update, delete: if request.auth != null && (
+          // User owns the parent trip (legacy userId)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+          // User owns the parent trip (new userRef)
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+        );
+      }
+    }
+    
+    // Trip Expenses subcollection
+    match /trips/{tripId}/expenses/{expenseId} {
+      allow read: if request.auth != null && (
+        // User owns the parent trip (legacy userId)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        // User owns the parent trip (new userRef)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Admin access
+        isAdmin()
+      );
+      
+      allow create, update, delete: if request.auth != null && (
+        // User owns the parent trip (legacy userId)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        // User owns the parent trip (new userRef)
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
+    }
+    
+    // Trip Collaborators subcollection
+    match /trips/{tripId}/collaborators/{collaboratorId} {
+      allow read: if request.auth != null && (
+        // User owns the parent trip or is a collaborator
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        resource.data.userId == request.auth.uid ||
+        // Admin access
+        isAdmin()
+      );
+      
+      allow create, update, delete: if request.auth != null && (
+        // Only trip owner can manage collaborators
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+      );
     }
   }
 }

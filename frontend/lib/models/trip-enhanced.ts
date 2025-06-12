@@ -84,8 +84,19 @@ export class TripModelEnhanced {
   }
 
   // Delete trip
-  static async delete(tripId: string): Promise<void> {
-    await deleteDocument(this.COLLECTION, tripId)
+  static async delete(tripId: string, userId: string): Promise<void> {
+    // Import the comprehensive deletion function
+    const { deleteTrip } = await import('../firebase/trip-deletion')
+    
+    // Perform comprehensive deletion of trip and all related data
+    const result = await deleteTrip(tripId, userId)
+    
+    if (!result.success) {
+      console.error('Trip deletion errors:', result.errors)
+      throw new Error(`Failed to delete trip: ${result.errors.join(', ')}`)
+    }
+    
+    console.log('Trip deleted successfully:', result.deletedCounts)
   }
 
   // Subscribe to trip changes

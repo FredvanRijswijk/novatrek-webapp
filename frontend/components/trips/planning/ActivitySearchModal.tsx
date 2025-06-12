@@ -37,6 +37,7 @@ interface ActivitySearchModalProps {
   destination: string;
   date: Date;
   location?: { lat: number; lng: number };
+  tripId?: string;
 }
 
 const activityTypes: { value: ActivityType; label: string }[] = [

@@ -109,7 +109,8 @@ function generateBookingTodos(context: ToolContext): TodoItem[] {
   }
   
   // Check flights
-  if (context.trip.destinations.length > 1 || isInternationalDestination(context.trip.destinations[0])) {
+  const destinations = context.trip.destinations || [];
+  if (destinations.length > 1 || (destinations[0] && isInternationalDestination(destinations[0]))) {
     const hasFlights = context.tripDays.some(day => 
       day.activities?.some(a => a.category === 'flight' || a.category === 'transport')
     );
@@ -176,10 +177,10 @@ function generateBookingTodos(context: ToolContext): TodoItem[] {
 function generatePreparationTodos(context: ToolContext): TodoItem[] {
   const todos: TodoItem[] = [];
   const tripStartDate = new Date(context.trip.startDate);
-  const destinations = context.trip.destinations;
+  const destinations = context.trip.destinations || [];
   
   // Travel documents
-  if (destinations.some(d => isInternationalDestination(d))) {
+  if (destinations.length > 0 && destinations.some(d => isInternationalDestination(d))) {
     todos.push({
       id: 'check-passport',
       task: 'Check passport expiration date (must be valid 6 months after travel)',
@@ -190,7 +191,7 @@ function generatePreparationTodos(context: ToolContext): TodoItem[] {
     
     todos.push({
       id: 'check-visa',
-      task: `Check visa requirements for ${destinations.map(d => d.name).join(', ')}`,
+      task: `Check visa requirements for ${destinations.map(d => d.name || 'destination').join(', ')}`,
       category: 'preparation',
       priority: 'high',
       deadline: new Date(tripStartDate.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(),

@@ -24,8 +24,55 @@ export class TripContextBuilder {
   }
 
   build(): EnhancedTripContext {
-    const startDate = this.trip.startDate instanceof Date ? this.trip.startDate : new Date(this.trip.startDate);
-    const endDate = this.trip.endDate instanceof Date ? this.trip.endDate : new Date(this.trip.endDate);
+    let startDate: Date;
+    let endDate: Date;
+    let formattedDates = 'Date not set';
+    
+    try {
+      // Handle various date formats
+      if (this.trip.startDate) {
+        if (this.trip.startDate instanceof Date) {
+          startDate = this.trip.startDate;
+        } else if (typeof this.trip.startDate === 'string') {
+          startDate = new Date(this.trip.startDate);
+        } else if ((this.trip.startDate as any).toDate) {
+          // Handle Firestore Timestamp
+          startDate = (this.trip.startDate as any).toDate();
+        } else {
+          startDate = new Date();
+        }
+      } else {
+        startDate = new Date();
+      }
+      
+      if (this.trip.endDate) {
+        if (this.trip.endDate instanceof Date) {
+          endDate = this.trip.endDate;
+        } else if (typeof this.trip.endDate === 'string') {
+          endDate = new Date(this.trip.endDate);
+        } else if ((this.trip.endDate as any).toDate) {
+          // Handle Firestore Timestamp
+          endDate = (this.trip.endDate as any).toDate();
+        } else {
+          endDate = new Date();
+        }
+      } else {
+        endDate = new Date();
+      }
+      
+      // Validate dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.warn('Invalid trip dates:', { start: this.trip.startDate, end: this.trip.endDate });
+        startDate = new Date();
+        endDate = new Date();
+      } else {
+        formattedDates = `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`;
+      }
+    } catch (error) {
+      console.error('Error parsing trip dates:', error);
+      startDate = new Date();
+      endDate = new Date();
+    }
     
     return {
       tripId: this.trip.id,
@@ -34,7 +81,7 @@ export class TripContextBuilder {
       dates: {
         start: startDate,
         end: endDate,
-        formatted: `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`
+        formatted: formattedDates
       },
       travelers: {
         count: this.trip.travelers.length,

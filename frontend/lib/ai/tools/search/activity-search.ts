@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { TravelTool, ToolContext, ToolResult, ActivityResult } from '../types';
+import { 
+  searchGooglePlacesDirectly, 
+  searchExpertRecommendationsDirectly, 
+  searchNovatrekActivitiesDirectly 
+} from './helpers';
 
 const activitySearchParams = z.object({
   query: z.string().optional(),
@@ -27,73 +32,62 @@ export const activitySearchTool: TravelTool<z.infer<typeof activitySearchParams>
   
   async execute(params, context) {
     try {
-      // Build the search query
-      const searchParams = new URLSearchParams();
-      
-      if (params.query) {
-        searchParams.append('query', params.query);
-      }
-      
-      if (params.location) {
-        searchParams.append('lat', params.location.lat.toString());
-        searchParams.append('lng', params.location.lng.toString());
-      } else if (context.trip.destinations?.[0]) {
-        // Use trip destination as default
-        const dest = context.trip.destinations[0];
-        if (dest.coordinates) {
-          searchParams.append('lat', dest.coordinates.lat.toString());
-          searchParams.append('lng', dest.coordinates.lng.toString());
+      // Determine location to search
+      let searchLocation = params.location;
+      if (!searchLocation) {
+        // Try destinations array first
+        if (context.trip.destinations?.[0]) {
+          const dest = context.trip.destinations[0];
+          if (dest.coordinates) {
+            searchLocation = {
+              lat: dest.coordinates.lat,
+              lng: dest.coordinates.lng
+            };
+          }
+        } 
+        // Fall back to single destination
+        else if (context.trip.destination) {
+          const dest = context.trip.destination;
+          if (dest.coordinates || dest.location) {
+            searchLocation = {
+              lat: dest.coordinates?.lat || dest.location?.lat,
+              lng: dest.coordinates?.lng || dest.location?.lng
+            };
+          }
         }
       }
       
-      searchParams.append('radius', params.radius.toString());
+      // Build query string
+      const query = params.query || 'things to do attractions activities';
       
-      if (params.types?.length) {
-        searchParams.append('types', params.types.join(','));
-      }
+      // Search multiple sources in parallel
+      const [googleResults, expertRecs, novatrekActivities] = await Promise.all([
+        searchGooglePlacesDirectly({
+          query,
+          location: searchLocation,
+          radius: params.radius,
+          types: params.types || ['tourist_attraction', 'museum', 'park', 'point_of_interest'],
+          minRating: params.minRating,
+          priceLevel: params.priceLevel,
+          openNow: params.openNow
+        }),
+        searchExpertRecommendationsDirectly({
+          type: 'activity',
+          location: searchLocation,
+          radius: params.radius,
+          types: params.types || []
+        }),
+        searchNovatrekActivitiesDirectly({
+          query: params.query,
+          types: params.types || []
+        })
+      ]);
       
-      if (params.minRating) {
-        searchParams.append('minRating', params.minRating.toString());
-      }
-      
-      if (params.priceLevel?.length) {
-        searchParams.append('priceLevel', params.priceLevel.join(','));
-      }
-      
-      if (params.openNow !== undefined) {
-        searchParams.append('openNow', params.openNow.toString());
-      }
-      
-      // Add user preferences to enhance search
-      if (context.preferences) {
-        searchParams.append('userPreferences', JSON.stringify({
-          interests: context.preferences.interests,
-          activityTypes: context.preferences.activityTypes,
-          pace: context.preferences.pace,
-          accessibility: context.preferences.accessibility
-        }));
-      }
-      
-      // Add weather context if available
-      if (context.weather && params.date) {
-        searchParams.append('weather', JSON.stringify(context.weather));
-      }
-      
-      // Call the API
-      const response = await fetch(`/api/activities/search?${searchParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${context.userId}`,
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      // Merge all results
+      const allResults = [...googleResults, ...expertRecs, ...novatrekActivities];
       
       // Process and rank results
-      const rankedResults = await rankActivities(data.results, context, params);
+      const rankedResults = await rankActivities(allResults, context, params);
       
       return {
         success: true,
@@ -101,7 +95,7 @@ export const activitySearchTool: TravelTool<z.infer<typeof activitySearchParams>
         metadata: {
           source: 'combined', // Google Places + Expert recommendations + NovaTrek DB
           confidence: calculateSearchConfidence(rankedResults, params),
-          alternatives: data.alternatives || [],
+          alternatives: [],
           suggestions: generateSearchSuggestions(rankedResults, params, context)
         }
       };
@@ -197,7 +191,11 @@ async function rankActivities(
     return {
       ...activity,
       novatrekScore: score,
-      rankingFactors: factors
+      rankingFactors: factors,
+      // Ensure all fields are properly passed through
+      address: activity.location?.address || activity.address,
+      userRatingCount: activity.reviews || activity.userRatingsTotal,
+      description: activity.description || activity.editorial_summary?.text
     };
   }).sort((a, b) => b.novatrekScore - a.novatrekScore);
 }

@@ -1,0 +1,334 @@
+{
+  "trips": {
+    "tripId": {
+      "// Core Trip Information": "",
+      "id": "qx0CukmIgK35G29crI20",
+      "title": "Summer Europe Adventure",
+      "name": "My Amazing Trip",
+      "description": "A wonderful journey through Europe",
+      "status": "planning | active | completed",
+      
+      "// User References": "",
+      "userId": "user123",
+      "userRef": "DocumentReference to /users/user123",
+      
+      "// Date Fields (normalized to YYYY-MM-DD)": "",
+      "startDate": "2025-07-30",
+      "endDate": "2025-07-31",
+      "createdAt": "2024-12-06T10:00:00.000Z",
+      "updatedAt": "2024-12-06T15:30:00.000Z",
+      
+      "// Single Destination (legacy support)": "",
+      "destination": {
+        "id": "ChIJd8BlQ2BZwokRjMKtTjMezRw",
+        "name": "New York City",
+        "country": "United States",
+        "coordinates": {
+          "lat": 40.7128,
+          "lng": -74.0060
+        },
+        "timeZone": "America/New_York",
+        "currency": "USD",
+        "language": ["English"],
+        "placeId": "ChIJd8BlQ2BZwokRjMKtTjMezRw"
+      },
+      
+      "// Multi-Destination Support": "",
+      "destinations": [
+        {
+          "destination": {
+            "id": "ChIJd8BlQ2BZwokRjMKtTjMezRw",
+            "name": "New York City",
+            "country": "United States",
+            "coordinates": {
+              "lat": 40.7128,
+              "lng": -74.0060
+            }
+          },
+          "arrivalDate": "2025-07-30",
+          "departureDate": "2025-07-31",
+          "accommodation": null,
+          "notes": "Starting point of the trip"
+        }
+      ],
+      
+      "// Travelers": "",
+      "travelers": [
+        {
+          "id": "traveler1",
+          "name": "John Doe",
+          "email": "john@example.com",
+          "relationship": "self | partner | family | friend"
+        }
+      ],
+      
+      "// Budget": "",
+      "budget": {
+        "total": 5000,
+        "currency": "USD",
+        "breakdown": {
+          "accommodation": 1500,
+          "activities": 1000,
+          "food": 800,
+          "transport": 700,
+          "shopping": 500,
+          "other": 500
+        }
+      },
+      
+      "// Itinerary (Day-by-Day)": "",
+      "itinerary": [
+        {
+          "id": "day-1-1234567890",
+          "dayNumber": 1,
+          "date": "2025-07-30",
+          "destinationId": "ChIJd8BlQ2BZwokRjMKtTjMezRw",
+          "notes": "First day in NYC",
+          
+          "activities": [
+            {
+              "id": "act-1234567890-abc",
+              "name": "Statue of Liberty Tour",
+              "description": "Visit the iconic statue",
+              "type": "sightseeing | dining | activity | transport | accommodation | other",
+              "location": {
+                "lat": 40.6892,
+                "lng": -74.0445,
+                "address": "Liberty Island, New York, NY"
+              },
+              
+              "// Time fields": "",
+              "time": "09:00",
+              "startTime": "09:00",
+              "endTime": "12:00",
+              "duration": 180,
+              
+              "// Cost": "",
+              "cost": {
+                "amount": 25,
+                "currency": "USD",
+                "perPerson": true
+              },
+              
+              "// Additional fields": "",
+              "bookingRequired": true,
+              "bookingUrl": "https://example.com/book",
+              "confirmationNumber": "ABC123",
+              "photos": ["url1", "url2"],
+              "tags": ["photography", "historic", "must-see"],
+              "rating": 4.5,
+              "weather": {
+                "temperature": 22,
+                "conditions": "clear",
+                "suitable": true
+              },
+              
+              "// AI Enhancement fields": "",
+              "novatrekEnhanced": true,
+              "expertRecommended": true,
+              "addedAt": "2024-12-06T14:00:00.000Z",
+              "travelTime": 30,
+              "price": 25,
+              "category": "sightseeing"
+            }
+          ],
+          
+          "accommodations": [
+            {
+              "id": "acc_hotel_123",
+              "name": "Grand Hotel NYC",
+              "type": "hotel | airbnb | hostel | other",
+              "location": {
+                "name": "Grand Hotel",
+                "address": "123 5th Avenue, New York, NY",
+                "coordinates": {
+                  "lat": 40.7580,
+                  "lng": -73.9855
+                }
+              },
+              "checkIn": "2025-07-30",
+              "checkOut": "2025-07-31",
+              "cost": 200,
+              "currency": "USD",
+              "confirmationNumber": "HTL123456",
+              "amenities": ["wifi", "breakfast", "gym"],
+              "rating": 4.5
+            }
+          ],
+          
+          "transportation": [
+            {
+              "id": "transport_123",
+              "type": "flight | train | bus | car | ferry | other",
+              "from": "JFK Airport",
+              "to": "Manhattan",
+              "departureTime": "14:00",
+              "arrivalTime": "15:00",
+              "cost": 50,
+              "confirmationNumber": "TRN123"
+            }
+          ]
+        }
+      ],
+      
+      "// Expenses (Manual tracking)": "",
+      "expenses": [
+        {
+          "id": "exp_123",
+          "description": "Taxi to hotel",
+          "amount": 45,
+          "currency": "USD",
+          "category": "transport",
+          "date": "2025-07-30",
+          "paidBy": "traveler1"
+        }
+      ],
+      
+      "// AI Features": "",
+      "aiRecommendations": [
+        {
+          "id": "rec_123",
+          "type": "activity | restaurant | accommodation",
+          "title": "Visit Central Park",
+          "description": "Perfect for a morning walk",
+          "confidence": 0.92,
+          "reasons": ["highly rated", "free", "nearby"],
+          "createdAt": "2024-12-06T10:00:00.000Z"
+        }
+      ],
+      
+      "// Sharing": "",
+      "sharedWith": ["user456@example.com"],
+      "shareToken": "abc123xyz",
+      "isPublic": false,
+      
+      "// Metadata": "",
+      "lastActivityUpdate": "2024-12-06T15:00:00.000Z",
+      "completionStatus": {
+        "accommodationBooked": 0.8,
+        "activitiesPlanned": 0.6,
+        "transportBooked": 0.4
+      }
+    }
+  },
+  
+  "// Related Collections": "",
+  
+  "users": {
+    "userId": {
+      "email": "user@example.com",
+      "displayName": "John Doe",
+      "photoURL": "https://...",
+      "subscriptionTier": "free | premium | expert",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  },
+  
+  "travelPreferences": {
+    "userId": {
+      "travelStyle": ["adventure", "cultural", "relaxation"],
+      "accommodationType": ["hotel", "airbnb"],
+      "budgetLevel": "budget | moderate | luxury",
+      "interests": ["history", "food", "nature"],
+      "dietaryRestrictions": ["vegetarian"],
+      "accessibility": [],
+      "pace": "slow | moderate | fast"
+    }
+  },
+  
+  "chat_sessions": {
+    "sessionId": {
+      "tripId": "qx0CukmIgK35G29crI20",
+      "userId": "user123",
+      "tripRef": "DocumentReference to /trips/tripId",
+      "userRef": "DocumentReference to /users/userId",
+      "title": "Trip Planning Chat",
+      "lastMessage": "Added Statue of Liberty tour",
+      "messageCount": 25,
+      "createdAt": "2024-12-06T10:00:00.000Z",
+      "updatedAt": "2024-12-06T15:00:00.000Z"
+    }
+  },
+  
+  "chat_messages": {
+    "messageId": {
+      "sessionId": "sessionId",
+      "role": "user | assistant",
+      "content": "Add a tour of the Statue of Liberty",
+      "timestamp": "2024-12-06T14:00:00.000Z",
+      
+      "// Tool calls (for assistant messages)": "",
+      "toolCalls": [
+        {
+          "toolName": "add_activity",
+          "arguments": {
+            "activity": {
+              "name": "Statue of Liberty Tour",
+              "date": "2025-07-30"
+            }
+          },
+          "result": {
+            "success": true,
+            "data": {}
+          }
+        }
+      ]
+    }
+  },
+  
+  "packingLists": {
+    "listId": {
+      "tripId": "qx0CukmIgK35G29crI20",
+      "userId": "user123",
+      "categories": {
+        "clothing": [
+          {
+            "id": "item_123",
+            "name": "T-shirts",
+            "quantity": 5,
+            "packed": true
+          }
+        ],
+        "toiletries": [],
+        "electronics": [],
+        "documents": []
+      }
+    }
+  },
+  
+  "flights": {
+    "flightId": {
+      "tripId": "qx0CukmIgK35G29crI20",
+      "userId": "user123",
+      "flightNumber": "AA123",
+      "airline": "American Airlines",
+      "departure": {
+        "airport": "JFK",
+        "city": "New York",
+        "time": "2025-07-30T10:00:00Z"
+      },
+      "arrival": {
+        "airport": "LAX",
+        "city": "Los Angeles",
+        "time": "2025-07-30T13:00:00Z"
+      },
+      "confirmationNumber": "ABC123",
+      "seat": "12A",
+      "class": "economy"
+    }
+  },
+  
+  "photos": {
+    "photoId": {
+      "tripId": "qx0CukmIgK35G29crI20",
+      "userId": "user123",
+      "url": "https://storage.googleapis.com/...",
+      "thumbnailUrl": "https://storage.googleapis.com/...",
+      "caption": "Beautiful sunset at the beach",
+      "location": "Santa Monica Pier",
+      "date": "2025-07-30",
+      "tags": ["sunset", "beach"],
+      "uploadedAt": "2024-12-06T18:00:00.000Z"
+    }
+  }
+}

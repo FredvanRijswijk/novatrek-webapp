@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TravelTool, ToolContext, ToolResult } from '../types';
-import { adminDb } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
 
 const addActivityParams = z.object({
   activity: z.object({
@@ -47,12 +47,46 @@ export const addActivityTool: TravelTool<z.infer<typeof addActivityParams>, AddA
     try {
       const { activity, date, time, notes, autoOptimize } = params;
       
-      // Get the trip day
-      const tripDay = context.tripDays.find(day => day.date === date);
+      // Extract just the date part if it includes time
+      const targetDate = date.includes('T') ? date.split('T')[0] : date;
+      
+      // Get the trip day - handle both date formats
+      const tripDay = context.tripDays.find(day => {
+        // Handle different date formats
+        let dayDate: string;
+        if (day.date?.toDate) {
+          // Firestore Timestamp
+          dayDate = day.date.toDate().toISOString().split('T')[0];
+        } else if (day.date instanceof Date) {
+          // JavaScript Date
+          dayDate = day.date.toISOString().split('T')[0];
+        } else if (typeof day.date === 'string' && day.date.includes('T')) {
+          // ISO string
+          dayDate = day.date.split('T')[0];
+        } else {
+          // Plain date string
+          dayDate = day.date;
+        }
+        return dayDate === targetDate;
+      });
+      
       if (!tripDay) {
+        // Format available dates for error message
+        const availableDates = context.tripDays.map(d => {
+          if (d.date?.toDate) {
+            return d.date.toDate().toISOString().split('T')[0];
+          } else if (d.date instanceof Date) {
+            return d.date.toISOString().split('T')[0];
+          } else if (typeof d.date === 'string' && d.date.includes('T')) {
+            return d.date.split('T')[0];
+          } else {
+            return d.date;
+          }
+        });
+        
         return {
           success: false,
-          error: `No trip day found for date ${date}`
+          error: `No trip day found for date ${targetDate}. Available dates: ${availableDates.join(', ')}`
         };
       }
       
@@ -110,31 +144,92 @@ export const addActivityTool: TravelTool<z.infer<typeof addActivityParams>, AddA
         }
       }
       
-      // Create the enhanced activity
-      const enhancedActivity = {
-        ...activity,
+      // Create the enhanced activity - filter out undefined values
+      const enhancedActivity: any = {
+        id: activity.id,
+        name: activity.name,
+        location: activity.location,
+        duration: activity.duration,
         time: finalTime,
         endTime: calculateEndTime(finalTime, activity.duration),
-        notes,
-        travelTime,
         addedAt: new Date().toISOString(),
-        weather: await getWeatherForDateTime(context.trip.destinations[0], date, finalTime),
+        weather: await getWeatherForDateTime(
+          context.trip.destinations?.[0] || context.trip.destination, 
+          date, 
+          finalTime
+        ),
         novatrekEnhanced: true
       };
+      
+      // Only add optional fields if they have values
+      if (activity.description !== undefined && activity.description !== '') {
+        enhancedActivity.description = activity.description;
+      }
+      if (activity.price !== undefined) {
+        enhancedActivity.price = activity.price;
+      }
+      if (activity.category !== undefined) {
+        enhancedActivity.category = activity.category;
+      }
+      if (activity.bookingRequired !== undefined) {
+        enhancedActivity.bookingRequired = activity.bookingRequired;
+      }
+      if (activity.bookingUrl !== undefined) {
+        enhancedActivity.bookingUrl = activity.bookingUrl;
+      }
+      if (activity.photos !== undefined && activity.photos.length > 0) {
+        enhancedActivity.photos = activity.photos;
+      }
+      if (activity.expertRecommended !== undefined) {
+        enhancedActivity.expertRecommended = activity.expertRecommended;
+      }
+      if (notes !== undefined && notes !== null) {
+        enhancedActivity.notes = notes;
+      }
+      if (travelTime > 0) {
+        enhancedActivity.travelTime = travelTime;
+      }
       
       // Add to trip day
       const updatedActivities = [...(tripDay.activities || []), enhancedActivity]
         .sort((a, b) => a.time.localeCompare(b.time));
       
-      // Update Firestore
+      // Update the day's activities
+      const updatedTripDay = {
+        ...tripDay,
+        activities: updatedActivities
+      };
+      
+      // Update the trip's itinerary array
+      const updatedItinerary = context.trip.itinerary?.map(day => 
+        day.id === tripDay.id ? updatedTripDay : day
+      ) || [];
+      
+      // If the day doesn't exist in itinerary, add it
+      if (!updatedItinerary.find(day => day.id === tripDay.id)) {
+        updatedItinerary.push(updatedTripDay);
+      }
+      
+      // Sort itinerary by date
+      updatedItinerary.sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      // Update Firestore - save to the main trip document's itinerary field
+      const adminDb = getAdminDb();
+      if (!adminDb) {
+        return {
+          success: false,
+          error: 'Database not initialized'
+        };
+      }
+      
       await adminDb
         .collection('trips')
         .doc(context.trip.id)
-        .collection('days')
-        .doc(tripDay.id)
         .update({
-          activities: updatedActivities,
-          lastModified: new Date().toISOString()
+          itinerary: updatedItinerary,
+          updatedAt: new Date().toISOString()
         });
       
       // Generate suggestions

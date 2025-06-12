@@ -179,6 +179,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Trip Planning",
             url: "/dashboard/chat/planning",
           },
+          {
+            title: "Enhanced Chat (Test)",
+            url: "/dashboard/test-enhanced-chat",
+          },
         ],
       },
       {

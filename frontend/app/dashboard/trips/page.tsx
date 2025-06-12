@@ -56,11 +56,11 @@ export default function TripsPage() {
   };
 
   const handleDeleteTrip = async () => {
-    if (!selectedTrip) return;
+    if (!selectedTrip || !user) return;
     
     try {
       setDeletingId(selectedTrip.id);
-      await TripModel.delete(selectedTrip.id);
+      await TripModel.delete(selectedTrip.id, user.uid);
       // Remove from local state
       setTrips(prev => prev.filter(t => t.id !== selectedTrip.id));
       setShowDeleteDialog(false);
@@ -252,6 +252,7 @@ export default function TripsPage() {
             }}
             onConfirm={handleDeleteTrip}
             tripTitle={selectedTrip.title}
+            tripId={selectedTrip.id}
             isDeleting={deletingId === selectedTrip.id}
           />
         </Suspense>

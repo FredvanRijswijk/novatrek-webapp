@@ -14,9 +14,12 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useFirebase } from '@/lib/firebase/context';
-import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
-import { Trip } from '@/types/travel';
+import { TripServiceV2 } from '@/lib/services/trip-service-v2';
+import { TripModelV2 } from '@/lib/models/v2/trip-model-v2';
+import { TripV2 } from '@/types/travel-v2';
+import { FullTripData } from '@/lib/services/trip-service-v2';
 import { format, differenceInDays } from 'date-fns';
+import { parseDate } from '@/lib/utils/date-helpers';
 import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { FeatureFlag } from '@/components/feature-flag/FeatureFlag';
 import { DebugFeatureFlags } from '@/components/trips/DebugFeatureFlags';
@@ -28,7 +31,7 @@ import { Suspense, lazy } from 'react';
 
 // Dynamically import heavy components
 const ItineraryBuilder = dynamic(
-  () => import('@/components/trips/planning/ItineraryBuilder').then(mod => ({ default: mod.ItineraryBuilder })),
+  () => import('@/components/trips/planning/ItineraryBuilderV2').then(mod => ({ default: mod.ItineraryBuilderV2 })),
   { 
     loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
     ssr: false 
@@ -43,16 +46,8 @@ const BudgetTracker = dynamic(
   }
 );
 
-const TripChat = dynamic(
-  () => import('@/components/trips/planning/TripChat').then(mod => ({ default: mod.TripChat })),
-  { 
-    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
-    ssr: false 
-  }
-);
-
-const TripChatV2 = dynamic(
-  () => import('@/components/trips/planning/TripChatV2').then(mod => ({ default: mod.TripChatV2 })),
+const EnhancedChatWrapper = dynamic(
+  () => import('@/components/trips/planning/EnhancedChatWrapperV2').then(mod => ({ default: mod.EnhancedChatWrapperV2 })),
   { 
     loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
     ssr: false 
@@ -114,7 +109,7 @@ export default function TripPlanningPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useFirebase();
-  const [trip, setTrip] = useState<Trip | null>(null);
+  const [fullTripData, setFullTripData] = useState<FullTripData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('itinerary');
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -125,35 +120,63 @@ export default function TripPlanningPage() {
   const tripSharingEnabled = useFeatureFlag('tripSharing');
 
   const tripId = params.id as string;
+  const tripService = new TripServiceV2();
+  const tripModel = new TripModelV2();
 
   useEffect(() => {
     if (!user || !tripId) return;
 
-    const loadTrip = async () => {
+    let unsubscribe: (() => void) | undefined;
+
+    const initializeTrip = async () => {
       try {
-        const tripData = await TripModel.getById(tripId);
-        if (tripData && tripData.userId === user.uid) {
-          setTrip(tripData);
-        } else {
+        // Check access first
+        const hasAccess = await tripModel.hasAccess(tripId, user.uid);
+        if (!hasAccess) {
           router.push('/dashboard/trips');
+          return;
         }
+
+        // Load full trip data with V2 structure
+        const tripData = await tripService.getFullTrip(tripId);
+        if (!tripData) {
+          router.push('/dashboard/trips');
+          return;
+        }
+
+        // Set initial data
+        setFullTripData(tripData);
+        setLoading(false);
+
+        // Subscribe to real-time updates
+        unsubscribe = tripService.subscribeToFullTrip(tripId, (updatedData) => {
+          if (updatedData) {
+            setFullTripData(updatedData);
+          }
+        });
       } catch (error) {
         console.error('Error loading trip:', error);
         router.push('/dashboard/trips');
-      } finally {
         setLoading(false);
       }
     };
 
-    loadTrip();
+    initializeTrip();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, tripId, router]);
 
   const handleDeleteTrip = async () => {
-    if (!trip || !user) return;
+    if (!fullTripData || !user) return;
     
     try {
       setDeleting(true);
-      await TripModel.delete(tripId);
+      await tripService.deleteTrip(tripId, user.uid);
       router.push('/dashboard/trips');
     } catch (error) {
       console.error('Error deleting trip:', error);
@@ -163,9 +186,10 @@ export default function TripPlanningPage() {
   };
 
   // Memoize date calculations and trip statistics
-  const { startDate, endDate, tripDuration, daysPlanned, totalActivities } = useMemo(() => {
-    if (!trip) {
+  const { trip, startDate, endDate, tripDuration, daysPlanned, totalActivities } = useMemo(() => {
+    if (!fullTripData) {
       return {
+        trip: null,
         startDate: new Date(),
         endDate: new Date(),
         tripDuration: 0,
@@ -174,20 +198,21 @@ export default function TripPlanningPage() {
       };
     }
     
-    const start = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate);
-    const end = trip.endDate instanceof Date ? trip.endDate : new Date(trip.endDate);
+    const start = parseDate(fullTripData.trip.startDate);
+    const end = parseDate(fullTripData.trip.endDate);
     const duration = differenceInDays(end, start) + 1;
-    const planned = trip.itinerary?.length || 0;
-    const activities = trip.itinerary?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
+    const planned = fullTripData.days.filter(d => d.activities.length > 0).length;
+    const activities = fullTripData.days.reduce((sum, day) => sum + day.activities.length, 0);
     
     return {
+      trip: fullTripData.trip,
       startDate: start,
       endDate: end,
       tripDuration: duration,
       daysPlanned: planned,
       totalActivities: activities
     };
-  }, [trip]);
+  }, [fullTripData]);
 
   if (loading) {
     return (
@@ -343,7 +368,7 @@ export default function TripPlanningPage() {
                 <TabsTrigger value="budget">Budget</TabsTrigger>
                 <TabsTrigger value="packing">Packing</TabsTrigger>
                 <TabsTrigger value="photos">Photos</TabsTrigger>
-                <TabsTrigger value="chat">AI Assistant</TabsTrigger>
+                <TabsTrigger value="chat">✨ AI Assistant</TabsTrigger>
               </TabsList>
 
               <TabsContent value="itinerary" className="mt-6">
@@ -355,7 +380,16 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {activeTab === 'itinerary' && <ItineraryBuilder trip={trip} onUpdate={setTrip} />}
+                    {activeTab === 'itinerary' && fullTripData && (
+                      <ItineraryBuilder 
+                        fullTripData={fullTripData} 
+                        onUpdate={async () => {
+                          // Reload trip data after update
+                          const updated = await tripService.getFullTrip(tripId);
+                          if (updated) setFullTripData(updated);
+                        }} 
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -369,16 +403,29 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {activeTab === 'transport' && <TransportPlanner trip={trip} onUpdate={async () => {
-                      const tripData = await TripModel.getById(tripId);
-                      if (tripData) setTrip(tripData);
-                    }} />}
+                    {activeTab === 'transport' && fullTripData && (
+                      <TransportPlanner 
+                        trip={fullTripData.trip} 
+                        onUpdate={async () => {
+                          const updated = await tripService.getFullTrip(tripId);
+                          if (updated) setFullTripData(updated);
+                        }} 
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="budget" className="mt-6">
-                {activeTab === 'budget' && <BudgetTracker trip={trip} onUpdate={setTrip} />}
+                {activeTab === 'budget' && fullTripData && (
+                  <BudgetTracker 
+                    trip={fullTripData.trip} 
+                    onUpdate={async () => {
+                      const updated = await tripService.getFullTrip(tripId);
+                      if (updated) setFullTripData(updated);
+                    }} 
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="packing" className="mt-6">
@@ -390,7 +437,9 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {activeTab === 'packing' && <PackingChecklist tripId={trip.id} trip={trip} />}
+                    {activeTab === 'packing' && fullTripData && (
+                      <PackingChecklist tripId={trip.id} trip={fullTripData.trip} />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -404,16 +453,23 @@ export default function TripPlanningPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {activeTab === 'photos' && <PhotoUpload tripId={trip.id} userId={trip.userId} maxPhotos={50} />}
+                    {activeTab === 'photos' && fullTripData && (
+                      <PhotoUpload tripId={trip.id} userId={trip.userId} maxPhotos={50} />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6 h-[calc(100vh-20rem)]">
-                {activeTab === 'chat' && (
-                  FEATURE_FLAGS.AI_CHAT_V2 
-                    ? <TripChatV2 trip={trip} onUpdate={setTrip} />
-                    : <TripChat trip={trip} onUpdate={setTrip} />
+                {activeTab === 'chat' && fullTripData && (
+                  <EnhancedChatWrapper 
+                    trip={fullTripData.trip}
+                    fullTripData={fullTripData}
+                    onUpdate={async () => {
+                      const updated = await tripService.getFullTrip(tripId);
+                      if (updated) setFullTripData(updated);
+                    }} 
+                  />
                 )}
               </TabsContent>
             </Tabs>
@@ -422,13 +478,16 @@ export default function TripPlanningPage() {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Progress Indicator */}
-            <TripProgressIndicator 
-              trip={trip} 
-              onSuggestionClick={(suggestion) => {
-                // Switch to chat tab and populate with suggestion
-                setActiveTab('chat')
-              }}
-            />
+            {fullTripData && (
+              <TripProgressIndicator 
+                trip={fullTripData.trip} 
+                onSuggestionClick={(suggestion) => {
+                  // Switch to AI assistant tab
+                  setActiveTab('chat');
+                  // TODO: Pass suggestion to chat
+                }}
+              />
+            )}
             
             {/* Trip Details */}
             <Card>
@@ -525,7 +584,10 @@ export default function TripPlanningPage() {
             trip={trip}
             isOpen={showEditDialog}
             onClose={() => setShowEditDialog(false)}
-            onUpdate={setTrip}
+            onUpdate={async () => {
+              const updated = await tripService.getFullTrip(tripId);
+              if (updated) setFullTripData(updated);
+            }}
           />
         </Suspense>
       )}
@@ -537,7 +599,10 @@ export default function TripPlanningPage() {
             trip={trip}
             isOpen={showDestinationsDialog}
             onClose={() => setShowDestinationsDialog(false)}
-            onUpdate={setTrip}
+            onUpdate={async () => {
+              const updated = await tripService.getFullTrip(tripId);
+              if (updated) setFullTripData(updated);
+            }}
           />
         </Suspense>
       )}
@@ -561,6 +626,7 @@ export default function TripPlanningPage() {
             onClose={() => setShowDeleteDialog(false)}
             onConfirm={handleDeleteTrip}
             tripTitle={trip.title}
+            tripId={trip.id}
             isDeleting={deleting}
           />
         </Suspense>

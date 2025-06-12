@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { TravelTool, ToolContext, ToolResult, RestaurantResult } from '../types';
+import { 
+  searchGooglePlacesDirectly, 
+  searchExpertRecommendationsDirectly, 
+  searchNovatrekActivitiesDirectly 
+} from './helpers';
 
 const restaurantSearchParams = z.object({
   query: z.string().optional(),
@@ -31,11 +36,27 @@ export const restaurantSearchTool: TravelTool<z.infer<typeof restaurantSearchPar
       // Build intelligent query based on context
       const query = buildRestaurantQuery(params, context);
       
-      // Search multiple sources in parallel
+      // Search multiple sources in parallel using direct functions
       const [googleResults, expertRecs, novatrekFavorites] = await Promise.all([
-        searchGooglePlaces(query, params),
-        searchExpertRecommendations('restaurant', params, context),
-        searchNovatrekFavorites('restaurant', params, context)
+        searchGooglePlacesDirectly({
+          query,
+          location: params.location,
+          radius: params.radius,
+          types: ['restaurant'],
+          minRating: params.minRating,
+          priceLevel: params.priceLevel,
+          openNow: params.openNow
+        }),
+        searchExpertRecommendationsDirectly({
+          type: 'restaurant',
+          location: params.location,
+          radius: params.radius,
+          types: ['restaurant']
+        }),
+        searchNovatrekActivitiesDirectly({
+          query: 'restaurant',
+          types: ['restaurant', 'food']
+        })
       ]);
       
       // Merge and deduplicate results
@@ -86,6 +107,11 @@ function buildRestaurantQuery(
 ): string {
   const parts: string[] = [];
   
+  // Add dietary preferences to search query for better results
+  if (params.dietary?.length) {
+    parts.push(params.dietary.join(' '));
+  }
+  
   // Add cuisine if specified
   if (params.cuisine?.length) {
     parts.push(params.cuisine.join(' OR '));
@@ -103,96 +129,12 @@ function buildRestaurantQuery(
     parts.push('restaurant');
   }
   
-  // Add location context
-  if (context.trip.destinations?.[0]?.name) {
-    parts.push(`near ${context.trip.destinations[0].name}`);
-  }
+  // Don't add location to query string - it's handled by location parameter
   
   return parts.join(' ');
 }
 
-async function searchGooglePlaces(
-  query: string,
-  params: z.infer<typeof restaurantSearchParams>
-): Promise<any[]> {
-  const searchParams = new URLSearchParams({
-    query,
-    type: 'restaurant',
-    ...(params.location && {
-      lat: params.location.lat.toString(),
-      lng: params.location.lng.toString()
-    }),
-    radius: params.radius.toString(),
-    ...(params.openNow !== undefined && { openNow: params.openNow.toString() }),
-    ...(params.minRating && { minRating: params.minRating.toString() }),
-    ...(params.priceLevel && { priceLevel: params.priceLevel.join(',') })
-  });
-  
-  const response = await fetch(`/api/places/search?${searchParams}`);
-  if (!response.ok) throw new Error('Google Places search failed');
-  
-  const data = await response.json();
-  return data.results || [];
-}
-
-async function searchExpertRecommendations(
-  type: string,
-  params: any,
-  context: ToolContext
-): Promise<any[]> {
-  try {
-    const response = await fetch('/api/expert/recommendations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${context.userId}`
-      },
-      body: JSON.stringify({
-        type,
-        location: params.location,
-        filters: {
-          cuisine: params.cuisine,
-          dietary: params.dietary,
-          priceLevel: params.priceLevel
-        }
-      })
-    });
-    
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.recommendations || [];
-  } catch {
-    return [];
-  }
-}
-
-async function searchNovatrekFavorites(
-  type: string,
-  params: any,
-  context: ToolContext
-): Promise<any[]> {
-  // Search user's saved places and community favorites
-  try {
-    const response = await fetch('/api/places/favorites', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${context.userId}`
-      },
-      body: JSON.stringify({
-        type,
-        location: params.location,
-        radius: params.radius
-      })
-    });
-    
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.favorites || [];
-  } catch {
-    return [];
-  }
-}
+// Helper functions have been moved to ./helpers.ts for direct database access
 
 function mergeRestaurantResults(
   googleResults: any[],
@@ -201,43 +143,26 @@ function mergeRestaurantResults(
 ): RestaurantResult[] {
   const mergedMap = new Map<string, RestaurantResult>();
   
-  // Process Google results first
+  // Process Google results first (already processed by helper)
   googleResults.forEach(place => {
-    const id = place.place_id || place.id;
+    const id = place.id;
     mergedMap.set(id, {
-      id,
-      name: place.name,
-      description: place.editorial_summary?.text,
-      location: {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng,
-        address: place.formatted_address
-      },
-      rating: place.rating,
-      reviews: place.user_ratings_total,
-      priceLevel: place.price_level,
-      photos: place.photos?.map((p: any) => p.photo_reference),
-      types: place.types,
-      openingHours: place.opening_hours,
-      website: place.website,
-      phone: place.formatted_phone_number,
-      cuisine: extractCuisineFromTypes(place.types),
-      dietary: extractDietaryFromTypes(place.types)
+      ...place,
+      cuisine: extractCuisineFromTypes(place.types || []),
+      dietary: extractDietaryFromTypes(place.types || [])
     });
   });
   
   // Enhance with expert recommendations
   expertRecs.forEach(rec => {
-    const existing = mergedMap.get(rec.placeId);
+    const existing = mergedMap.get(rec.id);
     if (existing) {
-      existing.expertRating = rec.rating;
-      existing.expertReviews = rec.reviews;
+      existing.expertRating = rec.expertRating;
+      existing.expertReviews = rec.expertReviews;
+      existing.expertRecommended = true;
     } else {
-      mergedMap.set(rec.placeId, {
-        ...rec,
-        expertRating: rec.rating,
-        expertReviews: rec.reviews
-      });
+      // Add expert-only recommendations
+      mergedMap.set(rec.id, rec);
     }
   });
   
@@ -246,6 +171,9 @@ function mergeRestaurantResults(
     const existing = mergedMap.get(fav.id);
     if (existing) {
       existing.novatrekScore = (existing.novatrekScore || 0) + 10;
+    } else {
+      // Add NovaTrek-only places
+      mergedMap.set(fav.id, fav);
     }
   });
   
@@ -258,23 +186,83 @@ function filterByDietaryPreferences(
 ): RestaurantResult[] {
   if (!dietary.length) return restaurants;
   
-  return restaurants.filter(restaurant => {
-    // Always include if expert recommended for dietary needs
+  // For vegan/vegetarian searches, use a scoring system instead of strict filtering
+  const isVeganSearch = dietary.includes('vegan');
+  const isVegetarianSearch = dietary.includes('vegetarian');
+  
+  // Score and enhance restaurants instead of filtering them out
+  const scoredRestaurants = restaurants.map(restaurant => {
+    let dietaryScore = 0;
+    const dietaryIndicators: string[] = [];
+    
+    // Check name and description for dietary keywords
+    const searchText = `${restaurant.name} ${restaurant.description || ''} ${restaurant.types?.join(' ') || ''}`.toLowerCase();
+    
+    // Direct dietary matches
+    dietary.forEach(diet => {
+      if (searchText.includes(diet.toLowerCase())) {
+        dietaryScore += 10;
+        dietaryIndicators.push(`Mentions ${diet}`);
+      }
+    });
+    
+    // Check restaurant dietary options array
+    if (restaurant.dietary?.some(d => dietary.includes(d))) {
+      dietaryScore += 15;
+      dietaryIndicators.push('Has dietary options');
+    }
+    
+    // Expert recommendations for dietary
     if (restaurant.expertReviews?.some(review => 
       dietary.some(diet => review.review.toLowerCase().includes(diet.toLowerCase()))
     )) {
-      return true;
+      dietaryScore += 20;
+      dietaryIndicators.push('Expert recommended for dietary needs');
     }
     
-    // Check restaurant dietary options
-    if (restaurant.dietary?.some(d => dietary.includes(d))) {
-      return true;
+    // For vegan searches, give points to vegetarian places
+    if (isVeganSearch && searchText.includes('vegetarian')) {
+      dietaryScore += 5;
+      dietaryIndicators.push('Vegetarian options available');
     }
     
-    // Check name and description for dietary keywords
-    const searchText = `${restaurant.name} ${restaurant.description || ''}`.toLowerCase();
-    return dietary.some(diet => searchText.includes(diet.toLowerCase()));
+    // Cuisine types known for vegan options
+    const veganFriendlyCuisines = ['indian', 'thai', 'vietnamese', 'middle_eastern', 'mediterranean', 'falafel', 'asian', 'ethiopian'];
+    const cuisineBonus = restaurant.types?.some(type => 
+      veganFriendlyCuisines.some(cuisine => type.toLowerCase().includes(cuisine))
+    );
+    
+    if ((isVeganSearch || isVegetarianSearch) && cuisineBonus) {
+      dietaryScore += 3;
+      dietaryIndicators.push('Cuisine typically has vegan options');
+    }
+    
+    // Add dietary info to restaurant
+    return {
+      ...restaurant,
+      dietaryScore,
+      dietaryIndicators,
+      // Mark as dietary-friendly if score > 0
+      dietaryFriendly: dietaryScore > 0
+    };
   });
+  
+  // For allergen/celiac, be strict
+  if (dietary.some(d => ['celiac', 'allergy', 'kosher', 'halal'].includes(d.toLowerCase()))) {
+    return scoredRestaurants.filter(r => r.dietaryScore > 5);
+  }
+  
+  // For vegan/vegetarian, include all but sort by dietary score
+  // This ensures we show results even if none explicitly say "vegan"
+  return scoredRestaurants
+    .sort((a, b) => {
+      // First sort by dietary score
+      if (a.dietaryScore !== b.dietaryScore) {
+        return b.dietaryScore - a.dietaryScore;
+      }
+      // Then by rating
+      return (b.rating || 0) - (a.rating || 0);
+    });
 }
 
 function rankRestaurants(
@@ -338,7 +326,11 @@ function rankRestaurants(
     return {
       ...restaurant,
       novatrekScore: score,
-      rankingFactors: factors
+      rankingFactors: factors,
+      // Ensure all fields are properly passed through
+      address: restaurant.location?.address || restaurant.address,
+      userRatingCount: restaurant.reviews || restaurant.userRatingsTotal,
+      description: restaurant.description || restaurant.editorial_summary?.text
     };
   }).sort((a, b) => b.novatrekScore - a.novatrekScore);
 }

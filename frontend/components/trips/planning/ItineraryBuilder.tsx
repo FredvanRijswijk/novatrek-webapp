@@ -35,8 +35,9 @@ import { Trip, DayItinerary, Activity } from '@/types/travel';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActivitySearchModal } from './ActivitySearchModal';
-import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
+import { TripModelNormalized as TripModel } from '@/lib/models/trip-enhanced-normalized';
 import { WeatherDisplay } from '../WeatherDisplay';
+import { normalizeDate, parseDate, formatDate, isSameDateAny } from '@/lib/utils/date-helpers';
 
 interface ItineraryBuilderProps {
   trip: Trip;
@@ -199,8 +200,8 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
         // Skip if no destination or invalid dates
         if (!dest.destination || !dest.arrivalDate || !dest.departureDate) return;
         
-        const arrivalDate = new Date(dest.arrivalDate);
-        const departureDate = new Date(dest.departureDate);
+        const arrivalDate = parseDate(dest.arrivalDate);
+        const departureDate = parseDate(dest.departureDate);
         
         // Check if dates are valid
         if (isNaN(arrivalDate.getTime()) || isNaN(departureDate.getTime())) return;
@@ -242,8 +243,8 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
     } else if (trip.destination && trip.startDate && trip.endDate) {
       // Single destination trip
       try {
-        const startDate = new Date(trip.startDate);
-        const endDate = new Date(trip.endDate);
+        const startDate = parseDate(trip.startDate);
+        const endDate = parseDate(trip.endDate);
         
         // Check if dates are valid
         if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
@@ -301,7 +302,7 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
 
   const getItineraryDay = (date: Date): DayItinerary | undefined => {
     return trip.itinerary?.find(day => 
-      isSameDay(new Date(day.date), date)
+      isSameDateAny(day.date, date)
     );
   };
   
@@ -344,7 +345,7 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
     
     if (!dayData) {
       console.log('Creating day data for selected day');
-      const dayInfo = tripDays.find(d => d.date && isSameDay(d.date, selectedDay));
+      const dayInfo = tripDays.find(d => d.date && isSameDateAny(d.date, selectedDay));
       if (!dayInfo) {
         console.error('Could not find day info for selected day');
         return;
@@ -657,7 +658,7 @@ export function ItineraryBuilder({ trip, onUpdate }: ItineraryBuilderProps) {
             <div className="p-4 space-y-2">
               {tripDays.map((dayInfo, index) => {
                 const dayData = getItineraryDay(dayInfo.date);
-                const isSelected = selectedDay && isSameDay(dayInfo.date, selectedDay);
+                const isSelected = selectedDay && isSameDateAny(dayInfo.date, selectedDay);
                 const activityCount = dayData?.activities?.length || 0;
                 const isTravel = dayInfo.type === 'travel';
 

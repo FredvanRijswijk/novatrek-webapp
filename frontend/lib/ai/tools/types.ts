@@ -1,13 +1,21 @@
 import { z } from 'zod';
 import { Trip, TripDay } from '@/lib/models/trip';
+import { TripV2, DayV2, ActivityV2 } from '@/types/travel-v2';
 import { User } from '@/lib/models/user';
 import { TravelPreferences } from '@/types/preferences';
+
+// Extended day type that includes activities for V2
+export interface DayWithActivities extends DayV2 {
+  activities: ActivityV2[];
+  accommodations?: any[];
+  transportation?: any[];
+}
 
 export interface ToolContext {
   userId: string;
   user: User;
-  trip: Trip;
-  tripDays: TripDay[];
+  trip: Trip | TripV2; // Support both V1 and V2 structures
+  tripDays: TripDay[] | DayWithActivities[]; // Support both structures
   preferences: TravelPreferences;
   currentDate?: string;
   currentActivity?: any;
