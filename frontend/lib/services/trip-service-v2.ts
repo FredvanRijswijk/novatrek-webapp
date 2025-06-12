@@ -70,8 +70,13 @@ export class TripServiceV2 {
       // If no days exist, create them based on trip dates
       if (days.length === 0 && trip.startDate && trip.endDate) {
         console.log('No days found for trip, creating days from trip dates');
-        const createdTrip = await this.createTripWithDays(trip);
-        days = createdTrip.days;
+        days = await this.dayModel.createDaysForTrip(
+          trip.id,
+          trip.startDate,
+          trip.endDate,
+          trip.destinationId,
+          trip.destinationName
+        );
       }
       
       // Get activities for each day (in parallel)
