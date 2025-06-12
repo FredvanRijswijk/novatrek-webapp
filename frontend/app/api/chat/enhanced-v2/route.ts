@@ -274,6 +274,15 @@ function buildSystemPrompt(tripContext: any, preferences: any, currentDate?: str
   const hasTripDays = tripContext.itinerary.totalDays > 0;
   const hasEmptyDays = tripContext.itinerary.emptyDays.length > 0;
   
+  // Debug log system prompt context
+  console.log('System prompt context:', {
+    tripDestination: tripContext.trip.destination,
+    hasCoordinates: !!tripContext.trip.destinationCoordinates,
+    coordinates: tripContext.trip.destinationCoordinates,
+    hasDays: hasTripDays,
+    emptyDays: tripContext.itinerary.emptyDays
+  });
+  
   return `You are an intelligent travel planning assistant for NovaTrek with access to powerful tools.
 
 ## Your Capabilities:
