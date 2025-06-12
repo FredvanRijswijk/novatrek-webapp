@@ -421,11 +421,16 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium">Day {day.dayNumber}</div>
                         <div className="text-sm text-muted-foreground">
                           {formatDate(day.date, 'EEE, MMM d')}
                         </div>
+                        {day.weather && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {day.weather.temperature}°C • {day.weather.condition}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         {activityCount > 0 && (
@@ -453,13 +458,33 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <CardTitle>Day {selectedDay.dayNumber}</CardTitle>
                 <CardDescription>
                   {formatDate(selectedDay.date, 'EEEE, MMMM d, yyyy')}
                   {selectedDay.destinationName && ` • ${selectedDay.destinationName}`}
                 </CardDescription>
               </div>
+              
+              {/* Weather Display */}
+              {selectedDay.weather && (
+                <div className="mr-4">
+                  <WeatherDisplay
+                    weather={{
+                      date: new Date(selectedDay.date),
+                      temp: selectedDay.weather.temperature,
+                      condition: selectedDay.weather.condition.toLowerCase() as any,
+                      description: selectedDay.weather.condition,
+                      icon: '',
+                      windSpeed: selectedDay.weather.windSpeed,
+                      humidity: 0,
+                      precipitation: selectedDay.weather.precipitation
+                    }}
+                    compact
+                  />
+                </div>
+              )}
+              
               <Button onClick={handleAddActivity} disabled={loading}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Activity

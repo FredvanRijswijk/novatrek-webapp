@@ -12,10 +12,19 @@ import {
   Plus,
   Loader2,
   Trash2,
+  CalendarIcon,
 } from "lucide-react";
 import { Destination } from "@/types/travel";
 import { useGooglePlacesV2 } from "@/hooks/use-google-places-v2";
 import { useDebounce } from "@/hooks/use-debounce";
+import { Calendar, DateRange } from "@/components/ui/calendar-range";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface DestinationDateStepProps {
   formData: any;
@@ -32,6 +41,12 @@ export function DestinationDateStep({
     formData.destinations.length > 0
   );
   const [activeDestinationIndex, setActiveDestinationIndex] = useState(0);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(
+    formData.startDate && formData.endDate
+      ? { from: formData.startDate, to: formData.endDate }
+      : undefined
+  );
+  const [destinationDateRanges, setDestinationDateRanges] = useState<Record<number, DateRange | undefined>>({});
 
   // For single destination mode
   const [destinationSearch, setDestinationSearch] = useState(
@@ -61,6 +76,32 @@ export function DestinationDateStep({
       : destinationSearch,
     300
   );
+
+  // Sync date range with form data
+  useEffect(() => {
+    if (dateRange?.from && dateRange?.to && !isMultiDestination) {
+      updateFormData({
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+    }
+  }, [dateRange, isMultiDestination]);
+
+  // Initialize destination date ranges
+  useEffect(() => {
+    if (isMultiDestination && formData.destinations.length > 0) {
+      const ranges: Record<number, DateRange | undefined> = {};
+      formData.destinations.forEach((dest: any, index: number) => {
+        if (dest.arrivalDate && dest.departureDate) {
+          ranges[index] = {
+            from: new Date(dest.arrivalDate),
+            to: new Date(dest.departureDate),
+          };
+        }
+      });
+      setDestinationDateRanges(ranges);
+    }
+  }, [isMultiDestination, formData.destinations.length]);
 
   // Search for destinations when input changes
   useEffect(() => {
@@ -231,30 +272,40 @@ export function DestinationDateStep({
     }
   };
 
-  const updateDestinationDates = (
+  const updateDestinationDateRange = (
     index: number,
-    field: "arrivalDate" | "departureDate",
-    value: Date | null
+    dateRange: DateRange | undefined
   ) => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    
     const updatedDestinations = [...formData.destinations];
+    const newRanges = { ...destinationDateRanges };
+    
     updatedDestinations[index] = {
       ...updatedDestinations[index],
-      [field]: value,
+      arrivalDate: dateRange.from,
+      departureDate: dateRange.to,
     };
+    newRanges[index] = dateRange;
 
-    // Auto-adjust next destination's arrival date
-    if (
-      field === "departureDate" &&
-      value &&
-      index < updatedDestinations.length - 1
-    ) {
+    // Auto-adjust next destination's dates if needed
+    if (index < updatedDestinations.length - 1) {
       const nextDestination = updatedDestinations[index + 1];
-      if (!nextDestination.arrivalDate || nextDestination.arrivalDate < value) {
-        nextDestination.arrivalDate = value;
+      if (!nextDestination.arrivalDate || nextDestination.arrivalDate < dateRange.to) {
+        const duration = nextDestination.departureDate && nextDestination.arrivalDate
+          ? Math.max(1, Math.ceil((nextDestination.departureDate.getTime() - nextDestination.arrivalDate.getTime()) / (1000 * 60 * 60 * 24)))
+          : 3;
+        nextDestination.arrivalDate = dateRange.to;
+        nextDestination.departureDate = new Date(dateRange.to.getTime() + duration * 24 * 60 * 60 * 1000);
+        newRanges[index + 1] = {
+          from: nextDestination.arrivalDate,
+          to: nextDestination.departureDate,
+        };
       }
     }
 
     updateFormData({ destinations: updatedDestinations });
+    setDestinationDateRanges(newRanges);
   };
 
   const updateTraveler = (index: number, field: string, value: any) => {
@@ -561,54 +612,55 @@ export function DestinationDateStep({
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-3 mt-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">
-                              Arrival
-                            </Label>
-                            <Input
-                              type="date"
-                              value={formatDate(dest.arrivalDate)}
-                              onChange={(e) =>
-                                updateDestinationDates(
-                                  index,
-                                  "arrivalDate",
-                                  parseDate(e.target.value)
-                                )
-                              }
-                              min={
-                                index > 0
-                                  ? formatDate(
-                                      formData.destinations[index - 1]
-                                        ?.departureDate
-                                    )
-                                  : new Date().toISOString().split("T")[0]
-                              }
-                              className="mt-1 h-9 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">
-                              Departure
-                            </Label>
-                            <Input
-                              type="date"
-                              value={formatDate(dest.departureDate)}
-                              onChange={(e) =>
-                                updateDestinationDates(
-                                  index,
-                                  "departureDate",
-                                  parseDate(e.target.value)
-                                )
-                              }
-                              min={
-                                dest.arrivalDate
-                                  ? formatDate(dest.arrivalDate)
-                                  : undefined
-                              }
-                              className="mt-1 h-9 text-sm"
-                            />
-                          </div>
+                        <div className="mt-3">
+                          <Label className="text-xs text-muted-foreground">
+                            Stay Duration
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal h-9 text-sm mt-1",
+                                  !destinationDateRanges[index] && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-3 w-3" />
+                                {destinationDateRanges[index]?.from ? (
+                                  destinationDateRanges[index]?.to ? (
+                                    <>
+                                      {format(destinationDateRanges[index]!.from!, "MMM d")} -{" "}
+                                      {format(destinationDateRanges[index]!.to!, "MMM d, y")}
+                                    </>
+                                  ) : (
+                                    format(destinationDateRanges[index]!.from!, "MMM d, y")
+                                  )
+                                ) : (
+                                  <span>Pick dates</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="range"
+                                defaultMonth={destinationDateRanges[index]?.from}
+                                selected={destinationDateRanges[index]}
+                                onSelect={(range) => updateDestinationDateRange(index, range)}
+                                numberOfMonths={2}
+                                disabled={(date) => {
+                                  // Disable dates before previous destination's departure
+                                  if (index > 0 && formData.destinations[index - 1]?.departureDate && 
+                                      date < formData.destinations[index - 1].departureDate) return true;
+                                  // Disable dates after next destination's arrival
+                                  if (index < formData.destinations.length - 1 && 
+                                      formData.destinations[index + 1]?.arrivalDate && 
+                                      date > formData.destinations[index + 1].arrivalDate) return true;
+                                  // Disable past dates
+                                  return date < new Date(new Date().setHours(0, 0, 0, 0));
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                     </div>
@@ -647,61 +699,50 @@ export function DestinationDateStep({
               <h3 className="font-semibold">Travel Dates</h3>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-              <div>
-                <Label
-                  htmlFor="startDate"
-                  className="text-sm font-normal text-muted-foreground"
-                >
-                  Start Date
-                </Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formatDate(formData.startDate)}
-                  onChange={(e) =>
-                    updateFormData({ startDate: parseDate(e.target.value) })
-                  }
-                  min={new Date().toISOString().split("T")[0]}
-                  className={`mt-1.5 ${
-                    errors.startDate ? "border-destructive" : ""
-                  }`}
-                />
-                {errors.startDate && (
-                  <p className="text-xs text-destructive mt-1">
-                    {errors.startDate}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label
-                  htmlFor="endDate"
-                  className="text-sm font-normal text-muted-foreground"
-                >
-                  End Date
-                </Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formatDate(formData.endDate)}
-                  onChange={(e) =>
-                    updateFormData({ endDate: parseDate(e.target.value) })
-                  }
-                  min={
-                    formData.startDate
-                      ? formatDate(formData.startDate)
-                      : new Date().toISOString().split("T")[0]
-                  }
-                  className={`mt-1.5 ${
-                    errors.endDate ? "border-destructive" : ""
-                  }`}
-                />
-                {errors.endDate && (
-                  <p className="text-xs text-destructive mt-1">
-                    {errors.endDate}
-                  </p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal h-12 lg:h-14",
+                      !dateRange && "text-muted-foreground",
+                      (errors.startDate || errors.endDate) && "border-destructive"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick your travel dates</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    defaultMonth={dateRange?.from || new Date()}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    disabled={(date) => 
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+              {(errors.startDate || errors.endDate) && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.startDate || errors.endDate}
+                </p>
+              )}
             </div>
 
             {formData.startDate && formData.endDate && (

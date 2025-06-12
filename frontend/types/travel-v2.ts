@@ -393,6 +393,47 @@ export interface Cost {
   perPerson?: boolean;
 }
 
+// ===== Packing Lists Subcollection =====
+export interface PackingListV2 {
+  id: string;
+  tripId: string;
+  
+  // Core Information
+  name: string;
+  description?: string;
+  isPrimary?: boolean;
+  template?: 'beach' | 'mountain' | 'city' | 'business' | 'adventure' | 'custom';
+  
+  // Items
+  items: PackingItemV2[];
+  completedItems: string[]; // Array of item IDs that are checked off
+  
+  // Statistics
+  stats: {
+    totalItems: number;
+    completedItems: number;
+    categories: Record<string, number>; // Category name -> item count
+  };
+  
+  // Timestamps
+  createdAt: Timestamp | string;
+  updatedAt: Timestamp | string;
+}
+
+export interface PackingItemV2 {
+  id: string;
+  name: string;
+  category: 'Clothing' | 'Electronics' | 'Documents' | 'Personal Care' | 'Health' | 
+            'Footwear' | 'Accessories' | 'Bags' | 'Gear' | 'Beach' | 'Activities' | 
+            'Office' | 'Safety' | 'Other';
+  quantity: number;
+  essential?: boolean;
+  optional?: boolean;
+  weatherDependent?: boolean;
+  customItem?: boolean;
+  notes?: string;
+}
+
 // ===== Collection Paths =====
 export const COLLECTIONS_V2 = {
   TRIPS: 'trips',
@@ -401,5 +442,6 @@ export const COLLECTIONS_V2 = {
   ACCOMMODATIONS: (tripId: string, dayId: string) => `trips/${tripId}/days/${dayId}/accommodations`,
   TRANSPORTATION: (tripId: string, dayId: string) => `trips/${tripId}/days/${dayId}/transportation`,
   EXPENSES: (tripId: string) => `trips/${tripId}/expenses`,
+  PACKING_LISTS: (tripId: string) => `trips/${tripId}/packing_lists`,
   AI_RECOMMENDATIONS: (tripId: string) => `trips/${tripId}/ai_recommendations`,
 } as const;

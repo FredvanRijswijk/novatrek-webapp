@@ -23,7 +23,7 @@ import {
   ChevronDown,
   AlertCircle
 } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar, DateRange } from '@/components/ui/calendar-range';
 import {
   Popover,
   PopoverContent,
@@ -43,11 +43,13 @@ interface EditDestinationsDialogProps {
 export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: EditDestinationsDialogProps) {
   // Initialize destinations from trip data
   const [destinations, setDestinations] = useState<TripDestination[]>([]);
+  const [dateRanges, setDateRanges] = useState<Record<number, DateRange | undefined>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newDestinationSearch, setNewDestinationSearch] = useState('');
   const [selectedNewDestination, setSelectedNewDestination] = useState<Destination | null>(null);
   const [showNewDestination, setShowNewDestination] = useState(false);
+  const [adjustedDates, setAdjustedDates] = useState<Set<string>>(new Set());
 
   // Google Places integration
   const { searchDestinations, isLoading: isSearching } = useGooglePlacesV2();
@@ -57,17 +59,36 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
     // Initialize destinations from trip
     if (trip.destinations && trip.destinations.length > 0) {
       // Use existing destinations array
-      setDestinations([...trip.destinations].sort((a, b) => a.order - b.order));
+      const sortedDestinations = [...trip.destinations].sort((a, b) => a.order - b.order);
+      setDestinations(sortedDestinations);
+      
+      // Initialize date ranges for each destination
+      const ranges: Record<number, DateRange | undefined> = {};
+      sortedDestinations.forEach((dest, index) => {
+        ranges[index] = {
+          from: new Date(dest.arrivalDate),
+          to: new Date(dest.departureDate),
+        };
+      });
+      setDateRanges(ranges);
     } else if (trip.destination) {
       // Convert single destination to array format
-      setDestinations([{
+      const singleDest = {
         destination: trip.destination,
         arrivalDate: trip.startDate,
         departureDate: trip.endDate,
         order: 0
-      }]);
+      };
+      setDestinations([singleDest]);
+      setDateRanges({
+        0: {
+          from: new Date(trip.startDate),
+          to: new Date(trip.endDate),
+        }
+      });
     } else {
       setDestinations([]);
+      setDateRanges({});
     }
   }, [trip]);
 
@@ -108,7 +129,15 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
       order: destinations.length
     };
 
+    // Also add date range for the new destination
+    const newDateRanges = { ...dateRanges };
+    newDateRanges[destinations.length] = {
+      from: newTripDestination.arrivalDate,
+      to: newTripDestination.departureDate,
+    };
+
     setDestinations([...destinations, newTripDestination]);
+    setDateRanges(newDateRanges);
     setSelectedNewDestination(null);
     setShowNewDestination(false);
   };
@@ -120,7 +149,17 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
     newDestinations.forEach((dest, i) => {
       dest.order = i;
     });
+    
+    // Update date ranges
+    const newDateRanges: Record<number, DateRange | undefined> = {};
+    newDestinations.forEach((dest, i) => {
+      if (dateRanges[i < index ? i : i + 1]) {
+        newDateRanges[i] = dateRanges[i < index ? i : i + 1];
+      }
+    });
+    
     setDestinations(newDestinations);
+    setDateRanges(newDateRanges);
   };
 
   // Move destination up
@@ -130,7 +169,13 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
     [newDestinations[index], newDestinations[index - 1]] = [newDestinations[index - 1], newDestinations[index]];
     newDestinations[index].order = index;
     newDestinations[index - 1].order = index - 1;
+    
+    // Also swap date ranges
+    const newDateRanges = { ...dateRanges };
+    [newDateRanges[index], newDateRanges[index - 1]] = [newDateRanges[index - 1], newDateRanges[index]];
+    
     setDestinations(newDestinations);
+    setDateRanges(newDateRanges);
   };
 
   // Move destination down
@@ -140,14 +185,68 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
     [newDestinations[index], newDestinations[index + 1]] = [newDestinations[index + 1], newDestinations[index]];
     newDestinations[index].order = index;
     newDestinations[index + 1].order = index + 1;
+    
+    // Also swap date ranges
+    const newDateRanges = { ...dateRanges };
+    [newDateRanges[index], newDateRanges[index + 1]] = [newDateRanges[index + 1], newDateRanges[index]];
+    
     setDestinations(newDestinations);
+    setDateRanges(newDateRanges);
   };
 
-  // Update destination dates
-  const handleDateChange = (index: number, field: 'arrivalDate' | 'departureDate', date: Date) => {
+  // Handle date range change for a destination
+  const handleDateRangeChange = (index: number, dateRange: DateRange | undefined) => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    
     const newDestinations = [...destinations];
-    newDestinations[index][field] = date;
+    const newRanges = { ...dateRanges };
+    const newAdjusted = new Set(adjustedDates);
+    
+    // Update the destination dates
+    newDestinations[index].arrivalDate = dateRange.from;
+    newDestinations[index].departureDate = dateRange.to;
+    newRanges[index] = dateRange;
+    
+    // Check for conflicts with adjacent destinations
+    if (index < destinations.length - 1) {
+      // If this departure is after next arrival, adjust next destination
+      const nextDest = newDestinations[index + 1];
+      if (dateRange.to > nextDest.arrivalDate) {
+        const duration = Math.max(1, Math.ceil((nextDest.departureDate.getTime() - nextDest.arrivalDate.getTime()) / (1000 * 60 * 60 * 24)));
+        nextDest.arrivalDate = dateRange.to;
+        nextDest.departureDate = new Date(dateRange.to.getTime() + duration * 24 * 60 * 60 * 1000);
+        newRanges[index + 1] = {
+          from: nextDest.arrivalDate,
+          to: nextDest.departureDate,
+        };
+        newAdjusted.add(`${index + 1}`);
+      }
+    }
+    
+    if (index > 0) {
+      // If this arrival is before previous departure, adjust previous destination
+      const prevDest = newDestinations[index - 1];
+      if (dateRange.from < prevDest.departureDate) {
+        prevDest.departureDate = dateRange.from;
+        newRanges[index - 1] = {
+          from: prevDest.arrivalDate,
+          to: prevDest.departureDate,
+        };
+        newAdjusted.add(`${index - 1}`);
+      }
+    }
+    
     setDestinations(newDestinations);
+    setDateRanges(newRanges);
+    setAdjustedDates(newAdjusted);
+    
+    // Clear error if dates are now valid
+    setError(null);
+    
+    // Clear adjusted indicators after 3 seconds
+    setTimeout(() => {
+      setAdjustedDates(new Set());
+    }, 3000);
   };
 
   // Validate dates
@@ -290,76 +389,57 @@ export function EditDestinationsDialog({ trip, isOpen, onClose, onUpdate }: Edit
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-sm">Arrival Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !dest.arrivalDate && 'text-muted-foreground'
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dest.arrivalDate ? format(dest.arrivalDate, 'PP') : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={dest.arrivalDate}
-                              onSelect={(date) => date && handleDateChange(index, 'arrivalDate', date)}
-                              disabled={(date) => {
-                                // Disable dates before trip start
-                                if (date < trip.startDate) return true;
-                                // Disable dates after trip end
-                                if (date > trip.endDate) return true;
-                                // Disable dates before previous destination's departure
-                                if (index > 0 && date < destinations[index - 1].departureDate) return true;
-                                return false;
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm">Departure Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !dest.departureDate && 'text-muted-foreground'
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dest.departureDate ? format(dest.departureDate, 'PP') : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={dest.departureDate}
-                              onSelect={(date) => date && handleDateChange(index, 'departureDate', date)}
-                              disabled={(date) => {
-                                // Disable dates before arrival
-                                if (date < dest.arrivalDate) return true;
-                                // Disable dates after trip end
-                                if (date > trip.endDate) return true;
-                                // Disable dates after next destination's arrival
-                                if (index < destinations.length - 1 && date > destinations[index + 1].arrivalDate) return true;
-                                return false;
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">Stay Duration</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !dateRanges[index] && 'text-muted-foreground',
+                              adjustedDates.has(`${index}`) && 'ring-2 ring-orange-500 ring-offset-2'
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRanges[index]?.from ? (
+                              dateRanges[index]?.to ? (
+                                <>
+                                  {format(dateRanges[index]!.from!, 'LLL dd, y')} -{' '}
+                                  {format(dateRanges[index]!.to!, 'LLL dd, y')}
+                                </>
+                              ) : (
+                                format(dateRanges[index]!.from!, 'LLL dd, y')
+                              )
+                            ) : (
+                              <span>Pick dates</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="range"
+                            defaultMonth={dateRanges[index]?.from}
+                            selected={dateRanges[index]}
+                            onSelect={(dateRange) => handleDateRangeChange(index, dateRange)}
+                            numberOfMonths={2}
+                            disabled={(date) => {
+                              // Disable dates before trip start
+                              if (date < trip.startDate) return true;
+                              // Disable dates after trip end
+                              if (date > trip.endDate) return true;
+                              // Disable dates before previous destination's departure
+                              if (index > 0 && destinations[index - 1]?.departureDate && date < destinations[index - 1].departureDate) return true;
+                              // Disable dates after next destination's arrival
+                              if (index < destinations.length - 1 && destinations[index + 1]?.arrivalDate && date > destinations[index + 1].arrivalDate) return true;
+                              return false;
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {adjustedDates.has(`${index}`) && (
+                        <p className="text-xs text-orange-600 mt-1">Dates automatically adjusted</p>
+                      )}
                     </div>
                   </div>
                 ))}

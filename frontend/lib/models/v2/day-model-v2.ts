@@ -3,9 +3,10 @@
  */
 
 import { BaseModelV2 } from './base-model';
-import { DayV2, COLLECTIONS_V2 } from '@/types/travel-v2';
+import { DayV2, COLLECTIONS_V2, WeatherData } from '@/types/travel-v2';
 import { where, orderBy } from 'firebase/firestore';
 import { normalizeDate } from '@/lib/utils/date-helpers';
+import { WeatherClient } from '@/lib/weather/client';
 
 export class DayModelV2 extends BaseModelV2<DayV2> {
   constructor() {
@@ -91,7 +92,8 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     startDate: string,
     endDate: string,
     destinationId?: string,
-    destinationName?: string
+    destinationName?: string,
+    destinationCoordinates?: { lat: number; lng: number }
   ): Promise<DayV2[]> {
     // First check if days already exist
     const existingDays = await this.getTripDays(tripId);
@@ -140,6 +142,16 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     }
     
     await batch.commit();
+    
+    // Fetch weather for created days if coordinates are provided
+    if (destinationCoordinates) {
+      console.log('Fetching weather for newly created days...');
+      // Do this asynchronously to not block the response
+      this.updateTripWeather(tripId, destinationCoordinates.lat, destinationCoordinates.lng)
+        .then(count => console.log(`Weather updated for ${count} days`))
+        .catch(err => console.error('Error fetching weather:', err));
+    }
+    
     return days;
   }
 
@@ -224,5 +236,165 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     }
     
     return deletedCount;
+  }
+
+  /**
+   * Fetch and update weather for a day
+   */
+  async updateDayWeather(
+    tripId: string,
+    dayId: string,
+    lat: number,
+    lng: number
+  ): Promise<void> {
+    const day = await this.getById(dayId, [tripId]);
+    if (!day) return;
+    
+    const weatherClient = WeatherClient.getInstance();
+    const weatherData = await weatherClient.getWeather(lat, lng, new Date(day.date));
+    
+    if (weatherData) {
+      const weather: WeatherData = {
+        date: day.date,
+        temperature: Math.round(weatherData.temp),
+        condition: weatherData.description,
+        precipitation: weatherData.precipitation || 0,
+        windSpeed: Math.round(weatherData.windSpeed)
+      };
+      
+      await this.update(dayId, { weather }, [tripId]);
+    }
+  }
+
+  /**
+   * Fetch and update weather for all days in a trip
+   */
+  async updateTripWeather(
+    tripId: string,
+    lat: number,
+    lng: number
+  ): Promise<number> {
+    const days = await this.getTripDays(tripId);
+    let updated = 0;
+    
+    // Update weather in batches to avoid rate limits
+    for (const day of days) {
+      // Skip if weather was recently updated (within 6 hours)
+      if (day.weather && day.updatedAt) {
+        const lastUpdate = new Date(day.updatedAt);
+        const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+        if (hoursSinceUpdate < 6) continue;
+      }
+      
+      await this.updateDayWeather(tripId, day.id, lat, lng);
+      updated++;
+      
+      // Small delay to avoid hitting rate limits
+      if (updated % 5 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    return updated;
+  }
+
+  /**
+   * Update days for new date range
+   * This handles adding new days, removing days outside range, and preserving existing days with activities
+   */
+  async updateDaysForNewDateRange(
+    tripId: string,
+    newStartDate: string,
+    newEndDate: string,
+    destinationId?: string,
+    destinationName?: string,
+    destinationCoordinates?: { lat: number; lng: number }
+  ): Promise<{
+    created: number;
+    deleted: number;
+    preserved: number;
+    daysWithActivitiesOutsideRange: DayV2[];
+  }> {
+    const start = new Date(normalizeDate(newStartDate) + 'T00:00:00');
+    const end = new Date(normalizeDate(newEndDate) + 'T00:00:00');
+    
+    // Get all existing days
+    const existingDays = await this.getTripDays(tripId);
+    const existingDaysByDate = new Map<string, DayV2>();
+    existingDays.forEach(day => {
+      existingDaysByDate.set(normalizeDate(day.date), day);
+    });
+    
+    // Track statistics
+    let created = 0;
+    let deleted = 0;
+    let preserved = 0;
+    const daysWithActivitiesOutsideRange: DayV2[] = [];
+    
+    // Create batch for operations
+    const batch = this.createBatch();
+    
+    // Generate all dates in new range
+    const newDates = new Set<string>();
+    let dayNumber = 1;
+    
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const normalizedDate = normalizeDate(date);
+      newDates.add(normalizedDate);
+      
+      const existingDay = existingDaysByDate.get(normalizedDate);
+      if (existingDay) {
+        // Update day number if needed
+        if (existingDay.dayNumber !== dayNumber) {
+          this.batchUpdate(batch, existingDay.id, { dayNumber }, [tripId]);
+        }
+        preserved++;
+      } else {
+        // Create new day
+        const dayData = {
+          tripId,
+          dayNumber,
+          date: normalizedDate,
+          type: 'destination' as const,
+          destinationId,
+          destinationName,
+          stats: {
+            activityCount: 0,
+            accommodationCount: 0,
+            transportCount: 0,
+            totalCost: 0
+          }
+        };
+        
+        this.batchCreate(batch, dayData, [tripId]);
+        created++;
+      }
+      
+      dayNumber++;
+    }
+    
+    // Check for days outside new range
+    for (const [date, day] of existingDaysByDate) {
+      if (!newDates.has(date)) {
+        // Check if this day has activities
+        if (day.stats.activityCount > 0) {
+          daysWithActivitiesOutsideRange.push(day);
+        } else {
+          // Safe to delete - no activities
+          this.batchDelete(batch, day.id, [tripId]);
+          deleted++;
+        }
+      }
+    }
+    
+    // Commit all changes
+    await batch.commit();
+    
+    return {
+      created,
+      deleted,
+      preserved,
+      daysWithActivitiesOutsideRange
+    };
   }
 }

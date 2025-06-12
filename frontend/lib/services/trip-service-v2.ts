@@ -41,7 +41,8 @@ export class TripServiceV2 {
       trip.startDate,
       trip.endDate,
       trip.destination?.id,
-      trip.destination?.name
+      trip.destination?.name,
+      trip.destination?.coordinates
     );
     
     // Update trip stats
@@ -83,8 +84,9 @@ export class TripServiceV2 {
           trip.id,
           trip.startDate,
           trip.endDate,
-          trip.destinationId,
-          trip.destinationName
+          trip.destination?.id,
+          trip.destination?.name,
+          trip.destination?.coordinates
         );
       }
       
