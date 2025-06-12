@@ -90,6 +90,13 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     destinationId?: string,
     destinationName?: string
   ): Promise<DayV2[]> {
+    // First check if days already exist
+    const existingDays = await this.getTripDays(tripId);
+    if (existingDays.length > 0) {
+      console.log('Days already exist for trip, skipping creation');
+      return existingDays;
+    }
+    
     const start = new Date(normalizeDate(startDate) + 'T00:00:00');
     const end = new Date(normalizeDate(endDate) + 'T00:00:00');
     const days: DayV2[] = [];
@@ -98,10 +105,21 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     let dayNumber = 1;
     
     for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      const normalizedDate = normalizeDate(date);
+      
+      // Check if a day with this date already exists
+      const existingDay = await this.getDayByDate(tripId, normalizedDate);
+      if (existingDay) {
+        console.log(`Day already exists for date ${normalizedDate}, skipping`);
+        days.push(existingDay);
+        dayNumber++;
+        continue;
+      }
+      
       const dayData = {
         tripId,
         dayNumber,
-        date: normalizeDate(date),
+        date: normalizedDate,
         type: 'destination' as const,
         destinationId,
         destinationName,
@@ -157,5 +175,51 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
       [where('type', '==', 'travel')],
       orderBy('date', 'asc')
     );
+  }
+
+  /**
+   * Remove duplicate days for a trip
+   */
+  async removeDuplicateDays(tripId: string): Promise<number> {
+    const allDays = await this.getTripDays(tripId);
+    const daysByDate = new Map<string, DayV2[]>();
+    
+    // Group days by date
+    allDays.forEach(day => {
+      const normalizedDate = normalizeDate(day.date);
+      if (!daysByDate.has(normalizedDate)) {
+        daysByDate.set(normalizedDate, []);
+      }
+      daysByDate.get(normalizedDate)!.push(day);
+    });
+    
+    const batch = this.createBatch();
+    let deletedCount = 0;
+    
+    // Keep only the first day for each date, delete duplicates
+    daysByDate.forEach((days, date) => {
+      if (days.length > 1) {
+        console.log(`Found ${days.length} duplicate days for date ${date}`);
+        // Sort by creation time to keep the oldest
+        days.sort((a, b) => {
+          const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+          const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+          return aTime - bTime;
+        });
+        
+        // Delete all but the first
+        for (let i = 1; i < days.length; i++) {
+          this.batchDelete(batch, days[i].id, [tripId]);
+          deletedCount++;
+        }
+      }
+    });
+    
+    if (deletedCount > 0) {
+      await batch.commit();
+      console.log(`Deleted ${deletedCount} duplicate days`);
+    }
+    
+    return deletedCount;
   }
 }

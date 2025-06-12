@@ -67,6 +67,15 @@ export class TripServiceV2 {
       // Get days
       let days = await this.dayModel.getTripDays(tripId);
       
+      // Remove any duplicate days first
+      if (days.length > 0) {
+        const duplicatesRemoved = await this.dayModel.removeDuplicateDays(tripId);
+        if (duplicatesRemoved > 0) {
+          // Reload days after cleanup
+          days = await this.dayModel.getTripDays(tripId);
+        }
+      }
+      
       // If no days exist, create them based on trip dates
       if (days.length === 0 && trip.startDate && trip.endDate) {
         console.log('No days found for trip, creating days from trip dates');
