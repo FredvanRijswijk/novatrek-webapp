@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { verifyIdToken, getAdminDb } from '@/lib/firebase/admin';
 import { toolRegistry, registerAllTools } from '@/lib/ai/tools';
 import { ToolContext } from '@/lib/ai/tools/types';
-import { TripServiceV2 } from '@/lib/services/trip-service-v2';
-import { TripModelV2 } from '@/lib/models/v2/trip-model-v2';
+import { TripServiceAdminV2 } from '@/lib/services/trip-service-admin-v2';
+import { TripModelAdminV2 } from '@/lib/models/v2/admin/trip-model-admin-v2';
 import { normalizeDate } from '@/lib/utils/date-helpers';
 
 // Initialize tools
@@ -45,9 +45,16 @@ export async function POST(request: NextRequest) {
 
     console.log('Enhanced chat V2 request:', { userId, tripId, currentDate, model });
 
-    // Initialize services
-    const tripService = new TripServiceV2();
-    const tripModel = new TripModelV2();
+    // Get admin DB
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      console.error('Admin DB not initialized');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    // Initialize services with admin DB
+    const tripService = new TripServiceAdminV2(adminDb);
+    const tripModel = new TripModelAdminV2(adminDb);
 
     try {
       // First check if the trip exists and user has access
