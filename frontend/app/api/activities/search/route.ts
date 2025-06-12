@@ -87,6 +87,107 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    const userId = authHeader?.startsWith('Bearer ') ? 
+      await verifyIdToken(authHeader.split('Bearer ')[1]).then(token => token?.uid) : 
+      null;
+
+    // Parse request body
+    const body = await request.json();
+    const {
+      location,
+      activityType,
+      searchQuery,
+      budget,
+      date,
+      timeOfDay,
+      preferIndoorActivities,
+      preferOutdoorActivities,
+      familyFriendly
+    } = body;
+
+    if (!location || !location.lat || !location.lng) {
+      return NextResponse.json({ error: 'Location coordinates required' }, { status: 400 });
+    }
+
+    // Map activity type to Google Places types
+    const typesMap: Record<string, string[]> = {
+      'sightseeing': ['tourist_attraction', 'museum', 'art_gallery', 'point_of_interest'],
+      'dining': ['restaurant', 'cafe', 'bar'],
+      'accommodation': ['lodging', 'hotel'],
+      'shopping': ['shopping_mall', 'store'],
+      'entertainment': ['movie_theater', 'night_club', 'casino', 'amusement_park'],
+      'activity': ['park', 'zoo', 'aquarium', 'stadium']
+    };
+
+    const types = activityType ? typesMap[activityType] || [] : [];
+
+    // Search activities
+    const [googleResults, expertRecommendations, novatrekActivities] = await Promise.all([
+      searchGooglePlaces({
+        query: searchQuery || activityType || '',
+        location,
+        radius: 5000,
+        types,
+        minRating: 3.5
+      }),
+      searchExpertRecommendations({
+        query: searchQuery || activityType || '',
+        location,
+        types,
+        radius: 5000
+      }),
+      searchNovatrekActivities({
+        query: searchQuery || activityType || '',
+        types
+      })
+    ]);
+
+    // Combine and filter results
+    let activities = [...expertRecommendations, ...novatrekActivities, ...googleResults];
+
+    // Apply filters
+    if (preferIndoorActivities) {
+      activities = activities.filter(a => 
+        a.types?.some((t: string) => ['museum', 'art_gallery', 'shopping_mall', 'movie_theater'].includes(t))
+      );
+    } else if (preferOutdoorActivities) {
+      activities = activities.filter(a => 
+        a.types?.some((t: string) => ['park', 'zoo', 'tourist_attraction', 'stadium'].includes(t))
+      );
+    }
+
+    if (familyFriendly) {
+      activities = activities.filter(a => 
+        !a.types?.some((t: string) => ['bar', 'night_club', 'casino'].includes(t))
+      );
+    }
+
+    // Sort by relevance (expert recommendations first, then by rating)
+    activities.sort((a, b) => {
+      if (a.expertRecommended && !b.expertRecommended) return -1;
+      if (!a.expertRecommended && b.expertRecommended) return 1;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+
+    return NextResponse.json({
+      activities: activities.slice(0, 50),
+      hasRecommendations: activities.some(a => a.expertRecommended),
+      weather: null // Weather service not implemented yet
+    });
+
+  } catch (error) {
+    console.error('Activity search POST error:', error);
+    return NextResponse.json(
+      { error: 'Failed to search activities' },
+      { status: 500 }
+    );
+  }
+}
+
 async function searchGooglePlaces(params: any) {
   try {
     const searchParams = new URLSearchParams();
