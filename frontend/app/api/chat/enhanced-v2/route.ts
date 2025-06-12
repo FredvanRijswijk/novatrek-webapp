@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
       }
     
+    console.log('Trip data loaded:', {
+      tripId: fullTripData.trip.id,
+      title: fullTripData.trip.title,
+      name: fullTripData.trip.name,
+      destinationName: fullTripData.trip.destinationName,
+      destinationCoordinates: fullTripData.trip.destinationCoordinates,
+      startDate: fullTripData.trip.startDate,
+      endDate: fullTripData.trip.endDate
+    });
+    
     console.log('Trip days loaded:', {
       count: fullTripData.days.length,
       dates: fullTripData.days.map(d => ({ 
@@ -100,11 +110,20 @@ export async function POST(request: NextRequest) {
     // Build trip context with V2 structure
     const tripContext = buildTripContext(fullTripData, preferencesData);
     
+    console.log('Built trip context:', {
+      destination: tripContext.trip.destination,
+      destinationCoordinates: tripContext.trip.destinationCoordinates
+    });
+    
     // Create tool context with V2 structure
     const toolContext: ToolContext = {
       userId,
       user: userData,
-      trip: fullTripData.trip,
+      trip: {
+        ...fullTripData.trip,
+        destinationCoordinates: tripContext.trip.destinationCoordinates,
+        destinationName: tripContext.trip.destination
+      },
       tripDays: fullTripData.days,
       preferences: preferencesData,
       currentDate,

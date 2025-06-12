@@ -14,7 +14,11 @@ export interface DayWithActivities extends DayV2 {
 export interface ToolContext {
   userId: string;
   user: User;
-  trip: Trip | TripV2; // Support both V1 and V2 structures
+  trip: (Trip | TripV2) & {
+    // Ensure these fields are available for tools
+    destinationCoordinates?: { lat: number; lng: number };
+    destinationName?: string;
+  };
   tripDays: TripDay[] | DayWithActivities[]; // Support both structures
   preferences: TravelPreferences;
   currentDate?: string;
