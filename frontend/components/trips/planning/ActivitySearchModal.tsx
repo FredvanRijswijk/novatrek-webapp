@@ -207,6 +207,12 @@ export function ActivitySearchModal({
         return '🏛️';
       case 'dining':
         return '🍽️';
+      case 'breakfast':
+        return '🥐';
+      case 'lunch':
+        return '🥗';
+      case 'dinner':
+        return '🍽️';
       case 'activity':
         return '🎯';
       case 'accommodation':

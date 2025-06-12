@@ -188,10 +188,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function mapGoogleTypesToActivityType(types: string[]): string {
+function mapGoogleTypesToActivityType(types: string[], name?: string): string {
   if (!types || types.length === 0) return 'activity';
   
-  // Check for dining types first (most specific)
+  // Check name for meal-specific keywords
+  const lowerName = name?.toLowerCase() || '';
+  if (lowerName.includes('breakfast') || lowerName.includes('brunch') || types.includes('breakfast_restaurant')) {
+    return 'breakfast';
+  }
+  if (lowerName.includes('lunch')) {
+    return 'lunch';
+  }
+  if (lowerName.includes('dinner') || lowerName.includes('supper')) {
+    return 'dinner';
+  }
+  
+  // Check for dining types (generic)
   const diningTypes = ['restaurant', 'cafe', 'bar', 'food', 'meal_delivery', 'meal_takeaway', 'bakery'];
   if (types.some(t => diningTypes.includes(t))) return 'dining';
   
@@ -247,7 +259,7 @@ async function searchGooglePlaces(params: any) {
       id: place.place_id,
       name: place.name,
       description: place.editorial_summary?.text,
-      type: mapGoogleTypesToActivityType(place.types),
+      type: mapGoogleTypesToActivityType(place.types, place.name),
       location: {
         lat: place.geometry.location.lat,
         lng: place.geometry.location.lng,
@@ -312,7 +324,7 @@ async function searchExpertRecommendations(params: any) {
         id: doc.id,
         name: data.name,
         description: data.description,
-        type: mapGoogleTypesToActivityType(data.categories || []),
+        type: mapGoogleTypesToActivityType(data.categories || [], data.name),
         location: data.location,
         rating: data.expertRating || 5,
         expertRating: data.expertRating,
@@ -370,7 +382,7 @@ async function searchNovatrekActivities(params: any) {
         id: doc.id,
         name: data.name,
         description: data.description,
-        type: mapGoogleTypesToActivityType(data.types || []),
+        type: mapGoogleTypesToActivityType(data.types || [], data.name),
         location: data.location,
         rating: data.rating,
         reviews: data.reviewCount,

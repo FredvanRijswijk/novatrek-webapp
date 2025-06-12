@@ -46,6 +46,9 @@ export function ActivityDetailsModal({
     const icons: Record<string, string> = {
       sightseeing: '🏛️',
       dining: '🍽️',
+      breakfast: '🥐',
+      lunch: '🥗', 
+      dinner: '🍽️',
       activity: '🎯',
       shopping: '🛍️',
       entertainment: '🎭',
@@ -66,7 +69,21 @@ export function ActivityDetailsModal({
         </DialogHeader>
         {/* Header with image */}
         <div className="relative h-64 bg-muted">
-          {activity.images && activity.images.length > 0 && !imageError[activity.images[0].url] ? (
+          {/* Try photos first (from Google Places), then images */}
+          {(activity.photos && activity.photos.length > 0) ? (
+            <img
+              src={`/api/places/photo?name=${activity.photos[0].reference}&maxWidth=800&maxHeight=400`}
+              alt={activity.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to icon if photo fails
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><span class="text-6xl">${getActivityIcon(activity.type)}</span></div>`;
+                }
+              }}
+            />
+          ) : activity.images && activity.images.length > 0 && !imageError[activity.images[0].url] ? (
             <img
               src={activity.images[0].url}
               alt={activity.name}
@@ -124,25 +141,41 @@ export function ActivityDetailsModal({
             {/* Title and basic info */}
             <div>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{activity.name}</h2>
-                  {activity.rating && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{activity.rating}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-bold">{activity.name}</h2>
+                    {activity.type && (
+                      <Badge variant="secondary" className="text-sm">
+                        {getActivityIcon(activity.type)} {activity.type}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {activity.rating && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium">{activity.rating}</span>
+                        </div>
+                        {activity.reviewCount && (
+                          <span className="text-sm text-muted-foreground">
+                            ({activity.reviewCount} reviews)
+                          </span>
+                        )}
                       </div>
-                      {activity.reviewCount && (
-                        <span className="text-sm text-muted-foreground">
-                          ({activity.reviewCount} reviews)
-                        </span>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {activity.priceLevel && (
+                      <span className="text-sm text-muted-foreground">
+                        {'$'.repeat(activity.priceLevel)}
+                      </span>
+                    )}
+                    {activity.isOpenNow !== undefined && (
+                      <Badge variant={activity.isOpenNow ? "success" : "secondary"} className="text-xs">
+                        {activity.isOpenNow ? 'Open now' : 'Closed'}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <Badge variant="outline" className="shrink-0">
-                  {getActivityIcon(activity.type)} {activity.type}
-                </Badge>
               </div>
 
               {/* Tags */}
