@@ -74,15 +74,23 @@ export abstract class BaseModelV2<T extends BaseDocument> {
    * Get a document by ID
    */
   async getById(id: string, pathIds?: string[]): Promise<T | null> {
-    const docRef = doc(this.getCollection(pathIds), id);
-    const docSnap = await getDoc(docRef);
-    
-    if (!docSnap.exists()) {
-      return null;
+    try {
+      const docRef = doc(this.getCollection(pathIds), id);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        return null;
+      }
+      
+      const data = { id: docSnap.id, ...docSnap.data() } as T;
+      return convertTimestampsToDates(data);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        console.error('Permission denied accessing document:', { id, pathIds, collection: this.collectionPath });
+        return null;
+      }
+      throw error;
     }
-    
-    const data = { id: docSnap.id, ...docSnap.data() } as T;
-    return convertTimestampsToDates(data);
   }
 
   /**
@@ -115,27 +123,35 @@ export abstract class BaseModelV2<T extends BaseDocument> {
     ordering?: ReturnType<typeof orderBy>,
     limitCount?: number
   ): Promise<T[]> {
-    let q: Query = this.getCollection(pathIds);
-    
-    if (filters) {
-      filters.forEach(filter => {
-        q = query(q, filter);
+    try {
+      let q: Query = this.getCollection(pathIds);
+      
+      if (filters) {
+        filters.forEach(filter => {
+          q = query(q, filter);
+        });
+      }
+      
+      if (ordering) {
+        q = query(q, ordering);
+      }
+      
+      if (limitCount) {
+        q = query(q, firestoreLimit(limitCount));
+      }
+      
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => {
+        const data = { id: doc.id, ...doc.data() } as T;
+        return convertTimestampsToDates(data);
       });
+    } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        console.error('Permission denied listing documents:', { pathIds, collection: this.collectionPath });
+        return [];
+      }
+      throw error;
     }
-    
-    if (ordering) {
-      q = query(q, ordering);
-    }
-    
-    if (limitCount) {
-      q = query(q, firestoreLimit(limitCount));
-    }
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
-      const data = { id: doc.id, ...doc.data() } as T;
-      return convertTimestampsToDates(data);
-    });
   }
 
   /**

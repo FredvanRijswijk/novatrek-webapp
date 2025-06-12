@@ -58,11 +58,22 @@ export async function POST(request: NextRequest) {
       }
 
       // Load trip and user data using V2 structure
-      const [fullTripData, userData, preferencesData] = await Promise.all([
-        tripService.getFullTrip(tripId),
-        loadUser(userId),
-        loadPreferences(userId)
-      ]);
+      console.log('Loading trip data for:', { tripId, userId });
+      
+      let fullTripData, userData, preferencesData;
+      try {
+        [fullTripData, userData, preferencesData] = await Promise.all([
+          tripService.getFullTrip(tripId),
+          loadUser(userId),
+          loadPreferences(userId)
+        ]);
+      } catch (loadError: any) {
+        console.error('Error loading data:', loadError);
+        if (loadError?.code === 'permission-denied' || loadError?.message?.includes('Missing or insufficient permissions')) {
+          return NextResponse.json({ error: 'Missing or insufficient permissions.' }, { status: 403 });
+        }
+        throw loadError;
+      }
 
       if (!fullTripData) {
         console.error('Trip not found after access check:', { tripId });
