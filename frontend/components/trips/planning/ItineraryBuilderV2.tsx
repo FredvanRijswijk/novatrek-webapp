@@ -578,6 +578,7 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
         onClose={() => setIsAddingActivity(false)}
         onSelect={handleSelectActivity}
         destination={trip.destinationName || trip.destinations?.[0]?.destination?.name || 'Unknown'}
+        location={trip.destinationCoordinates}
         tripId={trip.id}
         date={parseDate(selectedDay.date)}
       />
