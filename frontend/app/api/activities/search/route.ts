@@ -238,6 +238,11 @@ async function searchGooglePlaces(params: any) {
     const response = await fetch(url);
     const data = await response.json();
     
+    // Debug log first result's photo data
+    if (data.results?.[0]?.photos) {
+      console.log('Google Places photo data:', JSON.stringify(data.results[0].photos[0], null, 2));
+    }
+    
     return data.results?.map((place: any) => ({
       id: place.place_id,
       name: place.name,

@@ -508,7 +508,7 @@ export function ActivitySearchModal({
                     {activity.photos && activity.photos.length > 0 && (
                       <div className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-muted">
                         <img
-                          src={`/api/places/photo?reference=${activity.photos[0].reference}&maxwidth=200`}
+                          src={`/api/places/photo?name=${activity.photos[0].reference}&maxWidth=200&maxHeight=200`}
                           alt={activity.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {
