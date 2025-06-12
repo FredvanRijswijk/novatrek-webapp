@@ -285,6 +285,64 @@ export function TripCreationWizard() {
         }
       }
 
+      // Extract destination name and coordinates for V2 structure
+      let destinationName = '';
+      let destinationCoordinates = null;
+      let destinationId = '';
+      
+      if (hasMultipleDestinations && formData.destinations.length > 0) {
+        // Use first destination for main trip location
+        const firstDest = formData.destinations.find((d: any) => d.destination);
+        if (firstDest?.destination) {
+          destinationName = firstDest.destination.name || '';
+          destinationId = firstDest.destination.id || firstDest.destination.place_id || '';
+          // Check for coordinates in the destination object
+          if (firstDest.destination.coordinates) {
+            destinationCoordinates = {
+              lat: firstDest.destination.coordinates.lat,
+              lng: firstDest.destination.coordinates.lng
+            };
+          } else if (firstDest.destination.geometry?.location) {
+            // Fallback to geometry.location from Google Places
+            const loc = firstDest.destination.geometry.location;
+            // Handle both function and direct value cases
+            destinationCoordinates = {
+              lat: typeof loc.lat === 'function' ? loc.lat() : loc.lat,
+              lng: typeof loc.lng === 'function' ? loc.lng() : loc.lng
+            };
+          }
+        }
+      } else if (formData.destination) {
+        // Use city name if available, otherwise fall back to name
+        destinationName = formData.destination.city || formData.destination.name || '';
+        destinationId = formData.destination.id || formData.destination.place_id || '';
+        // Check for coordinates in the destination object first
+        if (formData.destination.coordinates) {
+          destinationCoordinates = {
+            lat: formData.destination.coordinates.lat,
+            lng: formData.destination.coordinates.lng
+          };
+        } else if (formData.destination.geometry?.location) {
+          // Fallback to geometry.location from Google Places
+          const loc = formData.destination.geometry.location;
+          // Handle both function and direct value cases
+          destinationCoordinates = {
+            lat: typeof loc.lat === 'function' ? loc.lat() : loc.lat,
+            lng: typeof loc.lng === 'function' ? loc.lng() : loc.lng
+          };
+        }
+      }
+      
+      // Log the extracted data for debugging
+      console.log('Trip creation V2 fields:', {
+        destinationName,
+        destinationCoordinates,
+        destinationId,
+        hasCoordinates: !!formData.destination?.coordinates,
+        hasGeometry: !!formData.destination?.geometry,
+        destination: formData.destination
+      });
+
       const tripData: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
         title: tripTitle,
@@ -296,6 +354,10 @@ export function TripCreationWizard() {
           departureDate: d.departureDate,
           order: d.order
         })) : undefined,
+        // Add V2 fields
+        destinationName,
+        destinationCoordinates,
+        destinationId,
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: {
@@ -324,6 +386,14 @@ export function TripCreationWizard() {
         itinerary: [],
         status: 'planning'
       };
+      
+      // Log the trip data before sending
+      console.log('Trip data to be created:', {
+        destinationName: tripData.destinationName,
+        destinationCoordinates: tripData.destinationCoordinates,
+        destinationId: tripData.destinationId,
+        fullData: tripData
+      });
 
       const tripId = await TripModel.create(tripData);
       

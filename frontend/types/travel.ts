@@ -82,6 +82,10 @@ export interface Trip {
   description?: string
   destination?: Destination // Keep for backward compatibility
   destinations?: TripDestination[] // New multi-destination support
+  // V2 fields for better performance and AI integration
+  destinationName?: string
+  destinationCoordinates?: { lat: number; lng: number }
+  destinationId?: string
   startDate: Date
   endDate: Date
   budget?: Budget
