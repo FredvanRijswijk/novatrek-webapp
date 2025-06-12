@@ -76,7 +76,7 @@ export function TripCreationWizard() {
     travelStyle: 'mid-range',
     accommodationType: 'any',
     activityTypes: [],
-    budgetRange: { min: 1000, max: 5000, currency: 'USD' },
+    budgetRange: { min: 1000, max: 5000, currency: 'EUR' },
     aiSuggestions: [],
     selectedSuggestions: [],
     customRequests: ''
