@@ -503,7 +503,21 @@ export function ActivitySearchModal({
                     </div>
                   )}
                   
-                  <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    {/* Activity Image */}
+                    {activity.photos && activity.photos.length > 0 && (
+                      <div className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={`/api/places/photo?reference=${activity.photos[0].reference}&maxwidth=200`}
+                          alt={activity.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-2xl">{getActivityIcon(activity.type)}</span>

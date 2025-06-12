@@ -240,11 +240,11 @@ export function ActivityDetailsModal({
             </div>
 
             {/* Opening hours if available */}
-            {activity.openingHours && (
+            {activity.openingHours && Array.isArray(activity.openingHours) && activity.openingHours.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2">Opening Hours</h3>
                 <div className="space-y-1">
-                  {activity.openingHours.map((hours, index) => (
+                  {activity.openingHours.map((hours: string, index: number) => (
                     <p key={index} className="text-sm text-muted-foreground">{hours}</p>
                   ))}
                 </div>
