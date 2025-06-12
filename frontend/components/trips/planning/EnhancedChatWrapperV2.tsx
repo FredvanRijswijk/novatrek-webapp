@@ -18,7 +18,7 @@ interface EnhancedChatWrapperV2Props {
 }
 
 export function EnhancedChatWrapperV2({ trip, fullTripData, onUpdate }: EnhancedChatWrapperV2Props) {
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('all');
   
   // Debug logging for trip structure
   console.log('EnhancedChatWrapperV2 - trip data:', {
@@ -85,7 +85,7 @@ export function EnhancedChatWrapperV2({ trip, fullTripData, onUpdate }: Enhanced
                 <SelectValue placeholder="Select a day to plan" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All days</SelectItem>
+                <SelectItem value="all">All days</SelectItem>
                 {dateOptions.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center justify-between w-full">
@@ -106,7 +106,7 @@ export function EnhancedChatWrapperV2({ trip, fullTripData, onUpdate }: Enhanced
       <CardContent className="flex-1 p-0">
         <EnhancedTravelChat 
           tripId={trip.id}
-          currentDate={selectedDate}
+          currentDate={selectedDate === 'all' ? '' : selectedDate}
           onActivityAdded={handleActivityAdded}
           className="h-full"
         />
