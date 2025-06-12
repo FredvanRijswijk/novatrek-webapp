@@ -66,9 +66,12 @@ export class DayModelV2 extends BaseModelV2<DayV2> {
     dayId: string,
     stats: Partial<DayV2['stats']>
   ): Promise<void> {
+    console.log('updateStats called with:', { tripId, dayId, stats });
+    
     const currentDay = await this.getById(dayId, [tripId]);
     if (!currentDay) {
-      throw new Error('Day not found');
+      console.error('Day not found in updateStats:', { tripId, dayId });
+      throw new Error(`Day not found: dayId=${dayId}, tripId=${tripId}`);
     }
     
     await this.update(dayId, {
