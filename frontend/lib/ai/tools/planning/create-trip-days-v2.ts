@@ -25,8 +25,9 @@ export const createTripDaysV2Tool: TravelTool<z.infer<typeof createTripDaysParam
   requiresAuth: true,
   
   async execute(params, context) {
-    const dayModel = new DayModelV2();
-    const tripModel = new TripModelV2();
+    // Use admin services from context if available, otherwise create client instances
+    const dayModel = context.adminServices?.dayModel || new DayModelV2();
+    const tripModel = context.adminServices?.tripService || new TripModelV2();
     
     try {
       const { mode, specificDates, includeNotes } = params;

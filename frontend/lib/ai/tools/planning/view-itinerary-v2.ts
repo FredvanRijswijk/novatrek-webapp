@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { TravelTool, ToolContext, ToolResult } from '../types';
-import { TripServiceV2 } from '@/lib/services/trip-service-v2';
 import { format } from 'date-fns';
 
 const viewItineraryParams = z.object({
@@ -18,11 +17,17 @@ interface ItineraryViewResult {
       location: string;
       duration: number;
       cost?: number;
+      bookingRequired?: boolean;
     }>;
     accommodations: any[];
     transportation: any[];
     totalCost: number;
     notes?: string;
+    stats: {
+      busyPercentage: number;
+      totalActivities: number;
+      totalDuration: number;
+    };
   }>;
   summary: {
     totalDays: number;
@@ -49,19 +54,21 @@ export const viewItineraryV2Tool: TravelTool<z.infer<typeof viewItineraryParams>
   requiresAuth: true,
   
   async execute(params, context) {
-    const tripService = new TripServiceV2();
-    
     try {
       const { format, includeEmptyDays } = params;
       
-      // Get full trip data with V2 structure
-      const fullTrip = await tripService.getFullTrip(context.trip.id);
-      if (!fullTrip) {
+      // Use trip data from context (already loaded with admin privileges)
+      if (!context.trip || !context.tripDays) {
         return {
           success: false,
-          error: 'Failed to load trip data'
+          error: 'Trip data not available in context'
         };
       }
+      
+      const fullTrip = {
+        trip: context.trip,
+        days: context.tripDays
+      };
       
       const result: ItineraryViewResult = {
         days: [],
@@ -92,20 +99,33 @@ export const viewItineraryV2Tool: TravelTool<z.infer<typeof viewItineraryParams>
         
         result.summary.totalActivities += day.activities.length;
         
+        // Calculate busy percentage for the day
+        const totalActivityMinutes = day.activities.reduce((sum, activity) => 
+          sum + (activity.duration || 120), 0
+        );
+        const activeHours = 12 * 60; // 12 hours in minutes
+        const busyPercentage = Math.round((totalActivityMinutes / activeHours) * 100);
+        
         const dayData = {
           date: day.date,
           dayNumber: day.dayNumber,
           activities: day.activities.map(activity => ({
             time: activity.startTime || activity.time || '09:00',
             name: activity.name,
-            location: activity.location.address,
+            location: activity.location?.address || '',
             duration: activity.duration || 120,
-            cost: activity.cost?.amount
+            cost: activity.cost?.amount,
+            bookingRequired: activity.bookingRequired || false
           })).sort((a, b) => a.time.localeCompare(b.time)),
           accommodations: day.accommodations || [],
           transportation: day.transportation || [],
           totalCost: day.stats?.totalCost || 0,
-          notes: day.notes
+          notes: day.notes,
+          stats: {
+            busyPercentage: Math.min(100, busyPercentage),
+            totalActivities: day.activities.length,
+            totalDuration: totalActivityMinutes
+          }
         };
         
         result.summary.totalCost += dayData.totalCost;

@@ -194,12 +194,18 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
   const dayModel = new DayModelV2();
   const tripService = new TripServiceV2();
 
-  // Select first day by default
+  // Select first day by default and sync selected day when days change
   useEffect(() => {
     if (!selectedDay && days.length > 0) {
       setSelectedDay(days[0]);
+    } else if (selectedDay) {
+      // Update selected day with fresh data when days change
+      const updatedDay = days.find(d => d.id === selectedDay.id);
+      if (updatedDay) {
+        setSelectedDay(updatedDay);
+      }
     }
-  }, [days, selectedDay]);
+  }, [days]);
 
   const getActivityTypeColor = (type: string) => {
     const colors: Record<string, string> = {

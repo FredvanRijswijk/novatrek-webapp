@@ -30,6 +30,12 @@ export interface ToolContext {
     remaining: number;
     categories: Record<string, number>;
   };
+  // Admin services for tools that need write access
+  adminServices?: {
+    tripService: any; // TripServiceAdminV2
+    dayModel: any; // DayModelAdminV2
+    activityModel: any; // ActivityModelAdminV2
+  };
 }
 
 export interface ToolResult<T = any> {

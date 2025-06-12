@@ -382,6 +382,7 @@ export default function TripPlanningPage() {
                   <CardContent>
                     {activeTab === 'itinerary' && fullTripData && (
                       <ItineraryBuilder 
+                        key={`itinerary-${fullTripData.days.reduce((sum, d) => sum + d.activities.length, 0)}`}
                         fullTripData={fullTripData} 
                         onUpdate={async () => {
                           // Reload trip data after update

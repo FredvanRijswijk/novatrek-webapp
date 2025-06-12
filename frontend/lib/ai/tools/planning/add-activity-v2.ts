@@ -48,9 +48,11 @@ export const addActivityV2Tool: TravelTool<z.infer<typeof addActivityParams>, Ad
   
   async execute(params, context) {
     const startTime = Date.now();
-    const tripService = new TripServiceV2();
-    const activityModel = new ActivityModelV2();
-    const dayModel = new DayModelV2();
+    
+    // Use admin services from context if available, otherwise create client instances
+    const tripService = context.adminServices?.tripService || new TripServiceV2();
+    const activityModel = context.adminServices?.activityModel || new ActivityModelV2();
+    const dayModel = context.adminServices?.dayModel || new DayModelV2();
     
     try {
       const { activity, date, time, notes, autoOptimize } = params;
@@ -232,7 +234,7 @@ async function findOptimalTimeSlot(
   tripId: string,
   dayId: string,
   duration: number,
-  activityModel: ActivityModelV2,
+  activityModel: ActivityModelV2 | any, // Support both client and admin versions
   preferences: any
 ): Promise<string | null> {
   const activities = await activityModel.getDayActivities(tripId, dayId);

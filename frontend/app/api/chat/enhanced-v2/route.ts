@@ -7,6 +7,8 @@ import { toolRegistry, registerAllTools } from '@/lib/ai/tools';
 import { ToolContext } from '@/lib/ai/tools/types';
 import { TripServiceAdminV2 } from '@/lib/services/trip-service-admin-v2';
 import { TripModelAdminV2 } from '@/lib/models/v2/admin/trip-model-admin-v2';
+import { DayModelAdminV2 } from '@/lib/models/v2/admin/day-model-admin-v2';
+import { ActivityModelAdminV2 } from '@/lib/models/v2/admin/activity-model-admin-v2';
 import { normalizeDate } from '@/lib/utils/date-helpers';
 
 // Initialize tools
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
     // Initialize services with admin DB
     const tripService = new TripServiceAdminV2(adminDb);
     const tripModel = new TripModelAdminV2(adminDb);
+    const dayModel = new DayModelAdminV2(adminDb);
+    const activityModel = new ActivityModelAdminV2(adminDb);
 
     try {
       // First check if the trip exists and user has access
@@ -128,7 +132,12 @@ export async function POST(request: NextRequest) {
       preferences: preferencesData,
       currentDate,
       weather: tripContext.weather,
-      budget: tripContext.budget
+      budget: tripContext.budget,
+      adminServices: {
+        tripService,
+        dayModel,
+        activityModel
+      }
     };
 
     // Get available tools for this user
