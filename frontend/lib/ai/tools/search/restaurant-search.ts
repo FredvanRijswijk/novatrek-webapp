@@ -33,6 +33,15 @@ export const restaurantSearchTool: TravelTool<z.infer<typeof restaurantSearchPar
   
   async execute(params, context) {
     try {
+      // Use trip destination coordinates if location not provided
+      const location = params.location || context.trip.destinationCoordinates;
+      if (!location) {
+        return {
+          success: false,
+          error: 'Location required. Please provide coordinates or ensure trip has destination set.'
+        };
+      }
+      
       // Build intelligent query based on context
       const query = buildRestaurantQuery(params, context);
       
@@ -40,7 +49,7 @@ export const restaurantSearchTool: TravelTool<z.infer<typeof restaurantSearchPar
       const [googleResults, expertRecs, novatrekFavorites] = await Promise.all([
         searchGooglePlacesDirectly({
           query,
-          location: params.location,
+          location,
           radius: params.radius,
           types: ['restaurant'],
           minRating: params.minRating,
@@ -49,7 +58,7 @@ export const restaurantSearchTool: TravelTool<z.infer<typeof restaurantSearchPar
         }),
         searchExpertRecommendationsDirectly({
           type: 'restaurant',
-          location: params.location,
+          location,
           radius: params.radius,
           types: ['restaurant']
         }),

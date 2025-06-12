@@ -35,8 +35,12 @@ export const activitySearchTool: TravelTool<z.infer<typeof activitySearchParams>
       // Determine location to search
       let searchLocation = params.location;
       if (!searchLocation) {
-        // Try destinations array first
-        if (context.trip.destinations?.[0]) {
+        // Try V2 structure first
+        if (context.trip.destinationCoordinates) {
+          searchLocation = context.trip.destinationCoordinates;
+        }
+        // Try destinations array
+        else if (context.trip.destinations?.[0]) {
           const dest = context.trip.destinations[0];
           if (dest.coordinates) {
             searchLocation = {

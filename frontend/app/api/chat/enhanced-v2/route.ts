@@ -221,7 +221,8 @@ function buildTripContext(fullTripData: any, preferences: any) {
     trip: {
       id: trip.id,
       name: trip.name || trip.title,
-      destination: trip.destination?.name || trip.destinations?.[0]?.destination?.name,
+      destination: trip.destinationName || trip.destination?.name || trip.destinations?.[0]?.destination?.name || 'Unknown',
+      destinationCoordinates: trip.destinationCoordinates,
       startDate: trip.startDate,
       endDate: trip.endDate,
       travelers: trip.travelers
@@ -266,6 +267,11 @@ function buildSystemPrompt(tripContext: any, preferences: any, currentDate?: str
 
 ## Trip Context:
 ${JSON.stringify(tripContext, null, 2)}
+
+## Destination Coordinates:
+${tripContext.trip.destinationCoordinates ? 
+  `Latitude: ${tripContext.trip.destinationCoordinates.lat}, Longitude: ${tripContext.trip.destinationCoordinates.lng}` : 
+  'Not available - ask user for specific location'}
 
 ## User Preferences:
 ${preferences ? JSON.stringify(preferences, null, 2) : 'No preferences set'}
