@@ -393,11 +393,9 @@ export function PackingChecklist({ tripId, trip, onClose }: PackingChecklistProp
           <div className="space-y-2">
             <h3 className="text-xl font-semibold">Creating Your Perfect Packing List</h3>
             <p className="text-muted-foreground">
-              {trip && trip.destinations && trip.destinations.length > 0 
-                ? `Analyzing your ${trip.duration || ''} day journey to ${trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')}`
-                : trip && trip.destination 
-                  ? `Analyzing your ${trip.duration || ''} day trip to ${trip.destination.name}`
-                  : 'Preparing your customized packing list'
+              {trip && trip.destinationName 
+                ? `Analyzing your ${trip.duration || ''} day trip to ${trip.destinationName}`
+                : 'Preparing your customized packing list'
               }
             </p>
             <p className="text-sm text-muted-foreground">

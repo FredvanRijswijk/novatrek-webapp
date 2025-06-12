@@ -70,6 +70,7 @@ export function ActivitySearchModal({
   const [locationPreference, setLocationPreference] = useState<'all' | 'indoor' | 'outdoor'>('all');
   const [familyPreference, setFamilyPreference] = useState<'all' | 'family' | 'adults'>('all');
   const [weather, setWeather] = useState<any>(null);
+  const [weatherRecommendation, setWeatherRecommendation] = useState<any>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [hasRecommendations, setHasRecommendations] = useState(false);
 
@@ -150,15 +151,18 @@ export function ActivitySearchModal({
       // Set weather data if available
       if (data.weather) {
         setWeather(data.weather);
+        setWeatherRecommendation(data.weatherRecommendation);
         
-        // Auto-set preference based on weather if not already set
-        if (locationPreference === 'all') {
-          if (data.weather.recommendation?.preferIndoor && 
-              data.weather.recommendation.severity === 'high') {
+        // Auto-set preference based on weather recommendation if not already set
+        if (locationPreference === 'all' && data.weatherRecommendation) {
+          const recommendation = data.weatherRecommendation;
+          
+          if (recommendation.preferIndoor && recommendation.severity === 'high') {
             setLocationPreference('indoor');
-            toast.info(`${data.weather.recommendation.reason} - showing indoor activities first`);
-          } else if (!data.weather.recommendation?.preferIndoor && 
-                     data.weather.condition === 'clear') {
+            toast.info(`${recommendation.reason} - showing indoor activities first`);
+          } else if (!recommendation.preferIndoor && 
+                     data.weather.condition === 'Clear' && 
+                     recommendation.severity === 'low') {
             // Suggest outdoor activities on nice days
             toast.info('Perfect weather for outdoor activities!');
           }
@@ -197,6 +201,7 @@ export function ActivitySearchModal({
       setLocationPreference('all');
       setFamilyPreference('all');
       setWeather(null);
+      setWeatherRecommendation(null);
       setSelectedActivity(null);
     }
   }, [isOpen]);
@@ -262,11 +267,11 @@ export function ActivitySearchModal({
   };
 
   const getWeatherBasedSuggestion = () => {
-    if (!weather) return null;
+    if (!weatherRecommendation) return null;
     
-    if (weather.recommendation?.preferIndoor && weather.recommendation.severity === 'high') {
+    if (weatherRecommendation.preferIndoor && weatherRecommendation.severity === 'high') {
       return 'indoor';
-    } else if (weather.condition === 'clear' || weather.condition === 'clouds') {
+    } else if (!weatherRecommendation.preferIndoor && weatherRecommendation.severity === 'low') {
       return 'outdoor';
     }
     return null;
@@ -402,15 +407,15 @@ export function ActivitySearchModal({
               <div className="space-y-3">
                 <Alert className={cn(
                   "py-2",
-                  weather.recommendation?.preferIndoor ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
+                  weatherRecommendation?.preferIndoor ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
                 )}>
                   <div className="flex items-center gap-2">
                     {getWeatherIcon()}
                     <AlertDescription className="flex-1">
                       <span className="font-medium">{weather.temperature}°C</span> - {weather.description}
-                      {weather.recommendation?.reason && (
+                      {weatherRecommendation?.reason && (
                         <span className="ml-2 text-muted-foreground">
-                          ({weather.recommendation.reason})
+                          ({weatherRecommendation.reason})
                         </span>
                       )}
                     </AlertDescription>

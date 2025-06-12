@@ -248,10 +248,7 @@ export default function TripPlanningPage() {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {trip.destinations && trip.destinations.length > 0
-                      ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                      : trip.destination?.name || 'Unknown location'
-                    }
+                    {trip.destinationName || 'Unknown location'}
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -497,12 +494,9 @@ export default function TripPlanningPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium">Destination{trip.destinations && trip.destinations.length > 1 ? 's' : ''}</p>
+                  <p className="text-sm font-medium">Destination</p>
                   <p className="text-sm text-muted-foreground">
-                    {trip.destinations && trip.destinations.length > 0
-                      ? trip.destinations.map(d => d.destination?.name).filter(Boolean).join(' → ')
-                      : trip.destination?.name || 'Unknown location'
-                    }
+                    {trip.destinationName || 'Unknown location'}
                   </p>
                 </div>
                 <div>

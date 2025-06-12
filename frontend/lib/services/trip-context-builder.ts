@@ -99,17 +99,11 @@ export class TripContextBuilder {
   }
 
   private getDestinationName(): string {
-    if (this.trip.destinations && this.trip.destinations.length > 0) {
-      return this.trip.destinations.map(d => d.destination?.name).filter(Boolean).join(', ');
-    }
-    return this.trip.destination?.name || 'Unknown';
+    return this.trip.destinationName || 'Unknown';
   }
 
   private getDestinations(): string[] {
-    if (this.trip.destinations && this.trip.destinations.length > 0) {
-      return this.trip.destinations.map(d => d.destination?.name).filter(Boolean) as string[];
-    }
-    return this.trip.destination?.name ? [this.trip.destination.name] : [];
+    return this.trip.destinationName ? [this.trip.destinationName] : [];
   }
 
   private getTravelType(): 'solo' | 'couple' | 'family' | 'friends' | 'group' {
@@ -428,14 +422,14 @@ export class TripContextBuilder {
   }
 
   private getCurrentDestinationInfo() {
-    const destination = this.trip.destination || this.trip.destinations?.[0]?.destination;
-    if (!destination) return undefined;
+    // V2 only uses destinationCoordinates and other trip-level fields
+    if (!this.trip.destinationCoordinates) return undefined;
     
     return {
-      timezone: destination.timeZone || 'UTC',
-      currency: destination.currency || 'USD',
-      language: destination.language || ['English'],
-      coordinates: destination.coordinates
+      timezone: 'UTC', // V2 doesn't have timezone info yet
+      currency: 'USD', // V2 doesn't have currency info yet
+      language: ['English'], // V2 doesn't have language info yet
+      coordinates: this.trip.destinationCoordinates
     };
   }
 

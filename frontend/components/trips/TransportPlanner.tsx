@@ -125,20 +125,12 @@ export function TransportPlanner({ trip, onUpdate }: TransportPlannerProps) {
     }
   }
 
-  // Get default locations based on trip destinations
+  // Get default locations based on trip destination
   const getDefaultLocations = () => {
-    if (trip.destinations && trip.destinations.length > 1) {
-      return {
-        from: trip.destinations[0].destination?.name || '',
-        to: trip.destinations[1].destination?.name || ''
-      }
-    } else if (trip.destination) {
-      return {
-        from: '',
-        to: trip.destination.name || ''
-      }
+    return {
+      from: '',
+      to: trip.destinationName || ''
     }
-    return { from: '', to: '' }
   }
 
   // Group segments by date

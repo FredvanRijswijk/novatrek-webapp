@@ -52,13 +52,6 @@ export type ActivityType =
   | 'sports'
   | 'photography'
 
-export interface TripDestination {
-  destination: Destination
-  arrivalDate: Date
-  departureDate: Date
-  order: number
-}
-
 export interface TripPhoto {
   id: string
   url: string
@@ -80,9 +73,7 @@ export interface Trip {
   userId: string
   title: string
   description?: string
-  destination?: Destination // Keep for backward compatibility
-  destinations?: TripDestination[] // New multi-destination support
-  // V2 fields for better performance and AI integration
+  // V2 fields only
   destinationName?: string
   destinationCoordinates?: { lat: number; lng: number }
   destinationId?: string

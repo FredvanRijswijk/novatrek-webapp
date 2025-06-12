@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyIdToken, getAdminDb } from '@/lib/firebase/admin';
+import { WeatherServerClient } from '@/lib/weather/server-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -149,6 +150,28 @@ export async function POST(request: NextRequest) {
     // Combine and filter results
     let activities = [...expertRecommendations, ...novatrekActivities, ...googleResults];
 
+    // Fetch weather data if date is provided
+    let weatherData = null;
+    let weatherRecommendation = null;
+    
+    if (date && location) {
+      try {
+        const weatherClient = new WeatherServerClient();
+        weatherData = await weatherClient.getWeatherForecast(
+          location.lat,
+          location.lng,
+          date
+        );
+        
+        if (weatherData) {
+          weatherRecommendation = weatherClient.getActivityRecommendation(weatherData);
+        }
+      } catch (weatherError) {
+        console.error('Failed to fetch weather data:', weatherError);
+        // Continue without weather data
+      }
+    }
+
     // Apply filters
     if (preferIndoorActivities) {
       activities = activities.filter(a => 
@@ -167,16 +190,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Sort by relevance (expert recommendations first, then by rating)
+    // If we have weather recommendations, also factor that in
     activities.sort((a, b) => {
+      // Expert recommendations first
       if (a.expertRecommended && !b.expertRecommended) return -1;
       if (!a.expertRecommended && b.expertRecommended) return 1;
+      
+      // If weather suggests indoor/outdoor preference, sort accordingly
+      if (weatherRecommendation?.preference) {
+        const aIsIndoor = a.types?.some((t: string) => ['museum', 'art_gallery', 'shopping_mall', 'movie_theater'].includes(t));
+        const bIsIndoor = b.types?.some((t: string) => ['museum', 'art_gallery', 'shopping_mall', 'movie_theater'].includes(t));
+        
+        if (weatherRecommendation.preference === 'indoor') {
+          if (aIsIndoor && !bIsIndoor) return -1;
+          if (!aIsIndoor && bIsIndoor) return 1;
+        } else if (weatherRecommendation.preference === 'outdoor') {
+          if (!aIsIndoor && bIsIndoor) return -1;
+          if (aIsIndoor && !bIsIndoor) return 1;
+        }
+      }
+      
+      // Then by rating
       return (b.rating || 0) - (a.rating || 0);
     });
 
     return NextResponse.json({
       activities: activities.slice(0, 50),
       hasRecommendations: activities.some(a => a.expertRecommended),
-      weather: null // Weather service not implemented yet
+      weather: weatherData,
+      weatherRecommendation
     });
 
   } catch (error) {

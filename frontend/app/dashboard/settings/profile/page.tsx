@@ -79,15 +79,8 @@ export default function ProfilePage() {
 
       trips.forEach(trip => {
         // Count countries
-        if (trip.destination?.country) {
-          countries.add(trip.destination.country)
-        }
-        if (trip.destinations) {
-          trip.destinations.forEach((dest: any) => {
-            if (dest.destination?.country) {
-              countries.add(dest.destination.country)
-            }
-          })
+        if (trip.destinationName) {
+          countries.add(trip.destinationName)
         }
 
         // Count upcoming trips

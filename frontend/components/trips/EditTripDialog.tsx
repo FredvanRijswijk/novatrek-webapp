@@ -85,7 +85,7 @@ export function EditTripDialog({ trip, isOpen, onClose, onUpdate }: EditTripDial
       
       // Check if destination dates fall outside new trip dates
       if (arrivalDate < editedTrip.startDate || departureDate > editedTrip.endDate) {
-        conflicts.push(`${dest.destination.name} (${format(arrivalDate, 'MMM d')} - ${format(departureDate, 'MMM d')})`);
+        conflicts.push(`${dest.destination?.name || 'Unknown'} (${format(arrivalDate, 'MMM d')} - ${format(departureDate, 'MMM d')})`);
         
         // Calculate adjusted dates
         const destDuration = differenceInDays(departureDate, arrivalDate);

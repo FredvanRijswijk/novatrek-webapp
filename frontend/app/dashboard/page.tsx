@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useFirebase } from '@/lib/firebase'
-import { TripModel, UserModel, type Trip, type User } from '@/lib/models'
+import { UserModel, type User } from '@/lib/models'
+import { TripModelV2 } from '@/lib/models/v2/trip-model-v2'
+import { type TripV2 as Trip } from '@/types/travel-v2'
 import { Button } from '@/components/ui/button'
 import { Plus, MessageCircle, MapPin, Calendar, Plane } from 'lucide-react'
 import PreferencesPrompt from '@/components/preferences/PreferencesPrompt'
@@ -47,7 +49,8 @@ export default function DashboardPage() {
 
       // Load user's trips (with error handling)
       try {
-        const userTrips = await TripModel.getUserTrips(authUser.uid)
+        const tripModel = new TripModelV2()
+        const userTrips = await tripModel.getUserTrips(authUser.uid)
         setTrips(userTrips)
       } catch (error) {
         console.log('No trips found or permission denied:', error)
@@ -56,7 +59,12 @@ export default function DashboardPage() {
 
       // Load upcoming trips (with error handling)
       try {
-        const upcoming = await TripModel.getUpcomingTrips(authUser.uid)
+        // Filter upcoming trips from userTrips
+        const now = new Date()
+        const upcoming = userTrips.filter(trip => {
+          const startDate = trip.startDate instanceof Date ? trip.startDate : new Date(trip.startDate)
+          return startDate > now
+        })
         setUpcomingTrips(upcoming)
       } catch (error) {
         console.log('No upcoming trips found or permission denied:', error)
@@ -141,18 +149,14 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-semibold mb-2">Current Trip</h3>
                 <h4 className="text-2xl font-bold">{activeTrip.title}</h4>
                 <p className="text-muted-foreground">
-                  {activeTrip.destinations && activeTrip.destinations.length > 0
-                    ? activeTrip.destinations.map(d => d.destination.city).join(' → ')
-                    : activeTrip.destination
-                    ? `${activeTrip.destination.city}, ${activeTrip.destination.country}`
-                    : 'No destination'}
+                  {activeTrip.destinationName || 'No destination'}
                 </p>
                 <div className="flex items-center gap-4 mt-3">
                   <span className="text-sm bg-white/50 dark:bg-black/20 px-3 py-1 rounded-full">
-                    Day {Math.floor((new Date().getTime() - new Date(activeTrip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} of {TripModel.getDuration(activeTrip)}
+                    Day {Math.floor((new Date().getTime() - new Date(activeTrip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} of {Math.ceil((new Date(activeTrip.endDate).getTime() - new Date(activeTrip.startDate).getTime()) / (1000 * 60 * 60 * 24))}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {TripModel.getProgress(activeTrip)}% complete
+                    {Math.min(100, Math.round((Math.floor((new Date().getTime() - new Date(activeTrip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1) / Math.ceil((new Date(activeTrip.endDate).getTime() - new Date(activeTrip.startDate).getTime()) / (1000 * 60 * 60 * 24)) * 100))}% complete
                   </span>
                 </div>
               </div>
@@ -205,11 +209,7 @@ export default function DashboardPage() {
                     <div>
                       <h3 className="font-semibold">{trip.title}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {trip.destinations && trip.destinations.length > 0
-                          ? trip.destinations.map(d => d.destination.city).join(' → ')
-                          : trip.destination
-                          ? `${trip.destination.city}, ${trip.destination.country}`
-                          : 'No destination'}
+                        {trip.destinationName || 'No destination'}
                       </p>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                     <Plane className="w-4 h-4" />
-                    <span>{TripModel.getDuration(trip)} days</span>
+                    <span>{Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24))} days</span>
                   </div>
                 </div>
               ))}
@@ -288,11 +288,7 @@ export default function DashboardPage() {
               <MapPin className="w-6 h-6 text-orange-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(trips.flatMap(t => 
-                    t.destinations && t.destinations.length > 0
-                      ? t.destinations.map(d => d.destination.country)
-                      : t.destination ? [t.destination.country] : []
-                  )).size}
+                  {new Set(trips.flatMap(t => t.destinationName ? [t.destinationName] : [])).size}
                 </p>
                 <p className="text-sm text-muted-foreground">Countries</p>
               </div>

@@ -16,35 +16,16 @@ export class TripModelAdminV2 extends BaseModelAdminV2<TripV2> {
    * Get all trips for a user
    */
   async getUserTrips(userId: string): Promise<TripV2[]> {
-    // Get trips with userId string (V1)
-    const v1Trips = await this.list(
-      undefined,
-      [{ field: 'userId', op: '==', value: userId }],
-      'createdAt',
-      'desc'
-    );
-    
-    // Get trips with userRef (V2)
+    // Get trips with userRef (V2 only)
     const userRef = this.db.doc(`users/${userId}`);
-    const v2Trips = await this.list(
+    const trips = await this.list(
       undefined,
       [{ field: 'userRef', op: '==', value: userRef }],
       'createdAt',
       'desc'
     );
     
-    // Combine and deduplicate
-    const tripMap = new Map<string, TripV2>();
-    [...v2Trips, ...v1Trips].forEach(trip => {
-      tripMap.set(trip.id, trip);
-    });
-    
-    // Sort by creation date
-    return Array.from(tripMap.values()).sort((a, b) => {
-      const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
-      const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
-      return bTime - aTime;
-    });
+    return trips;
   }
 
   /**
@@ -54,10 +35,7 @@ export class TripModelAdminV2 extends BaseModelAdminV2<TripV2> {
     const trip = await this.getById(tripId);
     if (!trip) return false;
     
-    // Check ownership (V1 pattern)
-    if (trip.userId === userId) return true;
-    
-    // Check ownership (V2 pattern)
+    // Check ownership (V2 pattern only)
     const userRef = this.db.doc(`users/${userId}`);
     if (trip.userRef && trip.userRef.path === userRef.path) return true;
     
