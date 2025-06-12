@@ -552,7 +552,7 @@ export function ActivitySearchModal({
                         {activity.location && (
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <MapPin className="h-3 w-3" />
-                            <span>{activity.location.name}</span>
+                            <span>{activity.location.address || activity.location.name || 'Location available'}</span>
                           </div>
                         )}
                         {activity.duration && (

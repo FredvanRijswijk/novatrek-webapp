@@ -188,6 +188,37 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function mapGoogleTypesToActivityType(types: string[]): string {
+  if (!types || types.length === 0) return 'activity';
+  
+  // Check for dining types first (most specific)
+  const diningTypes = ['restaurant', 'cafe', 'bar', 'food', 'meal_delivery', 'meal_takeaway', 'bakery'];
+  if (types.some(t => diningTypes.includes(t))) return 'dining';
+  
+  // Check for accommodation
+  const accommodationTypes = ['lodging', 'hotel', 'motel', 'resort', 'hostel'];
+  if (types.some(t => accommodationTypes.includes(t))) return 'accommodation';
+  
+  // Check for sightseeing
+  const sightseeingTypes = ['tourist_attraction', 'museum', 'art_gallery', 'church', 'city_hall', 'library', 'monument', 'park', 'zoo', 'aquarium'];
+  if (types.some(t => sightseeingTypes.includes(t))) return 'sightseeing';
+  
+  // Check for shopping
+  const shoppingTypes = ['shopping_mall', 'store', 'clothing_store', 'department_store', 'supermarket'];
+  if (types.some(t => shoppingTypes.includes(t))) return 'shopping';
+  
+  // Check for entertainment
+  const entertainmentTypes = ['movie_theater', 'night_club', 'casino', 'amusement_park', 'bowling_alley', 'stadium'];
+  if (types.some(t => entertainmentTypes.includes(t))) return 'entertainment';
+  
+  // Check for transport
+  const transportTypes = ['airport', 'train_station', 'bus_station', 'subway_station', 'transit_station'];
+  if (types.some(t => transportTypes.includes(t))) return 'transport';
+  
+  // Default to activity
+  return 'activity';
+}
+
 async function searchGooglePlaces(params: any) {
   try {
     const searchParams = new URLSearchParams();
@@ -211,6 +242,7 @@ async function searchGooglePlaces(params: any) {
       id: place.place_id,
       name: place.name,
       description: place.editorial_summary?.text,
+      type: mapGoogleTypesToActivityType(place.types),
       location: {
         lat: place.geometry.location.lat,
         lng: place.geometry.location.lng,
@@ -275,6 +307,7 @@ async function searchExpertRecommendations(params: any) {
         id: doc.id,
         name: data.name,
         description: data.description,
+        type: mapGoogleTypesToActivityType(data.categories || []),
         location: data.location,
         rating: data.expertRating || 5,
         expertRating: data.expertRating,
@@ -332,6 +365,7 @@ async function searchNovatrekActivities(params: any) {
         id: doc.id,
         name: data.name,
         description: data.description,
+        type: mapGoogleTypesToActivityType(data.types || []),
         location: data.location,
         rating: data.rating,
         reviews: data.reviewCount,
