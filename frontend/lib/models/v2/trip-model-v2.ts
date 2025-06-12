@@ -23,6 +23,7 @@ export class TripModelV2 extends BaseModelV2<TripV2> {
     
     const enhancedData = {
       ...tripData,
+      userId, // Include userId for backward compatibility
       userRef,
       stats: {
         totalDays: 0,
@@ -40,11 +41,32 @@ export class TripModelV2 extends BaseModelV2<TripV2> {
   async getUserTrips(userId: string): Promise<TripV2[]> {
     const userRef = doc(this.db, 'users', userId);
     
-    return this.list(
+    // Get trips with userRef (V2)
+    const v2Trips = await this.list(
       undefined,
       [where('userRef', '==', userRef)],
       orderBy('createdAt', 'desc')
     );
+    
+    // Get trips with userId string (V1)
+    const v1Trips = await this.list(
+      undefined,
+      [where('userId', '==', userId)],
+      orderBy('createdAt', 'desc')
+    );
+    
+    // Combine and deduplicate
+    const tripMap = new Map<string, TripV2>();
+    [...v2Trips, ...v1Trips].forEach(trip => {
+      tripMap.set(trip.id, trip);
+    });
+    
+    // Sort by creation date
+    return Array.from(tripMap.values()).sort((a, b) => {
+      const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    });
   }
 
   /**
