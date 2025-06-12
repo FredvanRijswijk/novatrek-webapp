@@ -70,7 +70,7 @@ export class TripServiceV2 {
       // If no days exist, create them based on trip dates
       if (days.length === 0 && trip.startDate && trip.endDate) {
         console.log('No days found for trip, creating days from trip dates');
-        days = await this.dayModel.createDaysForTrip(
+        days = await this.dayModel.createDaysForRange(
           trip.id,
           trip.startDate,
           trip.endDate,
