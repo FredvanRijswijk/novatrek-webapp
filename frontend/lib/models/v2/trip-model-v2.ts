@@ -72,16 +72,26 @@ export class TripModelV2 extends BaseModelV2<TripV2> {
    * Check if user has access to trip
    */
   async hasAccess(tripId: string, userId: string): Promise<boolean> {
-    const trip = await this.getById(tripId);
-    if (!trip) return false;
+    try {
+      const trip = await this.getById(tripId);
+      if (!trip) return false;
+      
+      // Check ownership
+      if (trip.userId === userId) return true;
     
-    // Check ownership
-    if (trip.userId === userId) return true;
-    
-    // Check if shared
-    if (trip.sharedWith?.includes(userId)) return true;
-    
-    return false;
+      // Check if shared
+      if (trip.sharedWith?.includes(userId)) return true;
+      
+      return false;
+    } catch (error: any) {
+      // If we get a permission error, it means the user doesn't have access
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.log('Permission denied accessing trip:', tripId);
+        return false;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   /**

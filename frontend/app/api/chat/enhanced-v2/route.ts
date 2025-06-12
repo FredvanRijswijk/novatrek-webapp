@@ -49,23 +49,25 @@ export async function POST(request: NextRequest) {
     const tripService = new TripServiceV2();
     const tripModel = new TripModelV2();
 
-    // Load trip and user data using V2 structure
-    const [fullTripData, userData, preferencesData] = await Promise.all([
-      tripService.getFullTrip(tripId),
-      loadUser(userId),
-      loadPreferences(userId)
-    ]);
+    try {
+      // First check if the trip exists and user has access
+      const hasAccess = await tripModel.hasAccess(tripId, userId);
+      if (!hasAccess) {
+        console.error('User does not have access to trip:', { tripId, userId });
+        return NextResponse.json({ error: 'Missing or insufficient permissions.' }, { status: 403 });
+      }
 
-    if (!fullTripData) {
-      console.error('Trip not found or user does not have access');
-      return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
-    }
-    
-    // Verify access
-    const hasAccess = await tripModel.hasAccess(tripId, userId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+      // Load trip and user data using V2 structure
+      const [fullTripData, userData, preferencesData] = await Promise.all([
+        tripService.getFullTrip(tripId),
+        loadUser(userId),
+        loadPreferences(userId)
+      ]);
+
+      if (!fullTripData) {
+        console.error('Trip not found after access check:', { tripId });
+        return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+      }
     
     console.log('Trip days loaded:', {
       count: fullTripData.days.length,
@@ -132,7 +134,15 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return result.toDataStreamResponse();
+      return result.toDataStreamResponse();
+    } catch (firestoreError: any) {
+      // Check if it's a Firestore permission error
+      if (firestoreError?.code === 'permission-denied' || firestoreError?.message?.includes('Missing or insufficient permissions')) {
+        console.error('Firestore permission error:', { tripId, userId, error: firestoreError.message });
+        return NextResponse.json({ error: 'Missing or insufficient permissions.' }, { status: 403 });
+      }
+      throw firestoreError;
+    }
 
   } catch (error) {
     console.error('Enhanced chat V2 error:', error);

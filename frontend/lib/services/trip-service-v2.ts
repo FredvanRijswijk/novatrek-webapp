@@ -59,28 +59,48 @@ export class TripServiceV2 {
    * Get full trip data including all subcollections
    */
   async getFullTrip(tripId: string): Promise<FullTripData | null> {
-    // Get trip
-    const trip = await this.tripModel.getById(tripId);
-    if (!trip) return null;
-    
-    // Get days
-    const days = await this.dayModel.getTripDays(tripId);
-    
-    // Get activities for each day (in parallel)
-    const daysWithActivities = await Promise.all(
-      days.map(async (day) => {
-        const activities = await this.activityModel.getDayActivities(tripId, day.id);
-        return {
-          ...day,
-          activities
-        };
-      })
-    );
-    
-    return {
-      trip,
-      days: daysWithActivities
-    };
+    try {
+      // Get trip
+      const trip = await this.tripModel.getById(tripId);
+      if (!trip) return null;
+      
+      // Get days
+      let days = await this.dayModel.getTripDays(tripId);
+      
+      // If no days exist, create them based on trip dates
+      if (days.length === 0 && trip.startDate && trip.endDate) {
+        console.log('No days found for trip, creating days from trip dates');
+        const createdTrip = await this.createTripWithDays(trip);
+        days = createdTrip.days;
+      }
+      
+      // Get activities for each day (in parallel)
+      const daysWithActivities = await Promise.all(
+        days.map(async (day) => {
+          try {
+            const activities = await this.activityModel.getDayActivities(tripId, day.id);
+            return {
+              ...day,
+              activities: activities || []
+            };
+          } catch (error) {
+            console.error(`Error loading activities for day ${day.id}:`, error);
+            return {
+              ...day,
+              activities: []
+            };
+          }
+        })
+      );
+      
+      return {
+        trip,
+        days: daysWithActivities
+      };
+    } catch (error) {
+      console.error('Error in getFullTrip:', error);
+      throw error;
+    }
   }
 
   /**
