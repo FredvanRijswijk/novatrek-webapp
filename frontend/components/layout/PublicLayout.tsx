@@ -19,7 +19,8 @@ import {
   LogIn,
   Rocket,
   LayoutDashboard,
-  FileText
+  FileText,
+  Sparkles
 } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { useFirebase } from "@/lib/firebase/context";
@@ -34,6 +35,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
   const { user, isAuthenticated } = useFirebase();
 
   const navLinks = [
+    { href: "/features", label: "Features", icon: Sparkles },
     { href: "/about", label: "About", icon: Info },
     { href: "/marketplace", label: "Marketplace", icon: Store },
     { href: "/experts", label: "Experts", icon: Users },
@@ -270,7 +272,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               <h4 className="font-medium mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="/#features" className="hover:text-primary">
+                  <Link href="/features" className="hover:text-primary">
                     Features
                   </Link>
                 </li>
