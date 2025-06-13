@@ -15,6 +15,7 @@ import {
 } from '@/lib/email/server';
 import { stripePlans } from '@/lib/stripe/plans';
 import { handleConnectWebhook, isAccountOnboarded } from '@/lib/stripe/connect';
+import { notifySubscriptionUpgrade } from '@/lib/notifications/slack';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -257,6 +258,24 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription, event
             customerId: customerId,
             email: customer.email,
           });
+          
+          // Send Slack notification for subscription upgrade (non-blocking)
+          try {
+            const amount = subscription.items.data[0]?.price.unit_amount 
+              ? subscription.items.data[0].price.unit_amount / 100 
+              : 0;
+            
+            await notifySubscriptionUpgrade({
+              email: customer.email,
+              name: userData?.displayName || undefined,
+              plan: plan.name,
+              amount,
+              userId: firebaseUid,
+            });
+          } catch (error) {
+            console.error('Failed to send Slack notification:', error);
+            // Don't block the subscription flow
+          }
         }
       }
     } catch (error) {

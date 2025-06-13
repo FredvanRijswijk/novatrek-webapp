@@ -2,6 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import react-day-picker styles */
+@import "react-day-picker/style.css";
+
+/* Calendar fixes for Tailwind v3 */
+.rdp-root {
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(var(--accent));
+  --rdp-range-middle-background-color: hsl(var(--accent));
+  --rdp-range-middle-foreground-color: hsl(var(--accent-foreground));
+  --rdp-day-font: inherit;
+  --rdp-selected-border: none;
+}
+
+.rdp-months {
+  @apply flex flex-col sm:flex-row gap-4;
+}
+
+.rdp-month_caption {
+  @apply flex justify-center pt-1 relative items-center;
+}
+
+.rdp-nav {
+  @apply flex items-center gap-1;
+}
+
+.rdp-button_next,
+.rdp-button_previous {
+  @apply h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute;
+}
+
+.rdp-button_previous {
+  @apply left-1;
+}
+
+.rdp-button_next {
+  @apply right-1;
+}
+
+.rdp-month_grid {
+  @apply w-full border-collapse;
+}
+
+.rdp-weekdays {
+  @apply flex;
+}
+
+.rdp-weekday {
+  @apply text-muted-foreground rounded-md w-9 font-normal text-[0.8rem];
+}
+
+.rdp-week {
+  @apply flex w-full mt-2;
+}
+
+.rdp-day {
+  @apply h-9 w-9 text-center text-sm p-0 relative;
+}
+
+.rdp-day_button {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-normal transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+}
+
+.rdp-day_button[aria-selected="true"] {
+  @apply bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground;
+}
+
+.rdp-range_middle .rdp-day_button {
+  @apply bg-accent text-accent-foreground;
+}
+
+.rdp-today:not(.rdp-selected) .rdp-day_button {
+  @apply bg-accent text-accent-foreground;
+}
+
+.rdp-disabled .rdp-day_button {
+  @apply text-muted-foreground opacity-50;
+}
+
+.rdp-outside .rdp-day_button {
+  @apply text-muted-foreground opacity-50;
+}
+
+.rdp-outside.rdp-selected .rdp-day_button {
+  @apply bg-accent/50 text-muted-foreground opacity-30;
+}
+
+.rdp-hidden {
+  @apply invisible;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

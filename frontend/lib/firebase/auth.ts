@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth'
 import { auth, db } from './config'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { notifyUserSignup } from '@/lib/notifications/slack'
 
 // Default avatar URL for users without photos
 const DEFAULT_AVATAR_URL = '/avatars/default-avatar.svg';
@@ -49,6 +50,19 @@ const createOrUpdateUserDocument = async (user: User) => {
       });
     } catch (error) {
       console.error('Failed to send welcome email:', error);
+      // Don't block the signup flow
+    }
+    
+    // Send Slack notification for new signup (non-blocking)
+    try {
+      await notifyUserSignup({
+        email: user.email || '',
+        displayName: user.displayName,
+        uid: user.uid,
+        providerId: user.providerData?.[0]?.providerId,
+      });
+    } catch (error) {
+      console.error('Failed to send Slack notification:', error);
       // Don't block the signup flow
     }
   } else {

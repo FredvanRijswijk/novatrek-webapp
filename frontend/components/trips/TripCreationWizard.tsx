@@ -11,6 +11,7 @@ import { UserModel } from '@/lib/models/user';
 import { User, Trip, Destination, Budget, ActivityType } from '@/types/travel';
 import { dateValidation } from '@/lib/utils/validation';
 import { useTravelPreferences } from '@/hooks/use-travel-preferences';
+import { notifyTripCreated } from '@/lib/notifications/slack';
 
 // Step Components
 import { DestinationDateStep } from './wizard-steps/DestinationDateStep';
@@ -400,6 +401,25 @@ export function TripCreationWizard() {
       // Mark travel preferences as used
       if (preferences) {
         await markAsUsed();
+      }
+      
+      // Send Slack notification for trip creation (non-blocking)
+      try {
+        const duration = Math.ceil(
+          (formData.endDate!.getTime() - formData.startDate!.getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1;
+        
+        await notifyTripCreated({
+          email: user.email || '',
+          name: user.displayName || undefined,
+          destination: destinationName || 'Multiple destinations',
+          duration,
+          userId: user.uid,
+          tripId,
+        });
+      } catch (error) {
+        console.error('Failed to send Slack notification:', error);
+        // Don't block the trip creation flow
       }
       
       // Redirect to the trip planning page
