@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useFirebase } from '@/lib/firebase/context';
 import {
   Table,
   TableBody,
@@ -42,6 +43,7 @@ import { format } from 'date-fns';
 import { WaitlistEntry } from '@/lib/models/waitlist-model';
 
 export default function AdminWaitlistPage() {
+  const { user } = useFirebase();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -61,10 +63,17 @@ export default function AdminWaitlistPage() {
   }, [statusFilter]);
 
   const fetchWaitlistData = async () => {
+    if (!user) return;
+    
     try {
+      const token = await user.getIdToken();
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
       const [entriesRes, statsRes] = await Promise.all([
-        fetch(`/api/admin/waitlist?status=${statusFilter}`),
-        fetch('/api/admin/waitlist/stats'),
+        fetch(`/api/admin/waitlist?status=${statusFilter}`, { headers }),
+        fetch('/api/admin/waitlist/stats', { headers }),
       ]);
 
       if (!entriesRes.ok || !statsRes.ok) {
@@ -84,9 +93,15 @@ export default function AdminWaitlistPage() {
   };
 
   const handleApprove = async (id: string) => {
+    if (!user) return;
+    
     try {
+      const token = await user.getIdToken();
       const response = await fetch(`/api/admin/waitlist/${id}/approve`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
@@ -101,9 +116,15 @@ export default function AdminWaitlistPage() {
   };
 
   const handleInvite = async (id: string) => {
+    if (!user) return;
+    
     try {
+      const token = await user.getIdToken();
       const response = await fetch(`/api/admin/waitlist/${id}/invite`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
@@ -119,10 +140,16 @@ export default function AdminWaitlistPage() {
   };
 
   const handleBulkInvite = async () => {
+    if (!user) return;
+    
     try {
+      const token = await user.getIdToken();
       const response = await fetch('/api/admin/waitlist/bulk-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ count: parseInt(inviteCount) }),
       });
 
@@ -140,8 +167,15 @@ export default function AdminWaitlistPage() {
   };
 
   const exportCSV = async () => {
+    if (!user) return;
+    
     try {
-      const response = await fetch('/api/admin/waitlist/export');
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/waitlist/export', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
