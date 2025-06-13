@@ -35,7 +35,7 @@ interface SlackMessage {
 }
 
 interface NotificationPayload {
-  type: 'user_signup' | 'subscription_upgrade' | 'trip_created' | 'custom';
+  type: 'user_signup' | 'subscription_upgrade' | 'trip_created' | 'waitlist_signup' | 'custom';
   data: {
     email?: string;
     name?: string;
@@ -228,6 +228,65 @@ function buildTripCreatedMessage(data: NotificationPayload['data']): SlackMessag
   };
 }
 
+function buildWaitlistSignupMessage(data: NotificationPayload['data']): SlackMessage {
+  const { email, name, metadata } = data;
+  const timestamp = formatSlackTimestamp(new Date());
+  
+  // Format interests array
+  const interests = metadata?.interests?.join(', ') || 'None specified';
+  const referralSource = metadata?.referralSource || 'Not specified';
+  
+  return {
+    text: `New waitlist signup: ${email} (#${metadata?.position || 'unknown'})`, // Required fallback text
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '🚀 *New Waitlist Signup*',
+        },
+      },
+      {
+        type: 'section',
+        fields: [
+          {
+            type: 'mrkdwn',
+            text: `*Email:*\n${email}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Name:*\n${name || 'Not provided'}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Position:*\n#${metadata?.position || 'unknown'}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Referral:*\n${referralSource}`,
+          },
+        ],
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Interests:* ${interests}`,
+        },
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `Signed up at ${timestamp}`,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function buildCustomMessage(data: NotificationPayload['data']): SlackMessage {
   return {
     text: data.customMessage || 'Custom notification from NovaTrek',
@@ -258,6 +317,9 @@ export async function POST(request: NextRequest) {
         break;
       case 'trip_created':
         message = buildTripCreatedMessage(payload.data);
+        break;
+      case 'waitlist_signup':
+        message = buildWaitlistSignupMessage(payload.data);
         break;
       case 'custom':
         message = buildCustomMessage(payload.data);

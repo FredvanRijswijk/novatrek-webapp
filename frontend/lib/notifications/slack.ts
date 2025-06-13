@@ -10,7 +10,7 @@ interface SlackNotificationData {
   metadata?: Record<string, any>;
 }
 
-export type NotificationType = 'user_signup' | 'subscription_upgrade' | 'trip_created' | 'custom';
+export type NotificationType = 'user_signup' | 'subscription_upgrade' | 'trip_created' | 'waitlist_signup' | 'custom';
 
 /**
  * Send a notification to Slack
@@ -111,6 +111,27 @@ export async function notifyTripCreated(data: {
       destination: data.destination,
       duration: data.duration,
       tripId: data.tripId,
+    },
+  });
+}
+
+/**
+ * Send a waitlist signup notification
+ */
+export async function notifyWaitlistSignup(data: {
+  email: string;
+  name?: string;
+  position: number;
+  interests?: string[];
+  referralSource?: string;
+}) {
+  return sendSlackNotification('waitlist_signup', {
+    email: data.email,
+    name: data.name,
+    metadata: {
+      position: data.position,
+      interests: data.interests,
+      referralSource: data.referralSource,
     },
   });
 }

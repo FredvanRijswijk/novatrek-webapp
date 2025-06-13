@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WaitlistModel } from '@/lib/models/waitlist-model';
 import { signupRateLimit, getIdentifier, rateLimitResponse } from '@/lib/rate-limit';
+import { notifyWaitlistSignup } from '@/lib/notifications/slack';
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,6 +60,20 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('Failed to send welcome email:', error);
       // Don't fail the request if email fails
+    }
+
+    // Send Slack notification (non-blocking)
+    try {
+      await notifyWaitlistSignup({
+        email: email.toLowerCase(),
+        name,
+        position: entry.position,
+        interests,
+        referralSource,
+      });
+    } catch (error) {
+      console.error('Failed to send Slack notification:', error);
+      // Don't fail the request if Slack notification fails
     }
 
     return NextResponse.json({
