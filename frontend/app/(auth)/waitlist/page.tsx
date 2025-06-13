@@ -97,20 +97,24 @@ function WaitlistForm() {
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <CardTitle className="text-2xl">You&apos;re on the list!</CardTitle>
+            <CardTitle className="text-2xl">You're on the list!</CardTitle>
             <CardDescription className="text-lg mt-2">
-              {position && `You&apos;re #${position} in line`}
+              {position && (
+                <>
+                  You are <span className="font-semibold text-primary">#{position}</span> in line
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-center text-muted-foreground">
-              We&apos;ll send you an email as soon as we&apos;re ready for you to join NovaTrek.
+              We'll send you an email as soon as we're ready for you to join NovaTrek.
             </p>
             <div className="space-y-2 pt-4">
               <p className="text-sm font-medium">What happens next?</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• We&apos;ll review your application</li>
-                <li>• You&apos;ll receive an invite when a spot opens</li>
+                <li>• We'll review your application</li>
+                <li>• You'll receive an invite when a spot opens</li>
                 <li>• Early access to all premium features</li>
                 <li>• Special founding member pricing</li>
               </ul>
@@ -180,7 +184,7 @@ function WaitlistForm() {
 
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
             <p className="text-sm">
-              <strong>Limited spots available.</strong> We&apos;re onboarding users gradually to ensure the best experience for everyone.
+              <strong>Limited spots available.</strong> We're onboarding users gradually to ensure the best experience for everyone.
             </p>
           </div>
         </div>
