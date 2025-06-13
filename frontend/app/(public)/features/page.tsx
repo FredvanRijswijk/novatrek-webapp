@@ -467,7 +467,7 @@ export default function FeaturesPage() {
               Join thousands of travelers who are already planning smarter trips with NovaTrek.
             </p>
             <div className="flex gap-4 justify-center">
-              <Link href="/signup">
+              <Link href="/waitlist">
                 <Button size="lg" className="gap-2">
                   Start Free Trial
                   <ChevronRight className="h-4 w-4" />

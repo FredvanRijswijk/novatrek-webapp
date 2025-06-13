@@ -114,7 +114,7 @@ export default function AboutPage() {
                 }}
                 asChild
               >
-                <Link href="/signup">
+                <Link href="/waitlist">
                   Start Your Journey
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -326,46 +326,7 @@ export default function AboutPage() {
       </section>
       */}
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Join Us on Our Journey
-          </h2>
-          <p className="text-xl mb-8 opacity-90">
-            Whether you&apos;re a traveler seeking your next adventure or an expert ready to share 
-            your knowledge, there&apos;s a place for you at NovaTrek.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              variant="secondary" 
-              onClick={() => {
-                track('click', { button: 'start_planning_cta', page: 'about' })
-              }}
-              asChild
-            >
-              <Link href="/signup">
-                Start Planning
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="bg-transparent text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/10"
-              onClick={() => {
-                track('click', { button: 'join_team_cta', page: 'about' })
-              }}
-              asChild
-            >
-              <Link href="/careers">
-                Join Our Team
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* CTA Section - Hidden for now */}
     </PublicLayout>
   )
 }

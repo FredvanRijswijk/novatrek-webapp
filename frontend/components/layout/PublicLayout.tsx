@@ -100,23 +100,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 </Button>
               ) : (
                 <>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      track("click", { button: "nav_sign_in", page: "public" });
-                      router.push("/login");
-                    }}
-                  >
-                    Sign In
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      track("click", { button: "nav_get_started", page: "public" });
-                      router.push("/signup");
-                    }}
-                  >
-                    Get Started
-                  </Button>
+                  {/* Sign In and Get Started buttons hidden for now */}
                 </>
               )}
             </div>
@@ -199,31 +183,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                         </Button>
                       ) : (
                         <>
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="w-full justify-center gap-2"
-                            onClick={() => {
-                              track("click", { button: "mobile_sign_in", page: "public" });
-                              router.push("/login");
-                              setIsOpen(false);
-                            }}
-                          >
-                            <LogIn className="h-5 w-5" />
-                            Sign In
-                          </Button>
-                          <Button
-                            size="lg"
-                            className="w-full justify-center gap-2"
-                            onClick={() => {
-                              track("click", { button: "mobile_get_started", page: "public" });
-                              router.push("/signup");
-                              setIsOpen(false);
-                            }}
-                          >
-                            <Rocket className="h-5 w-5" />
-                            Get Started
-                          </Button>
+                          {/* Sign In and Get Started buttons hidden for now */}
                         </>
                       )}
                     </div>

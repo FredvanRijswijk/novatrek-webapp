@@ -121,7 +121,7 @@ export default function PricingPage() {
                         plan: plan.name.toLowerCase(),
                         price: plan.price
                       })
-                      router.push('/signup')
+                      router.push('/waitlist')
                     }}
                   >
                     {plan.cta}
@@ -205,7 +205,7 @@ export default function PricingPage() {
             size="lg"
             onClick={() => {
               track('click', { button: 'start_free_cta', page: 'pricing' })
-              router.push('/signup')
+              router.push('/waitlist')
             }}
           >
             Start Free Today

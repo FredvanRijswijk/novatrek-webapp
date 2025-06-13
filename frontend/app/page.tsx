@@ -459,7 +459,7 @@ export default function LandingPage() {
                   className="w-full mt-6"
                   onClick={() => {
                     track("click", { button: "become_expert", page: "homepage" });
-                    router.push("/dashboard/become-expert");
+                    router.push("/waitlist");
                   }}
                 >
                   Become an Expert
@@ -601,7 +601,7 @@ export default function LandingPage() {
                         plan: plan.name.toLowerCase(),
                         price: plan.price
                       });
-                      router.push("/signup");
+                      router.push("/waitlist");
                     }}
                   >
                     {plan.cta}
@@ -655,42 +655,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
-            Ready to Transform Your Travel Experience?
-          </h2>
-          <p className="text-base md:text-xl mb-8 opacity-90">
-            Join thousands of travelers who plan smarter with NovaTrek
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => {
-                track("click", { button: "footer_start_free_trial", page: "homepage" });
-                router.push("/signup");
-              }}
-            >
-              Start Free Trial
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-transparent text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/10"
-              onClick={() => {
-                track("click", { button: "footer_become_expert", page: "homepage" });
-                router.push("/dashboard/become-expert");
-              }}
-            >
-              Become an Expert
-              <UserCheck className="ml-2 w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* CTA Section - Hidden for now */}
     </PublicLayout>
   );
 }

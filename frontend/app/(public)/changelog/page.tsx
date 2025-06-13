@@ -287,7 +287,7 @@ export default function ChangelogPage() {
           Experience all these features and more with NovaTrek.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/signup">
+          <Link href="/waitlist">
             <Button size="lg">
               Get Started Free
             </Button>

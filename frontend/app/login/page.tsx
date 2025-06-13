@@ -206,7 +206,7 @@ function LoginPageContent() {
 
           <p className="text-center text-sm">
             Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline font-medium">
+            <Link href="/waitlist" className="text-primary hover:underline font-medium">
               Sign up
             </Link>
           </p>
