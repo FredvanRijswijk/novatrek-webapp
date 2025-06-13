@@ -18,7 +18,8 @@ import {
   Mail,
   LogIn,
   Rocket,
-  LayoutDashboard
+  LayoutDashboard,
+  FileText
 } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { useFirebase } from "@/lib/firebase/context";
@@ -37,6 +38,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
     { href: "/marketplace", label: "Marketplace", icon: Store },
     { href: "/experts", label: "Experts", icon: Users },
     { href: "/pricing", label: "Pricing", icon: Euro },
+    { href: "/changelog", label: "Changelog", icon: FileText },
     { href: "/contact", label: "Contact", icon: Mail },
   ];
 
@@ -285,6 +287,11 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <li>
                   <Link href="/experts" className="hover:text-primary">
                     Find Experts
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/changelog" className="hover:text-primary">
+                    Changelog
                   </Link>
                 </li>
               </ul>

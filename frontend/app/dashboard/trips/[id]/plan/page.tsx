@@ -359,7 +359,7 @@ export default function TripPlanningPage() {
 
             {/* Planning Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
+              <TabsList className="w-full flex justify-between gap-1 h-auto p-1">
                 <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
                 <TabsTrigger value="transport">Transport</TabsTrigger>
                 <TabsTrigger value="budget">Budget</TabsTrigger>
