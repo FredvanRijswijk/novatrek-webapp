@@ -32,7 +32,7 @@ export async function checkWaitlistAccess(user: User): Promise<{
       return { 
         hasAccess: false, 
         waitlistStatus: 'pending',
-        message: 'You've been added to the waitlist. We'll notify you when you can access NovaTrek.' 
+        message: "You've been added to the waitlist. We'll notify you when you can access NovaTrek." 
       };
     } catch (error) {
       console.error('Error adding to waitlist:', error);
@@ -57,7 +57,7 @@ export async function checkWaitlistAccess(user: User): Promise<{
       return { 
         hasAccess: false, 
         waitlistStatus: entry.status,
-        message: 'Your application has been approved! You'll receive an invitation soon.' 
+        message: "Your application has been approved! You'll receive an invitation soon." 
       };
     
     case 'pending':
