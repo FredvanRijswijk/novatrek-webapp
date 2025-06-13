@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
       status === 'all' ? undefined : status as any
     );
 
-    return NextResponse.json(entries);
+    // Convert Firestore timestamps to ISO strings for JSON serialization
+    const serializedEntries = entries.map(entry => ({
+      ...entry,
+      createdAt: entry.createdAt?.toDate?.() || entry.createdAt,
+      approvedAt: entry.approvedAt?.toDate?.() || entry.approvedAt,
+      invitedAt: entry.invitedAt?.toDate?.() || entry.invitedAt,
+    }));
+
+    return NextResponse.json(serializedEntries);
   } catch (error) {
     console.error('Error fetching waitlist:', error);
     return NextResponse.json(

@@ -334,7 +334,12 @@ export default function AdminWaitlistPage() {
                     ) : '-'}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(entry.createdAt.toDate(), 'MMM d, yyyy')}
+                    {format(
+                      entry.createdAt && typeof entry.createdAt === 'object' && 'toDate' in entry.createdAt
+                        ? entry.createdAt.toDate()
+                        : new Date(entry.createdAt as any),
+                      'MMM d, yyyy'
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
