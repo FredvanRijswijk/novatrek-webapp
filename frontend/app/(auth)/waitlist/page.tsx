@@ -113,6 +113,9 @@ function WaitlistForm() {
 
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 429) {
+          throw new Error(error.message || 'Too many requests. Please try again later.');
+        }
         throw new Error(error.error || 'Failed to join waitlist');
       }
 

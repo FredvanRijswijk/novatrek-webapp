@@ -46,13 +46,24 @@ export function getIdentifier(request: Request, userId?: string): string {
 
 // Rate limit response helper
 export function rateLimitResponse(limit: number, reset: number) {
-  return new Response("Too Many Requests", {
-    status: 429,
-    headers: {
-      "X-RateLimit-Limit": limit.toString(),
-      "X-RateLimit-Remaining": "0",
-      "X-RateLimit-Reset": new Date(reset).toISOString(),
-      "Retry-After": Math.ceil((reset - Date.now()) / 1000).toString(),
-    },
-  });
+  const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+  
+  return new Response(
+    JSON.stringify({
+      error: "Too Many Requests",
+      message: `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
+      retryAfter,
+      reset: new Date(reset).toISOString(),
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": new Date(reset).toISOString(),
+        "Retry-After": retryAfter.toString(),
+      },
+    }
+  );
 }
