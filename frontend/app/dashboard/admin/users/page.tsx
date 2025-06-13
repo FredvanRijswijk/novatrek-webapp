@@ -26,6 +26,7 @@ type UserData = {
   photoURL: string | null;
   createdAt: string | null;
   lastSignInAt: string | null;
+  lastActiveAt: string | null;
   disabled: boolean;
   emailVerified: boolean;
   isAdmin: boolean;
@@ -252,6 +253,7 @@ export default function AdminUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="createdAt">Registration Date</SelectItem>
+                  <SelectItem value="lastActiveAt">Last Active</SelectItem>
                   <SelectItem value="lastSignInAt">Last Sign In</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="displayName">Name</SelectItem>
@@ -367,7 +369,8 @@ export default function AdminUsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {user.lastSignInAt ? formatDistanceToNow(new Date(user.lastSignInAt), { addSuffix: true }) : 'Never'}
+                            {user.lastActiveAt ? formatDistanceToNow(new Date(user.lastActiveAt), { addSuffix: true }) : 
+                             user.lastSignInAt ? formatDistanceToNow(new Date(user.lastSignInAt), { addSuffix: true }) : 'Never'}
                           </div>
                         </TableCell>
                         <TableCell>

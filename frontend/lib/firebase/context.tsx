@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User, onAuthStateChanged } from 'firebase/auth'
 import { auth } from './config'
+import { initActivityTracking } from './activity-tracker'
 
 interface FirebaseContextValue {
   user: User | null
@@ -36,6 +37,11 @@ export const FirebaseProvider = ({ children }: FirebaseProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
       setLoading(false)
+      
+      // Initialize activity tracking when user logs in
+      if (user && typeof window !== 'undefined') {
+        initActivityTracking()
+      }
     })
 
     return () => unsubscribe()

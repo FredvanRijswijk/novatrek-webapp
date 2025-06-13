@@ -10,6 +10,7 @@ type UserWithMetadata = {
   photoURL: string | null;
   createdAt: string | null;
   lastSignInAt: string | null;
+  lastActiveAt: string | null;
   disabled: boolean;
   emailVerified: boolean;
   isAdmin: boolean;
@@ -151,6 +152,7 @@ export async function GET(req: NextRequest) {
         photoURL: userRecord.photoURL || null,
         createdAt: userRecord.metadata.creationTime || null,
         lastSignInAt: userRecord.metadata.lastSignInTime || null,
+        lastActiveAt: userData?.lastActiveAt?.toDate?.()?.toISOString() || userRecord.metadata.lastSignInTime || null,
         disabled: userRecord.disabled,
         emailVerified: userRecord.emailVerified,
         isAdmin: isAdminDoc.exists,
@@ -237,6 +239,7 @@ export async function GET(req: NextRequest) {
           photoURL: userRecord.photoURL || null,
           createdAt: userRecord.metadata.creationTime || null,
           lastSignInAt: userRecord.metadata.lastSignInTime || null,
+          lastActiveAt: userData?.lastActiveAt?.toDate?.()?.toISOString() || userRecord.metadata.lastSignInTime || null,
           disabled: userRecord.disabled,
           emailVerified: userRecord.emailVerified,
           isAdmin: isAdminDoc.exists,
@@ -275,6 +278,10 @@ export async function GET(req: NextRequest) {
         case 'lastSignInAt':
           aVal = a.lastSignInAt || '';
           bVal = b.lastSignInAt || '';
+          break;
+        case 'lastActiveAt':
+          aVal = a.lastActiveAt || a.lastSignInAt || '';
+          bVal = b.lastActiveAt || b.lastSignInAt || '';
           break;
         case 'tripCount':
           aVal = a.stats?.tripCount || 0;
