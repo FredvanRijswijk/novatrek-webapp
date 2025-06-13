@@ -135,28 +135,41 @@ The waitlist collection has been added to `firestore.rules`:
 
 Users with emails ending in `@novatrek.com` automatically bypass the waitlist.
 
+## Email Setup
+
+The waitlist system uses **Resend** for sending emails (already integrated in the project).
+
+### Email Templates Implemented
+
+1. **Welcome Email** - Sent when user joins waitlist
+   - Shows position number
+   - Lists benefits of early access
+   - Provides next steps
+
+2. **Invitation Email** - Sent when admin invites user
+   - Founding member benefits
+   - Call-to-action to sign in
+   - Getting started guide
+
+### Configuration
+
+Add these to your `.env.local`:
+```env
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+RESEND_FROM_EMAIL=info@send.novatrek.app
+RESEND_REPLY_TO=support@novatrek.app
+```
+
 ## TODO
 
-1. **Email Integration**:
-   - Implement waitlist welcome email
-   - Implement invitation email
-   - Add email templates
-
-2. **Firebase Deployment**:
+1. **Firebase Deployment**:
    - Run `firebase login --reauth`
    - Deploy rules: `firebase deploy --only firestore:rules`
 
-3. **Admin API Endpoints**:
-   - Implement remaining admin endpoints:
-     - `/api/admin/waitlist/[id]/approve`
-     - `/api/admin/waitlist/[id]/invite`
-     - `/api/admin/waitlist/bulk-invite`
-     - `/api/admin/waitlist/export`
-
-4. **Integration**:
-   - Add WaitlistGate to main app pages
-   - Update signup flow to redirect to waitlist
-   - Add waitlist link to navigation
+2. **Production Setup**:
+   - Verify Resend domain
+   - Test email deliverability
+   - Set up email tracking
 
 ## Testing
 
