@@ -387,13 +387,6 @@ export default function FeaturesPage() {
     <div className="container mx-auto px-4 py-12 max-w-7xl">
       {/* Header */}
       <div className="mb-12 text-center">
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
-        
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
           Everything You Need for Perfect Trip Planning
         </h1>

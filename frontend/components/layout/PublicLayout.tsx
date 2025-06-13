@@ -40,7 +40,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
     { href: "/marketplace", label: "Marketplace", icon: Store },
     { href: "/experts", label: "Experts", icon: Users },
     { href: "/pricing", label: "Pricing", icon: Euro },
-    { href: "/changelog", label: "Changelog", icon: FileText },
     { href: "/contact", label: "Contact", icon: Mail },
   ];
 

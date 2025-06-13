@@ -196,13 +196,6 @@ export default function ChangelogPage() {
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       {/* Header */}
       <div className="mb-12">
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
-        
         <h1 className="text-4xl font-bold tracking-tight mb-4">
           Changelog
         </h1>
