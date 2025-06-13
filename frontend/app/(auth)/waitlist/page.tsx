@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import confetti from 'canvas-confetti';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,43 @@ function WaitlistForm() {
       setEmail(emailParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    // Trigger confetti animation when successfully joined waitlist
+    if (submitted && position) {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min;
+      }
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        
+        // Shoot confetti from different angles
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        });
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        });
+      }, 250);
+
+      return () => clearInterval(interval);
+    }
+  }, [submitted, position]);
 
   const interestOptions = [
     { id: 'solo', label: 'Solo Travel' },
@@ -92,10 +130,17 @@ function WaitlistForm() {
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+        <Card className="max-w-md w-full animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <div className="relative inline-flex mx-auto mb-4">
+              <div className="absolute inset-0 animate-ping">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-green-600 dark:text-green-400 opacity-25" />
+                </div>
+              </div>
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center relative">
+                <Sparkles className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
             </div>
             <CardTitle className="text-2xl">You're on the list!</CardTitle>
             <CardDescription className="text-lg mt-2">
