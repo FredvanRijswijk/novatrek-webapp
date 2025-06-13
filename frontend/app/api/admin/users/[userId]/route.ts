@@ -5,7 +5,7 @@ import logger from '@/lib/logging/server-logger';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const headersList = await headers();
@@ -51,7 +51,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden - No user read permission' }, { status: 403 });
     }
 
-    const { userId } = params;
+    const { userId } = await params;
 
     // Get user from Firebase Auth
     let userRecord;
@@ -194,7 +194,7 @@ export async function GET(
     return NextResponse.json(userDetails);
 
   } catch (error) {
-    logger.error('Error fetching user details:', error);
+    logger.error('api', 'Error fetching user details:', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

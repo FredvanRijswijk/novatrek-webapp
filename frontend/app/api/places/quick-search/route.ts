@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { quickActionsPlacesService, QuickActionsPlacesService } from '@/lib/google-places/quick-actions';
-import { auth } from '@/lib/firebase/auth';
+import { verifyIdToken } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const user = await auth.getCurrentUser();
-    if (!user) {
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Verify the token
+    const decodedToken = await verifyIdToken(token);
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const userId = decodedToken.uid;
 
     const body = await request.json();
     const { action, location, radius = 1500, preferences = {}, interests = [] } = body;

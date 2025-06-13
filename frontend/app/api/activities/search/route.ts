@@ -156,15 +156,15 @@ export async function POST(request: NextRequest) {
     
     if (date && location) {
       try {
-        const weatherClient = new WeatherServerClient();
-        weatherData = await weatherClient.getWeatherForecast(
+        const weatherClient = WeatherServerClient.getInstance();
+        weatherData = await weatherClient.getWeather(
           location.lat,
           location.lng,
           date
         );
         
         if (weatherData) {
-          weatherRecommendation = weatherClient.getActivityRecommendation(weatherData);
+          weatherRecommendation = WeatherServerClient.getActivityRecommendation(weatherData);
         }
       } catch (weatherError) {
         console.error('Failed to fetch weather data:', weatherError);
@@ -197,14 +197,14 @@ export async function POST(request: NextRequest) {
       if (!a.expertRecommended && b.expertRecommended) return 1;
       
       // If weather suggests indoor/outdoor preference, sort accordingly
-      if (weatherRecommendation?.preference) {
+      if (weatherRecommendation?.preferIndoor !== undefined) {
         const aIsIndoor = a.types?.some((t: string) => ['museum', 'art_gallery', 'shopping_mall', 'movie_theater'].includes(t));
         const bIsIndoor = b.types?.some((t: string) => ['museum', 'art_gallery', 'shopping_mall', 'movie_theater'].includes(t));
         
-        if (weatherRecommendation.preference === 'indoor') {
+        if (weatherRecommendation.preferIndoor) {
           if (aIsIndoor && !bIsIndoor) return -1;
           if (!aIsIndoor && bIsIndoor) return 1;
-        } else if (weatherRecommendation.preference === 'outdoor') {
+        } else {
           if (!aIsIndoor && bIsIndoor) return -1;
           if (aIsIndoor && !bIsIndoor) return 1;
         }

@@ -5,7 +5,7 @@ import logger from '@/lib/logging/server-logger';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const headersList = await headers();
@@ -51,7 +51,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden - No user read permission' }, { status: 403 });
     }
 
-    const { userId } = params;
+    const { userId } = await params;
 
     // Get all user's trips
     const trips: any[] = [];
@@ -177,7 +177,7 @@ export async function GET(
     return NextResponse.json({ trips });
 
   } catch (error) {
-    logger.error('Error fetching user trips:', error);
+    logger.error('api', 'Error fetching user trips:', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
       tripId: fullTripData.trip.id,
       title: fullTripData.trip.title,
       name: fullTripData.trip.name,
-      destinationName: fullTripData.trip.destinationName,
-      destinationCoordinates: fullTripData.trip.destinationCoordinates,
+      destination: fullTripData.trip.destination,
+      destinations: fullTripData.trip.destinations,
       startDate: fullTripData.trip.startDate,
       endDate: fullTripData.trip.endDate
     });
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         destinationName: tripContext.trip.destination
       },
       tripDays: fullTripData.days,
-      preferences: preferencesData,
+      preferences: preferencesData || {} as any,
       currentDate,
       weather: tripContext.weather,
       budget: tripContext.budget,
@@ -172,12 +172,8 @@ export async function POST(request: NextRequest) {
       model: openai(model),
       messages: coreMessages,
       tools,
-      maxToolRoundtrips: 3,
-      temperature: 0.7,
-      experimental_streamToolCalls: true,
-      onToolCall: async ({ toolCall }) => {
-        console.log('Tool called:', toolCall.toolName, toolCall.args);
-      }
+      maxSteps: 3,
+      temperature: 0.7
     });
 
       return result.toDataStreamResponse();
@@ -272,7 +268,8 @@ function buildTripContext(fullTripData: any, preferences: any) {
       total: trip.budget?.total || 0,
       spent: totalCost,
       remaining: (trip.budget?.total || 0) - totalCost,
-      currency: trip.budget?.currency || 'USD'
+      currency: trip.budget?.currency || 'USD',
+      categories: {}
     },
     preferences,
     weather: null // Would be fetched if needed

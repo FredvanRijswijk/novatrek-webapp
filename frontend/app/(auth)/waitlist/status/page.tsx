@@ -67,7 +67,7 @@ export default function WaitlistStatusPage() {
       case 'pending':
         return `You're #${position} in line. We'll notify you when it's your turn!`;
       case 'approved':
-        return 'Your application has been approved! You'll receive an invitation soon.';
+        return 'Your application has been approved! You\'ll receive an invitation soon.';
       case 'invited':
         return 'Check your email! Your invitation has been sent.';
       case 'joined':
@@ -106,7 +106,7 @@ export default function WaitlistStatusPage() {
           <CardHeader>
             <CardTitle>Status Lookup</CardTitle>
             <CardDescription>
-              We'll check if you're on the waitlist and show your current status
+              We&apos;ll check if you&apos;re on the waitlist and show your current status
             </CardDescription>
           </CardHeader>
           <CardContent>

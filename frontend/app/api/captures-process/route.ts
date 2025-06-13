@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const capture = { id: captureDoc.id, ...captureDoc.data() };
+    const capture: any = { id: captureDoc.id, ...captureDoc.data() };
 
     // Skip if already processed
     if (capture.isProcessed) {

@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/firebase/auth-admin';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin access
@@ -19,15 +19,16 @@ export async function POST(
     }
 
     const waitlistModel = new WaitlistModel();
+    const { id } = await params;
     
     // Get the entry to send email
-    const entry = await waitlistModel.getById(params.id);
+    const entry = await waitlistModel.getById(id);
     if (!entry) {
       return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
     }
 
     // Update status to invited
-    await waitlistModel.inviteUser(params.id);
+    await waitlistModel.inviteUser(id);
 
     // Send invitation email
     try {

@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/firebase/auth-admin';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin access
@@ -19,7 +19,8 @@ export async function POST(
     }
 
     const waitlistModel = new WaitlistModel();
-    await waitlistModel.approveUser(params.id);
+    const { id } = await params;
+    await waitlistModel.approveUser(id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -58,13 +58,13 @@ export async function POST(request: NextRequest) {
     
     console.log('Trip days loaded:', {
       count: tripData.days.length,
-      dates: tripData.days.map(d => ({ id: d.id, date: d.date, hasActivities: !!d.activities }))
+      dates: tripData.days.map((d: any) => ({ id: d.id, date: d.date, hasActivities: !!d.activities }))
     });
 
     // Build comprehensive context
     const contextBuilder = new TripContextBuilder(
-      tripData.trip,
-      preferencesData,
+      tripData.trip as any,
+      preferencesData as any || undefined,
       undefined // Weather data could be fetched here if needed
     );
     const tripContext = contextBuilder.build();

@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
         snowExpected: climate === 'cold'
       },
       activities: activities.length > 0 ? activities : (trip.itinerary
-        .flatMap(day => day.activities)
-        .map(activity => ({
+        .flatMap((day: any) => day.activities)
+        .map((activity: any) => ({
           type: activity.type,
           name: activity.name
         }))
@@ -126,11 +126,11 @@ export async function POST(request: NextRequest) {
           })
           
           const destinations = context.trip.destinations
-            .map(d => `${d.city || d.name}, ${d.country}`)
+            .map((d: any) => `${d.city || d.name}, ${d.country}`)
             .join(' -> ')
           
-          const activityTypes = [...new Set(context.activities.map(a => a.type))].join(', ')
-          const activityNames = context.activities.map(a => a.name).join(', ')
+          const activityTypes = [...new Set(context.activities.map((a: any) => a.type))].join(', ')
+          const activityNames = context.activities.map((a: any) => a.name).join(', ')
           
           const prompt = `You are a helpful travel packing assistant. Generate personalized packing suggestions based on the following trip details:
 

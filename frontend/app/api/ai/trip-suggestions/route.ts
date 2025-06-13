@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchPlaces } from '@/lib/google-places/search';
 import { getPlaceDetails } from '@/lib/google-places/details';
-import { GooglePlaceResult } from '@/types/google-places';
 
 interface SuggestionRequest {
   destination: {
@@ -41,13 +40,13 @@ function estimateCost(priceLevel: number | undefined, type: string, budget: numb
   
   switch (type) {
     case 'accommodation':
-      const hotelBase = { 0: 50, 1: 80, 2: 150, 3: 250, 4: 400 };
+      const hotelBase: Record<number, number> = { 0: 50, 1: 80, 2: 150, 3: 250, 4: 400 };
       return Math.round((hotelBase[priceLevel || 2] || 150) * baseMultiplier);
     case 'restaurant':
-      const restaurantBase = { 0: 10, 1: 20, 2: 40, 3: 80, 4: 150 };
+      const restaurantBase: Record<number, number> = { 0: 10, 1: 20, 2: 40, 3: 80, 4: 150 };
       return Math.round((restaurantBase[priceLevel || 2] || 40) * baseMultiplier);
     default:
-      const activityBase = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 100 };
+      const activityBase: Record<number, number> = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 100 };
       return Math.round((activityBase[priceLevel || 2] || 25) * baseMultiplier);
   }
 }
@@ -172,7 +171,7 @@ export async function POST(request: NextRequest) {
       const hotel = hotels.find(h => {
         // Try to match budget preferences
         if (travelStyle === 'budget') return !h.priceLevel || h.priceLevel <= 2;
-        if (travelStyle === 'luxury') return h.priceLevel >= 3;
+        if (travelStyle === 'luxury') return h.priceLevel && h.priceLevel >= 3;
         return true;
       }) || hotels[0];
 
