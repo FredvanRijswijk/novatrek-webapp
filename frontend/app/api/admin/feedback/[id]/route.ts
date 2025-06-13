@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FeedbackModel } from '@/lib/models/feedback-model';
+import { FeedbackModelAdmin } from '@/lib/models/feedback-model-admin';
 import { verifyToken } from '@/lib/firebase/auth-admin';
 
 export async function PATCH(
@@ -30,7 +30,7 @@ export async function PATCH(
       );
     }
 
-    const feedbackModel = new FeedbackModel();
+    const feedbackModel = new FeedbackModelAdmin();
     await feedbackModel.updateFeedbackStatus(id, status, adminNotes, priority);
 
     return NextResponse.json({ success: true });

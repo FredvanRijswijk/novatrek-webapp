@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FeedbackModel } from '@/lib/models/feedback-model';
+import { FeedbackModelAdmin } from '@/lib/models/feedback-model-admin';
 import { verifyToken } from '@/lib/firebase/auth-admin';
 
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') as any;
     const priority = searchParams.get('priority') as any;
 
-    const feedbackModel = new FeedbackModel();
+    const feedbackModel = new FeedbackModelAdmin();
     const feedback = await feedbackModel.getAllFeedback({
       status: status === 'all' ? undefined : status,
       category: category === 'all' ? undefined : category,

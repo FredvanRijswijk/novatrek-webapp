@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FeedbackModel } from '@/lib/models/feedback-model';
+import { FeedbackModelAdmin } from '@/lib/models/feedback-model-admin';
 import { verifyToken } from '@/lib/firebase/auth-admin';
 
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const feedbackModel = new FeedbackModel();
+    const feedbackModel = new FeedbackModelAdmin();
     const stats = await feedbackModel.getFeedbackStats();
 
     return NextResponse.json(stats);

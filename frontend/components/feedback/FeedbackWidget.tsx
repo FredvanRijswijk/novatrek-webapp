@@ -65,7 +65,8 @@ export function FeedbackWidget() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit feedback');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit feedback');
       }
 
       setSubmitted(true);

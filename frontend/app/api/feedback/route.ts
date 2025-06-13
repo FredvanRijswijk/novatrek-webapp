@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FeedbackModel, FeedbackCategory } from '@/lib/models/feedback-model';
+import { FeedbackCategory } from '@/lib/models/feedback-model';
+import { FeedbackModelAdmin } from '@/lib/models/feedback-model-admin';
 import { verifyIdToken } from '@/lib/firebase/admin';
-import { sendSlackNotification } from '@/lib/notifications/slack';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     };
 
-    const feedbackModel = new FeedbackModel();
+    const feedbackModel = new FeedbackModelAdmin();
     const feedback = await feedbackModel.createFeedback({
       userId: decodedToken.uid,
       userEmail: decodedToken.email || '',
@@ -69,54 +69,32 @@ export async function POST(request: NextRequest) {
     // Send Slack notification for high-priority feedback
     if (category === 'bug' || rating === 1) {
       try {
-        const message = {
-          text: `🚨 New ${category === 'bug' ? 'Bug Report' : 'Critical Feedback'}`,
-          blocks: [
-            {
-              type: 'header',
-              text: {
-                type: 'plain_text',
-                text: `New ${category === 'bug' ? 'Bug Report' : 'Critical Feedback'} 🚨`,
+        // Send notification through the notification API
+        const notificationResponse = await fetch(`${request.nextUrl.origin}/api/notifications/slack`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'custom',
+            data: {
+              email: decodedToken.email || 'system@novatrek.app',
+              metadata: {
+                customMessage: `🚨 New ${category === 'bug' ? 'Bug Report' : 'Critical Feedback'}: ${title}`,
+                title,
+                category,
+                description,
+                rating,
+                url: metadata.url,
+                userId: decodedToken.uid,
               },
             },
-            {
-              type: 'section',
-              fields: [
-                {
-                  type: 'mrkdwn',
-                  text: `*Title:*\n${title}`,
-                },
-                {
-                  type: 'mrkdwn',
-                  text: `*Category:*\n${category}`,
-                },
-                {
-                  type: 'mrkdwn',
-                  text: `*User:*\n${decodedToken.email}`,
-                },
-                {
-                  type: 'mrkdwn',
-                  text: `*Rating:*\n${rating ? '⭐'.repeat(rating) : 'N/A'}`,
-                },
-              ],
-            },
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*Description:*\n${description}`,
-              },
-            },
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*URL:*\n${metadata.url || 'N/A'}`,
-              },
-            },
-          ],
-        };
-        await sendSlackNotification(message);
+          }),
+        });
+
+        if (!notificationResponse.ok) {
+          console.error('Failed to send Slack notification');
+        }
       } catch (error) {
         console.error('Failed to send Slack notification:', error);
       }
@@ -150,7 +128,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const feedbackModel = new FeedbackModel();
+    const feedbackModel = new FeedbackModelAdmin();
     const feedback = await feedbackModel.getUserFeedback(decodedToken.uid);
 
     // Convert timestamps to ISO strings for JSON serialization
