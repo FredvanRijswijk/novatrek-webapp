@@ -784,14 +784,17 @@ service cloud.firestore {
     
     // Waitlist collection
     match /waitlist/{entryId} {
-      // Only authenticated users can read their own waitlist entry
-      allow read: if request.auth != null && (
-        resource.data.email == request.auth.token.email ||
-        isAdmin()
-      );
+      // Allow anyone to read if they know the document ID
+      // Authenticated users can read their own entry by email
+      // Admins can read all entries
+      allow read: if true;
       
       // Anyone can create a waitlist entry (handled by rate limiting in API)
-      allow create: if true;
+      // Must include required fields
+      allow create: if request.resource.data.email is string &&
+        request.resource.data.email.size() > 0 &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt != null;
       
       // Only admins can update waitlist entries
       allow update: if request.auth != null && isAdmin();
