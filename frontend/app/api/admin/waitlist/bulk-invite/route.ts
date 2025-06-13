@@ -29,8 +29,16 @@ export async function POST(request: NextRequest) {
       try {
         await waitlistModel.inviteUser(user.id);
         
-        // TODO: Send invitation email
-        // await sendInvitationEmail(user.email, user.name);
+        // Send invitation email
+        try {
+          const { sendWaitlistInvitationEmail } = await import('@/lib/email/waitlist-emails');
+          await sendWaitlistInvitationEmail({
+            email: user.email,
+            name: user.name,
+          });
+        } catch (emailError) {
+          console.error(`Failed to send email to ${user.email}:`, emailError);
+        }
         
         invited++;
       } catch (error) {

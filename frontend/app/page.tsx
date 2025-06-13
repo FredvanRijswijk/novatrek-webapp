@@ -183,9 +183,9 @@ export default function LandingPage() {
     e.preventDefault();
     track("click", { button: "hero_email_cta", page: "homepage", has_email: !!email });
     if (email) {
-      router.push(`/signup?email=${encodeURIComponent(email)}`);
+      router.push(`/waitlist?email=${encodeURIComponent(email)}`);
     } else {
-      router.push("/signup");
+      router.push("/waitlist");
     }
   };
 
@@ -336,10 +336,10 @@ export default function LandingPage() {
                 className="mt-8"
                 onClick={() => {
                   track("click", { button: "try_ai_chat_free", page: "homepage" });
-                  router.push("/signup");
+                  router.push("/waitlist");
                 }}
               >
-                Try AI Chat Free
+                Join Waitlist
                 <MessageSquare className="ml-2 w-4 h-4" />
               </Button>
             </div>

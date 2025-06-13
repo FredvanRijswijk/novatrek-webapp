@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Sparkles, Users, MapPin, Zap } from 'lucide-react';
 
 export default function WaitlistPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
@@ -18,6 +19,14 @@ export default function WaitlistPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [position, setPosition] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Pre-fill email if provided in URL
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
 
   const interestOptions = [
     { id: 'solo', label: 'Solo Travel' },

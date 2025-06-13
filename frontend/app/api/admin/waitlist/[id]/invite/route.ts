@@ -29,8 +29,17 @@ export async function POST(
     // Update status to invited
     await waitlistModel.inviteUser(params.id);
 
-    // TODO: Send invitation email
-    // await sendInvitationEmail(entry.email, entry.name);
+    // Send invitation email
+    try {
+      const { sendWaitlistInvitationEmail } = await import('@/lib/email/waitlist-emails');
+      await sendWaitlistInvitationEmail({
+        email: entry.email,
+        name: entry.name,
+      });
+    } catch (error) {
+      console.error('Failed to send invitation email:', error);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({ 
       success: true,

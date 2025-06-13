@@ -134,6 +134,7 @@ export function getAdminAuth() {
 }
 
 export { initializeAdmin };
+export { initializeAdmin as initAdmin };
 
 // Create a lazy auth object that initializes on first use
 export const auth = {

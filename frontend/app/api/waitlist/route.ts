@@ -48,8 +48,18 @@ export async function POST(request: NextRequest) {
       metadata: enhancedMetadata,
     });
 
-    // TODO: Send welcome email
-    // await sendWaitlistWelcomeEmail(email, entry.position);
+    // Send welcome email
+    try {
+      const { sendWaitlistWelcomeEmail } = await import('@/lib/email/waitlist-emails');
+      await sendWaitlistWelcomeEmail({
+        email: email.toLowerCase(),
+        name,
+        position: entry.position,
+      });
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({
       success: true,
