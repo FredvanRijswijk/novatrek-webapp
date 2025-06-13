@@ -6,6 +6,7 @@ import {
   MapPin,
   Calendar,
   MessageCircle,
+  MessageSquare,
   Settings,
   User,
   Home,
