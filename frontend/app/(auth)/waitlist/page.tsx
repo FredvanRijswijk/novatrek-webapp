@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Sparkles, Users, MapPin, Zap } from 'lucide-react';
 
-export default function WaitlistPage() {
+function WaitlistForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -282,5 +282,30 @@ export default function WaitlistPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function WaitlistPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
+        <div className="w-full max-w-lg p-4">
+          <Card className="animate-pulse">
+            <CardHeader className="text-center">
+              <div className="h-12 w-12 bg-muted rounded-full mx-auto mb-4" />
+              <div className="h-8 bg-muted rounded w-3/4 mx-auto mb-2" />
+              <div className="h-4 bg-muted rounded w-full" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <WaitlistForm />
+    </Suspense>
   );
 }
