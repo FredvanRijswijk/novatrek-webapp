@@ -105,6 +105,15 @@ const TransportPlanner = dynamic(
   }
 );
 
+// Import AI suggestions processor
+const InitialSuggestionsProcessor = dynamic(
+  () => import('@/components/trips/planning/InitialSuggestionsProcessor').then(mod => ({ default: mod.InitialSuggestionsProcessor })),
+  { 
+    loading: () => null,
+    ssr: false 
+  }
+);
+
 export default function TripPlanningPage() {
   const params = useParams();
   const router = useRouter();
@@ -312,6 +321,21 @@ export default function TripPlanningPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             {/* Main Content */}
             <div className="space-y-6">
+              {/* AI Suggestions Processor */}
+              {fullTripData && (
+                <InitialSuggestionsProcessor
+                  tripId={tripId}
+                  tripStartDate={fullTripData.trip.startDate}
+                  tripEndDate={fullTripData.trip.endDate}
+                  onSuggestionsProcessed={() => {
+                    // Reload trip data after suggestions are processed
+                    tripService.getFullTrip(tripId).then(updated => {
+                      if (updated) setFullTripData(updated);
+                    });
+                  }}
+                />
+              )}
+              
               {/* Quick Stats */}
               <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 <Card>

@@ -781,5 +781,23 @@ service cloud.firestore {
         get(/databases/$(database)/documents/trips/$(tripId)).data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
       );
     }
+    
+    // Waitlist collection
+    match /waitlist/{entryId} {
+      // Only authenticated users can read their own waitlist entry
+      allow read: if request.auth != null && (
+        resource.data.email == request.auth.token.email ||
+        isAdmin()
+      );
+      
+      // Anyone can create a waitlist entry (handled by rate limiting in API)
+      allow create: if true;
+      
+      // Only admins can update waitlist entries
+      allow update: if request.auth != null && isAdmin();
+      
+      // No one can delete waitlist entries
+      allow delete: if false;
+    }
   }
 }

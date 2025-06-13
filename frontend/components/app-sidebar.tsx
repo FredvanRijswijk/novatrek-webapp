@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Sparkles,
   Users,
+  Clock,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -81,6 +82,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Users",
         url: "/dashboard/admin/users",
         icon: Users,
+      },
+      {
+        title: "Waitlist",
+        url: "/dashboard/admin/waitlist",
+        icon: Clock,
       },
       {
         title: "Applications",

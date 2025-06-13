@@ -3,9 +3,35 @@ import { openai } from '@ai-sdk/openai'
 import { NextRequest } from 'next/server'
 import { createEnhancedContext } from '@/lib/ai/trip-context-analyzer'
 import { travelChat } from '@/lib/ai/vertex-firebase'
+import { chatRateLimit, getIdentifier, rateLimitResponse } from '@/lib/rate-limit'
+import { getAuth } from 'firebase-admin/auth'
+import { initAdmin } from '@/lib/firebase/admin'
 
 export async function POST(req: NextRequest) {
   try {
+    // Get user ID from auth token if available
+    let userId: string | undefined;
+    try {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        await initAdmin();
+        const decodedToken = await getAuth().verifyIdToken(token);
+        userId = decodedToken.uid;
+      }
+    } catch (error) {
+      // Continue without user ID - will use IP for rate limiting
+      console.warn('Auth token verification failed:', error);
+    }
+
+    // Check rate limit
+    const identifier = getIdentifier(req, userId);
+    const { success, limit, reset, remaining } = await chatRateLimit.limit(identifier);
+    
+    if (!success) {
+      return rateLimitResponse(limit, reset);
+    }
+
     const body = await req.json()
     const { messages, tripContext, userPreferences, fullTrip, providerId = 'openai-gpt4o-mini' } = body
     
@@ -151,7 +177,12 @@ When responding, consider the user's planning stage and provide contextually rel
         temperature: 0.7,
       })
 
-      return result.toDataStreamResponse()
+      // Add rate limit headers to response
+      const response = result.toDataStreamResponse();
+      response.headers.set('X-RateLimit-Limit', limit.toString());
+      response.headers.set('X-RateLimit-Remaining', remaining.toString());
+      response.headers.set('X-RateLimit-Reset', new Date(reset).toISOString());
+      return response
     }
     
     // Should never reach here, but return error if it does

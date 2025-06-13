@@ -2,8 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import react-day-picker styles */
-@import "react-day-picker/style.css";
+/* Note: react-day-picker styles are imported in the component */
 
 /* Calendar fixes for Tailwind v3 */
 .rdp-root {

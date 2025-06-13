@@ -45,77 +45,55 @@ export function AIKickstartStep({ formData, updateFormData }: AIKickstartStepPro
     setIsGenerating(true);
     
     try {
-      // Mock AI suggestions - In production, this would call OpenAI API
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      // Call the real API that uses Google Places
+      const response = await fetch('/api/ai/trip-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination: formData.destination,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          travelers: formData.travelers,
+          budget: formData.budgetRange,
+          travelStyle: formData.travelStyle,
+          activityTypes: formData.activityTypes,
+          accommodationType: formData.accommodationType
+        })
+      });
       
-      const mockSuggestions: AISuggestion[] = [
-        {
-          id: '1',
-          type: 'activity',
-          title: 'Visit the Eiffel Tower',
-          description: 'Iconic symbol of Paris with breathtaking city views',
-          location: 'Champ de Mars, Paris',
-          estimatedCost: 25,
-          duration: '2-3 hours',
-          category: 'cultural',
-          reasoning: 'Perfect for first-time visitors and photography enthusiasts',
-          confidence: 0.95
-        },
-        {
-          id: '2',
-          type: 'restaurant',
-          title: 'Le Comptoir du Relais',
-          description: 'Authentic Parisian bistro experience',
-          location: 'Saint-Germain-des-Prés',
-          estimatedCost: 45,
-          duration: '1-2 hours',
-          category: 'food',
-          reasoning: 'Matches your interest in food culture and mid-range budget',
-          confidence: 0.88
-        },
-        {
-          id: '3',
-          type: 'activity',
-          title: 'Seine River Cruise',
-          description: 'Romantic boat ride with city landmarks',
-          location: 'Seine River',
-          estimatedCost: 15,
-          duration: '1 hour',
-          category: 'cultural',
-          reasoning: 'Relaxing way to see multiple landmarks in one activity',
-          confidence: 0.92
-        },
-        {
-          id: '4',
-          type: 'accommodation',
-          title: 'Hotel des Grands Boulevards',
-          description: 'Boutique hotel in the heart of Paris',
-          location: '2nd Arrondissement',
-          estimatedCost: 180,
-          duration: 'per night',
-          category: 'accommodation',
-          reasoning: 'Fits your mid-range budget and central location preference',
-          confidence: 0.85
-        },
-        {
-          id: '5',
-          type: 'activity',
-          title: 'Louvre Museum Tour',
-          description: 'World-class art collection and historical artifacts',
-          location: 'Palais du Louvre',
-          estimatedCost: 20,
-          duration: '3-4 hours',
-          category: 'cultural',
-          reasoning: 'Essential cultural experience for art and history lovers',
-          confidence: 0.90
-        }
-      ];
+      if (!response.ok) {
+        console.error('Failed to generate suggestions:', await response.text());
+        // Fallback to basic suggestions if API fails
+        const fallbackSuggestions: AISuggestion[] = [
+          {
+            id: '1',
+            type: 'activity',
+            title: `Explore ${formData.destination?.name || 'the city'} center`,
+            description: 'Discover the main attractions and hidden gems',
+            location: formData.destination?.name || 'City center',
+            estimatedCost: 20,
+            duration: '2-3 hours',
+            category: 'cultural',
+            reasoning: 'Great way to get oriented with your destination',
+            confidence: 0.85
+          }
+        ];
+        setSuggestions(fallbackSuggestions);
+        updateFormData({ aiSuggestions: fallbackSuggestions });
+        setHasGenerated(true);
+        return;
+      }
       
-      setSuggestions(mockSuggestions);
-      updateFormData({ aiSuggestions: mockSuggestions });
+      const data = await response.json();
+      const suggestions = data.suggestions || [];
+      
+      setSuggestions(suggestions);
+      updateFormData({ aiSuggestions: suggestions });
       setHasGenerated(true);
     } catch (error) {
       console.error('Error generating suggestions:', error);
+      // Show error to user
+      alert('Failed to generate suggestions. Please try again.');
     } finally {
       setIsGenerating(false);
     }

@@ -385,7 +385,13 @@ export function TripCreationWizard() {
           return travelerData;
         }),
         itinerary: [],
-        status: 'planning'
+        status: 'planning',
+        // Add AI suggestions to trip metadata
+        metadata: {
+          aiSuggestions: formData.aiSuggestions || [],
+          selectedSuggestions: formData.selectedSuggestions || [],
+          customRequests: formData.customRequests || ''
+        }
       };
       
       // Log the trip data before sending
@@ -401,6 +407,26 @@ export function TripCreationWizard() {
       // Mark travel preferences as used
       if (preferences) {
         await markAsUsed();
+      }
+      
+      // Process selected AI suggestions
+      if (formData.selectedSuggestions && formData.selectedSuggestions.length > 0) {
+        try {
+          // Get the full suggestion details
+          const selectedSuggestionDetails = formData.aiSuggestions.filter((suggestion: any) => 
+            formData.selectedSuggestions.includes(suggestion.id)
+          );
+          
+          // Store selected suggestions in localStorage for the planning page to process
+          localStorage.setItem(`trip_${tripId}_initial_suggestions`, JSON.stringify({
+            suggestions: selectedSuggestionDetails,
+            customRequests: formData.customRequests || ''
+          }));
+          
+          console.log('Stored AI suggestions for trip:', tripId, selectedSuggestionDetails);
+        } catch (error) {
+          console.error('Error storing AI suggestions:', error);
+        }
       }
       
       // Send Slack notification for trip creation (non-blocking)
