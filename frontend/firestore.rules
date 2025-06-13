@@ -802,5 +802,27 @@ service cloud.firestore {
       // No one can delete waitlist entries
       allow delete: if false;
     }
+    
+    // Feedback Collection
+    match /feedback/{feedbackId} {
+      // Allow authenticated users to read their own feedback
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        // Admins can read all feedback
+        isAdmin()
+      );
+      
+      // Allow authenticated users to create feedback
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.keys().hasAll(['userId', 'userEmail', 'category', 'title', 'description']);
+      
+      // Only admins can update feedback
+      allow update: if request.auth != null && isAdmin();
+      
+      // No one can delete feedback
+      allow delete: if false;
+    }
   }
 }

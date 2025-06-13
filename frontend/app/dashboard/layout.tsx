@@ -6,6 +6,7 @@ import {
 import { AppSidebar } from "@/components/app-sidebar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { WaitlistGate } from "@/components/auth/WaitlistGate";
+import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="h-4 w-px bg-sidebar-border" />
             </header>
             <div className="flex-1 p-4 md:p-6">{children}</div>
+            <FeedbackWidget />
           </SidebarInset>
         </SidebarProvider>
       </WaitlistGate>

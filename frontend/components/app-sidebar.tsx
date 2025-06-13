@@ -89,6 +89,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: Clock,
       },
       {
+        title: "Feedback",
+        url: "/dashboard/admin/feedback",
+        icon: MessageSquare,
+        badge: "New",
+      },
+      {
         title: "Applications",
         url: "/dashboard/admin/marketplace/applications",
         icon: Sparkles,
