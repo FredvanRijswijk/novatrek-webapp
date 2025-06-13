@@ -1,5 +1,4 @@
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
 import { 
   FeedbackCategory, 
   FeedbackStatus, 
@@ -8,8 +7,15 @@ import {
 } from './feedback-model';
 
 export class FeedbackModelAdmin {
-  private db = getFirestore(getAdminApp());
   private collectionName = 'feedback';
+  
+  private getDb() {
+    const db = getAdminDb();
+    if (!db) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+    return db;
+  }
 
   async createFeedback(data: {
     userId: string;
@@ -21,7 +27,7 @@ export class FeedbackModelAdmin {
     rating?: number;
     metadata?: FeedbackEntry['metadata'];
   }): Promise<FeedbackEntry> {
-    const docRef = this.db.collection(this.collectionName).doc();
+    const docRef = this.getDb().collection(this.collectionName).doc();
     
     const entry = {
       ...data,
@@ -39,7 +45,7 @@ export class FeedbackModelAdmin {
   }
 
   async getFeedbackById(id: string): Promise<FeedbackEntry | null> {
-    const doc = await this.db.collection(this.collectionName).doc(id).get();
+    const doc = await this.getDb().collection(this.collectionName).doc(id).get();
     
     if (!doc.exists) return null;
     
@@ -50,7 +56,7 @@ export class FeedbackModelAdmin {
   }
 
   async getUserFeedback(userId: string, pageSize: number = 20): Promise<FeedbackEntry[]> {
-    const snapshot = await this.db
+    const snapshot = await this.getDb()
       .collection(this.collectionName)
       .where('userId', '==', userId)
       .orderBy('createdAt', 'desc')
@@ -71,7 +77,7 @@ export class FeedbackModelAdmin {
     },
     pageSize: number = 50
   ): Promise<FeedbackEntry[]> {
-    let query = this.db
+    let query = this.getDb()
       .collection(this.collectionName)
       .orderBy('createdAt', 'desc')
       .limit(pageSize);
@@ -114,11 +120,11 @@ export class FeedbackModelAdmin {
       updateData.resolvedAt = new Date();
     }
 
-    await this.db.collection(this.collectionName).doc(id).update(updateData);
+    await this.getDb().collection(this.collectionName).doc(id).update(updateData);
   }
 
   async getFeedbackStats() {
-    const snapshot = await this.db.collection(this.collectionName).get();
+    const snapshot = await this.getDb().collection(this.collectionName).get();
     
     const stats = {
       total: snapshot.size,
