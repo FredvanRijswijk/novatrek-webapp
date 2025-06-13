@@ -30,7 +30,7 @@ export function WaitlistGate({ children, adminBypass = false }: WaitlistGateProp
     }
 
     checkAccess();
-  }, [user, authLoading]);
+  }, [user, authLoading, router]);
 
   const checkAccess = async () => {
     if (!user) return;
@@ -85,7 +85,7 @@ export function WaitlistGate({ children, adminBypass = false }: WaitlistGateProp
               <Icon className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">
-              {waitlistStatus === 'approved' ? 'Coming Soon!' : 'You're on the Waitlist'}
+              {waitlistStatus === 'approved' ? 'Coming Soon!' : "You're on the Waitlist"}
             </CardTitle>
             <CardDescription className="text-lg mt-2">
               {message}
@@ -96,8 +96,8 @@ export function WaitlistGate({ children, adminBypass = false }: WaitlistGateProp
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-sm">
                 <p className="font-medium mb-2">While you wait:</p>
                 <ul className="space-y-1 text-muted-foreground">
-                  <li>• We're carefully onboarding users for the best experience</li>
-                  <li>• You'll get early access to all premium features</li>
+                  <li>• We&apos;re carefully onboarding users for the best experience</li>
+                  <li>• You&apos;ll get early access to all premium features</li>
                   <li>• Founding members receive special pricing forever</li>
                 </ul>
               </div>
