@@ -1,108 +1,109 @@
 # NovaTrek iOS App
 
-Native iOS application for NovaTrek - Your AI-powered travel planning companion.
-
-## Overview
-
-This is the native iOS app for NovaTrek, providing a mobile-first experience for travel planning, trip management, and on-the-go access to itineraries.
+Native iOS companion app for NovaTrek travel planning platform.
 
 ## Features
 
-- **Trip Planning**: Create and manage multi-destination trips
-- **AI Chat Assistant**: Get personalized travel recommendations
-- **Offline Access**: Download trips for offline viewing
-- **Real-time Sync**: Seamless sync with web platform
-- **Native Features**: Push notifications, widgets, and shortcuts
+### Core Functionality
+- **Trip Management**: View and manage your travel itineraries
+- **Packing Lists**: Create and manage packing lists with reminders
+- **Offline Access**: Access your trip details without internet connection
+- **Push Notifications**: Get reminders for flights, hotels, and activities
+- **Real-time Updates**: Sync with web app for latest changes
 
-## Requirements
-
-- iOS 16.0+
-- Xcode 15.0+
-- Swift 5.9+
-- CocoaPods or Swift Package Manager
+### Planned Features
+- Location-based suggestions and alerts
+- Travel document storage
+- Expense tracking
+- Group trip coordination
+- Weather alerts
 
 ## Setup
 
-1. **Clone the repository**
+### Prerequisites
+- Xcode 15.0+
+- iOS 16.0+ deployment target
+- CocoaPods or Swift Package Manager
+- Firebase project configuration
+
+### Installation
+
+1. Clone the repository
+2. Navigate to the iOS app directory:
    ```bash
-   git clone [repository-url]
-   cd web-app/ios-app
+   cd ios-app
    ```
 
-2. **Install dependencies**
+3. Install dependencies:
    ```bash
-   # If using CocoaPods
+   # Using CocoaPods
    pod install
    
-   # Open the workspace
-   open NovaTrek.xcworkspace
+   # Or using Swift Package Manager
+   xed .
    ```
 
-3. **Configure environment**
-   - Copy `Config.example.swift` to `Config.swift`
-   - Add your API keys and configuration
+4. Add your `GoogleService-Info.plist` from Firebase Console
 
-4. **Firebase Setup**
-   - Add `GoogleService-Info.plist` to the project
-   - Enable Authentication and Firestore in Firebase Console
+5. Create `Config.swift` from the template:
+   ```bash
+   cp Config.example.swift Config.swift
+   ```
+
+6. Update `Config.swift` with your API endpoints
+
+7. Open `NovaTrek.xcworkspace` (if using CocoaPods) or `NovaTrek.xcodeproj`
+
+8. Build and run the project
 
 ## Architecture
 
 ### Project Structure
 ```
-NovaTrek/
-├── App/
-│   ├── NovaTrekApp.swift    # App entry point
-│   └── Config/               # Configuration files
-├── Core/
-│   ├── Models/               # Data models
-│   ├── Services/             # API and business logic
-│   └── Utilities/            # Helper functions
-├── Features/
-│   ├── Auth/                 # Authentication
-│   ├── Trips/                # Trip management
-│   ├── Chat/                 # AI chat interface
-│   └── Profile/              # User profile
-├── UI/
-│   ├── Components/           # Reusable UI components
-│   └── Theme/                # Colors, fonts, styles
-└── Resources/
-    ├── Assets.xcassets       # Images and colors
-    └── Localizable.strings   # Translations
+ios-app/
+├── NovaTrek/
+│   ├── App/
+│   │   ├── NovaTrekApp.swift
+│   │   └── Config.swift
+│   ├── Models/
+│   │   ├── Trip.swift
+│   │   ├── PackingItem.swift
+│   │   └── User.swift
+│   ├── Views/
+│   │   ├── Trips/
+│   │   ├── Packing/
+│   │   └── Profile/
+│   ├── Services/
+│   │   ├── APIService.swift
+│   │   ├── AuthService.swift
+│   │   └── NotificationService.swift
+│   └── Resources/
+├── NovaTrekTests/
+└── NovaTrekUITests/
 ```
 
-### Key Technologies
+### Key Components
 
 - **SwiftUI**: Modern declarative UI framework
+- **Firebase**: Authentication and real-time database
 - **Combine**: Reactive programming for data flow
-- **Firebase SDK**: Authentication and real-time database
-- **URLSession**: Networking with the NovaTrek API
-- **Core Data**: Local data persistence
-- **WidgetKit**: Home screen widgets
+- **Core Data**: Offline data persistence
 
 ## API Integration
 
-The iOS app communicates with the NovaTrek backend API hosted at:
-- Development: `http://localhost:3000/api`
-- Production: `https://app.novatrek.app/api`
+The iOS app communicates with the Next.js backend API:
 
-### Authentication
-- Uses Firebase Authentication SDK
-- Supports Google Sign-In and Email/Password
-- Tokens are automatically managed by Firebase
-
-### Key Endpoints
-- `/api/trips/list` - Get user's trips
-- `/api/chat/stream` - AI chat streaming
-- `/api/activities/search` - Search for activities
-- `/api/places/photo` - Get place photos
+- Base URL: `https://your-domain.com/api/` (configured in Config.swift)
+- Authentication: Firebase Auth tokens
+- Endpoints: Uses the V2 API structure (`/api/trips-v2/`, etc.)
+- Collections: `trips-v2`, with subcollections for `days` and `activities`
 
 ## Development
 
 ### Code Style
-- Follow Apple's Swift API Design Guidelines
+- Follow Swift API Design Guidelines
 - Use SwiftLint for code consistency
-- Prefer value types (structs) over reference types
+- Write unit tests for business logic
 - Use async/await for asynchronous code
 
 ### Testing
@@ -114,40 +115,21 @@ xcodebuild test -scheme NovaTrek
 xcodebuild test -scheme NovaTrekUITests
 ```
 
-### Building
-```bash
-# Debug build
-xcodebuild -scheme NovaTrek -configuration Debug
-
-# Release build
-xcodebuild -scheme NovaTrek -configuration Release
-```
-
-## Deployment
-
-### TestFlight
-1. Archive the app in Xcode (Product > Archive)
-2. Upload to App Store Connect
-3. Submit for TestFlight review
-
-### App Store
-1. Complete App Store listing
-2. Submit for App Review
-3. Release when approved
+### Release
+1. Update version and build number
+2. Archive the app in Xcode
+3. Upload to App Store Connect
+4. Submit for review
 
 ## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests
-4. Submit a pull request
+This app is part of the NovaTrek monorepo. When making changes:
 
-## Support
-
-- GitHub Issues: [repository-issues-url]
-- Email: support@novatrek.app
-- Documentation: [docs-url]
+1. Ensure compatibility with the web API
+2. Update TypeScript interfaces if data models change
+3. Test offline functionality
+4. Verify push notifications work correctly
 
 ## License
 
-Copyright © 2024 NovaTrek. All rights reserved.
+[Your License Here]

@@ -1,0 +1,782 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		56A603E42DFB8CB3005A5D33 /* TripService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A603E02DFB8CB2005A5D33 /* TripService.swift */; };
+		56A603E52DFB8CB3005A5D33 /* Trip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A603DC2DFB8CB2005A5D33 /* Trip.swift */; };
+		56A603E62DFB8CB3005A5D33 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A603DF2DFB8CB2005A5D33 /* APIService.swift */; };
+		56A603E72DFB8CB3005A5D33 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A603DD2DFB8CB2005A5D33 /* User.swift */; };
+		56A603E82DFB8CB3005A5D33 /* PackingList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A603DB2DFB8CB2005A5D33 /* PackingList.swift */; };
+		56A603EA2DFB8D30005A5D33 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 56A603E92DFB8D30005A5D33 /* GoogleService-Info.plist */; };
+		56A603F82DFB905C005A5D33 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 56A603F72DFB905C005A5D33 /* FirebaseAuth */; };
+		56A603FA2DFB9079005A5D33 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 56A603F92DFB9079005A5D33 /* FirebaseCore */; };
+		56A603FC2DFB9079005A5D33 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 56A603FB2DFB9079005A5D33 /* FirebaseFirestore */; };
+		56A603FE2DFB9079005A5D33 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 56A603FD2DFB9079005A5D33 /* FirebaseMessaging */; };
+		56A604002DFB9079005A5D33 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 56A603FF2DFB9079005A5D33 /* FirebasePerformance */; };
+		56A604022DFB9079005A5D33 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 56A604012DFB9079005A5D33 /* FirebaseRemoteConfig */; };
+		56A604042DFB909E005A5D33 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 56A604032DFB909E005A5D33 /* FirebaseAnalytics */; };
+		56A604062DFB909E005A5D33 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 56A604052DFB909E005A5D33 /* FirebaseCrashlytics */; };
+		56A604082DFB9349005A5D33 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 56A604072DFB9349005A5D33 /* Alamofire */; };
+		56A6040A2DFB9354005A5D33 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 56A604092DFB9354005A5D33 /* Kingfisher */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		56A603BC2DFB86BD005A5D33 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A603A52DFB86BB005A5D33 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56A603AC2DFB86BB005A5D33;
+			remoteInfo = NovaTrek;
+		};
+		56A603C62DFB86BD005A5D33 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A603A52DFB86BB005A5D33 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56A603AC2DFB86BB005A5D33;
+			remoteInfo = NovaTrek;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		56A603AD2DFB86BB005A5D33 /* NovaTrek.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaTrek.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		56A603BB2DFB86BD005A5D33 /* NovaTrekTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaTrekTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		56A603C52DFB86BD005A5D33 /* NovaTrekUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaTrekUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		56A603DB2DFB8CB2005A5D33 /* PackingList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackingList.swift; sourceTree = "<group>"; };
+		56A603DC2DFB8CB2005A5D33 /* Trip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trip.swift; sourceTree = "<group>"; };
+		56A603DD2DFB8CB2005A5D33 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		56A603DF2DFB8CB2005A5D33 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		56A603E02DFB8CB2005A5D33 /* TripService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripService.swift; sourceTree = "<group>"; };
+		56A603E92DFB8D30005A5D33 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		56A603AF2DFB86BB005A5D33 /* NovaTrek */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NovaTrek;
+			sourceTree = "<group>";
+		};
+		56A603BE2DFB86BD005A5D33 /* NovaTrekTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NovaTrekTests;
+			sourceTree = "<group>";
+		};
+		56A603C82DFB86BD005A5D33 /* NovaTrekUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NovaTrekUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		56A603AA2DFB86BB005A5D33 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56A604082DFB9349005A5D33 /* Alamofire in Frameworks */,
+				56A604042DFB909E005A5D33 /* FirebaseAnalytics in Frameworks */,
+				56A603FE2DFB9079005A5D33 /* FirebaseMessaging in Frameworks */,
+				56A603FA2DFB9079005A5D33 /* FirebaseCore in Frameworks */,
+				56A6040A2DFB9354005A5D33 /* Kingfisher in Frameworks */,
+				56A604002DFB9079005A5D33 /* FirebasePerformance in Frameworks */,
+				56A604022DFB9079005A5D33 /* FirebaseRemoteConfig in Frameworks */,
+				56A604062DFB909E005A5D33 /* FirebaseCrashlytics in Frameworks */,
+				56A603F82DFB905C005A5D33 /* FirebaseAuth in Frameworks */,
+				56A603FC2DFB9079005A5D33 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603B82DFB86BD005A5D33 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603C22DFB86BD005A5D33 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		56A603A42DFB86BB005A5D33 = {
+			isa = PBXGroup;
+			children = (
+				56A603AF2DFB86BB005A5D33 /* NovaTrek */,
+				56A603BE2DFB86BD005A5D33 /* NovaTrekTests */,
+				56A603C82DFB86BD005A5D33 /* NovaTrekUITests */,
+				56A603AE2DFB86BB005A5D33 /* Products */,
+				56A603E32DFB8CB2005A5D33 /* NovaTrekCore */,
+				56A603E92DFB8D30005A5D33 /* GoogleService-Info.plist */,
+				56A603F62DFB905C005A5D33 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		56A603AE2DFB86BB005A5D33 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				56A603AD2DFB86BB005A5D33 /* NovaTrek.app */,
+				56A603BB2DFB86BD005A5D33 /* NovaTrekTests.xctest */,
+				56A603C52DFB86BD005A5D33 /* NovaTrekUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		56A603DE2DFB8CB2005A5D33 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				56A603DB2DFB8CB2005A5D33 /* PackingList.swift */,
+				56A603DC2DFB8CB2005A5D33 /* Trip.swift */,
+				56A603DD2DFB8CB2005A5D33 /* User.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		56A603E12DFB8CB2005A5D33 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				56A603DF2DFB8CB2005A5D33 /* APIService.swift */,
+				56A603E02DFB8CB2005A5D33 /* TripService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		56A603E22DFB8CB2005A5D33 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		56A603E32DFB8CB2005A5D33 /* NovaTrekCore */ = {
+			isa = PBXGroup;
+			children = (
+				56A603DE2DFB8CB2005A5D33 /* Models */,
+				56A603E12DFB8CB2005A5D33 /* Services */,
+				56A603E22DFB8CB2005A5D33 /* Utilities */,
+			);
+			path = NovaTrekCore;
+			sourceTree = "<group>";
+		};
+		56A603F62DFB905C005A5D33 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		56A603AC2DFB86BB005A5D33 /* NovaTrek */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56A603CF2DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrek" */;
+			buildPhases = (
+				56A603A92DFB86BB005A5D33 /* Sources */,
+				56A603AA2DFB86BB005A5D33 /* Frameworks */,
+				56A603AB2DFB86BB005A5D33 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				56A603AF2DFB86BB005A5D33 /* NovaTrek */,
+			);
+			name = NovaTrek;
+			packageProductDependencies = (
+				56A603F72DFB905C005A5D33 /* FirebaseAuth */,
+				56A603F92DFB9079005A5D33 /* FirebaseCore */,
+				56A603FB2DFB9079005A5D33 /* FirebaseFirestore */,
+				56A603FD2DFB9079005A5D33 /* FirebaseMessaging */,
+				56A603FF2DFB9079005A5D33 /* FirebasePerformance */,
+				56A604012DFB9079005A5D33 /* FirebaseRemoteConfig */,
+				56A604032DFB909E005A5D33 /* FirebaseAnalytics */,
+				56A604052DFB909E005A5D33 /* FirebaseCrashlytics */,
+				56A604072DFB9349005A5D33 /* Alamofire */,
+				56A604092DFB9354005A5D33 /* Kingfisher */,
+			);
+			productName = NovaTrek;
+			productReference = 56A603AD2DFB86BB005A5D33 /* NovaTrek.app */;
+			productType = "com.apple.product-type.application";
+		};
+		56A603BA2DFB86BD005A5D33 /* NovaTrekTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56A603D22DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrekTests" */;
+			buildPhases = (
+				56A603B72DFB86BD005A5D33 /* Sources */,
+				56A603B82DFB86BD005A5D33 /* Frameworks */,
+				56A603B92DFB86BD005A5D33 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				56A603BD2DFB86BD005A5D33 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				56A603BE2DFB86BD005A5D33 /* NovaTrekTests */,
+			);
+			name = NovaTrekTests;
+			packageProductDependencies = (
+			);
+			productName = NovaTrekTests;
+			productReference = 56A603BB2DFB86BD005A5D33 /* NovaTrekTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		56A603C42DFB86BD005A5D33 /* NovaTrekUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56A603D52DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrekUITests" */;
+			buildPhases = (
+				56A603C12DFB86BD005A5D33 /* Sources */,
+				56A603C22DFB86BD005A5D33 /* Frameworks */,
+				56A603C32DFB86BD005A5D33 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				56A603C72DFB86BD005A5D33 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				56A603C82DFB86BD005A5D33 /* NovaTrekUITests */,
+			);
+			name = NovaTrekUITests;
+			packageProductDependencies = (
+			);
+			productName = NovaTrekUITests;
+			productReference = 56A603C52DFB86BD005A5D33 /* NovaTrekUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		56A603A52DFB86BB005A5D33 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					56A603AC2DFB86BB005A5D33 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					56A603BA2DFB86BD005A5D33 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 56A603AC2DFB86BB005A5D33;
+					};
+					56A603C42DFB86BD005A5D33 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 56A603AC2DFB86BB005A5D33;
+					};
+				};
+			};
+			buildConfigurationList = 56A603A82DFB86BB005A5D33 /* Build configuration list for PBXProject "NovaTrek" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 56A603A42DFB86BB005A5D33;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				56A603D92DFB8B99005A5D33 /* XCRemoteSwiftPackageReference "Alamofire" */,
+				56A603DA2DFB8BB8005A5D33 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 56A603AE2DFB86BB005A5D33 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				56A603AC2DFB86BB005A5D33 /* NovaTrek */,
+				56A603BA2DFB86BD005A5D33 /* NovaTrekTests */,
+				56A603C42DFB86BD005A5D33 /* NovaTrekUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		56A603AB2DFB86BB005A5D33 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56A603EA2DFB8D30005A5D33 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603B92DFB86BD005A5D33 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603C32DFB86BD005A5D33 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		56A603A92DFB86BB005A5D33 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56A603E42DFB8CB3005A5D33 /* TripService.swift in Sources */,
+				56A603E52DFB8CB3005A5D33 /* Trip.swift in Sources */,
+				56A603E62DFB8CB3005A5D33 /* APIService.swift in Sources */,
+				56A603E72DFB8CB3005A5D33 /* User.swift in Sources */,
+				56A603E82DFB8CB3005A5D33 /* PackingList.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603B72DFB86BD005A5D33 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56A603C12DFB86BD005A5D33 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		56A603BD2DFB86BD005A5D33 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56A603AC2DFB86BB005A5D33 /* NovaTrek */;
+			targetProxy = 56A603BC2DFB86BD005A5D33 /* PBXContainerItemProxy */;
+		};
+		56A603C72DFB86BD005A5D33 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56A603AC2DFB86BB005A5D33 /* NovaTrek */;
+			targetProxy = 56A603C62DFB86BD005A5D33 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		56A603CD2DFB86BD005A5D33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		56A603CE2DFB86BD005A5D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		56A603D02DFB86BD005A5D33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NovaTrek/NovaTrek.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.go;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Debug;
+		};
+		56A603D12DFB86BD005A5D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NovaTrek/NovaTrek.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.go;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Release;
+		};
+		56A603D32DFB86BD005A5D33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.NovaTrekTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NovaTrek.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NovaTrek";
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Debug;
+		};
+		56A603D42DFB86BD005A5D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.NovaTrekTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NovaTrek.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NovaTrek";
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Release;
+		};
+		56A603D62DFB86BD005A5D33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.NovaTrekUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = NovaTrek;
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Debug;
+		};
+		56A603D72DFB86BD005A5D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TPFYPRTZF8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.novatrek.NovaTrekUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = NovaTrek;
+				XROS_DEPLOYMENT_TARGET = 2.5;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		56A603A82DFB86BB005A5D33 /* Build configuration list for PBXProject "NovaTrek" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56A603CD2DFB86BD005A5D33 /* Debug */,
+				56A603CE2DFB86BD005A5D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56A603CF2DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrek" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56A603D02DFB86BD005A5D33 /* Debug */,
+				56A603D12DFB86BD005A5D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56A603D22DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrekTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56A603D32DFB86BD005A5D33 /* Debug */,
+				56A603D42DFB86BD005A5D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56A603D52DFB86BD005A5D33 /* Build configuration list for PBXNativeTarget "NovaTrekUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56A603D62DFB86BD005A5D33 /* Debug */,
+				56A603D72DFB86BD005A5D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
+		56A603D92DFB8B99005A5D33 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.2;
+			};
+		};
+		56A603DA2DFB8BB8005A5D33 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.3.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		56A603F72DFB905C005A5D33 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		56A603F92DFB9079005A5D33 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		56A603FB2DFB9079005A5D33 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		56A603FD2DFB9079005A5D33 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		56A603FF2DFB9079005A5D33 /* FirebasePerformance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebasePerformance;
+		};
+		56A604012DFB9079005A5D33 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
+		};
+		56A604032DFB909E005A5D33 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		56A604052DFB909E005A5D33 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D82DFB8A66005A5D33 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		56A604072DFB9349005A5D33 /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603D92DFB8B99005A5D33 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+		56A604092DFB9354005A5D33 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56A603DA2DFB8BB8005A5D33 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 56A603A52DFB86BB005A5D33 /* Project object */;
+}
