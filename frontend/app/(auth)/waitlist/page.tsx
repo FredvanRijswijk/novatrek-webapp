@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Sparkles, Users, MapPin, Zap } from 'lucide-react';
 
 export default function WaitlistPage() {
@@ -39,6 +46,13 @@ export default function WaitlistPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that at least one interest is selected
+    if (interests.length === 0) {
+      alert('Please select at least one travel interest');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -205,7 +219,8 @@ export default function WaitlistPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>What type of travel interests you?</Label>
+                <Label>What type of travel interests you? *</Label>
+                <p className="text-sm text-muted-foreground">Select all that apply</p>
                 <div className="grid grid-cols-2 gap-3">
                   {interestOptions.map((option) => (
                     <div key={option.id} className="flex items-center space-x-2">
@@ -233,13 +248,25 @@ export default function WaitlistPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="referral">How did you hear about us?</Label>
-                <Input
-                  id="referral"
-                  type="text"
-                  placeholder="Twitter, friend, etc."
-                  value={referralSource}
-                  onChange={(e) => setReferralSource(e.target.value)}
-                />
+                <Select value={referralSource} onValueChange={setReferralSource}>
+                  <SelectTrigger id="referral">
+                    <SelectValue placeholder="Select an option" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="twitter">X (Twitter)</SelectItem>
+                    <SelectItem value="friend">Friend or colleague</SelectItem>
+                    <SelectItem value="google">Google search</SelectItem>
+                    <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    <SelectItem value="producthunt">Product Hunt</SelectItem>
+                    <SelectItem value="reddit">Reddit</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="youtube">YouTube</SelectItem>
+                    <SelectItem value="blog">Blog or article</SelectItem>
+                    <SelectItem value="newsletter">Newsletter</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
