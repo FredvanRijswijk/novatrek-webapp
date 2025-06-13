@@ -9,14 +9,16 @@ This document describes the rate limiting and waitlist system implementation for
 ### Setup
 
 1. **Install Upstash packages:**
+
 ```bash
 npm install @upstash/redis @upstash/ratelimit
 ```
 
 2. **Configure environment variables:**
+
 ```env
-UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your-redis-token
+KV_REST_API_URL=https://your-redis-url.upstash.io
+KV_REST_API_TOKEN=your-redis-token
 ```
 
 3. **Get Upstash credentials:**
@@ -33,10 +35,12 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 ### Usage in API Routes
 
 The chat API (`/api/chat/route.ts`) now includes rate limiting:
+
 ```typescript
 // Check rate limit
 const identifier = getIdentifier(req, userId);
-const { success, limit, reset, remaining } = await chatRateLimit.limit(identifier);
+const { success, limit, reset, remaining } =
+  await chatRateLimit.limit(identifier);
 
 if (!success) {
   return rateLimitResponse(limit, reset);
@@ -48,6 +52,7 @@ if (!success) {
 ### Features
 
 1. **Public Waitlist Page** (`/waitlist`)
+
    - Email signup with optional name
    - Interest selection
    - Referral source tracking
@@ -55,12 +60,14 @@ if (!success) {
    - Position display after signup
 
 2. **Waitlist Model** (`/lib/models/waitlist-model.ts`)
+
    - Status tracking: pending → approved → invited → joined
    - Position management
    - Email duplicate prevention
    - Metadata storage (IP, user agent, UTM params)
 
 3. **Admin Management** (`/dashboard/admin/waitlist`)
+
    - View all waitlist entries
    - Filter by status
    - Approve users
@@ -77,17 +84,20 @@ if (!success) {
 ### Waitlist Flow
 
 1. **New User Signs Up**:
+
    - Goes to `/waitlist` page
    - Fills out form with email and interests
    - Gets position number
    - Status: `pending`
 
 2. **Admin Approves**:
+
    - Admin reviews application
    - Clicks "Approve" button
    - Status: `approved`
 
 3. **Admin Sends Invite**:
+
    - Admin clicks "Send Invite"
    - Email sent to user (TODO: implement email)
    - Status: `invited`
@@ -112,7 +122,7 @@ if (!success) {
 Wrap protected pages with the `WaitlistGate` component:
 
 ```tsx
-import { WaitlistGate } from '@/components/auth/WaitlistGate';
+import { WaitlistGate } from "@/components/auth/WaitlistGate";
 
 export default function ProtectedPage() {
   return (
@@ -126,6 +136,7 @@ export default function ProtectedPage() {
 ### Firestore Rules
 
 The waitlist collection has been added to `firestore.rules`:
+
 - Users can only read their own entry
 - Anyone can create entries (rate limited by API)
 - Only admins can update entries
@@ -142,6 +153,7 @@ The waitlist system uses **Resend** for sending emails (already integrated in th
 ### Email Templates Implemented
 
 1. **Welcome Email** - Sent when user joins waitlist
+
    - Shows position number
    - Lists benefits of early access
    - Provides next steps
@@ -154,6 +166,7 @@ The waitlist system uses **Resend** for sending emails (already integrated in th
 ### Configuration
 
 Add these to your `.env.local`:
+
 ```env
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 RESEND_FROM_EMAIL=info@send.novatrek.app
@@ -163,6 +176,7 @@ RESEND_REPLY_TO=support@novatrek.app
 ## TODO
 
 1. **Firebase Deployment**:
+
    - Run `firebase login --reauth`
    - Deploy rules: `firebase deploy --only firestore:rules`
 
@@ -174,11 +188,13 @@ RESEND_REPLY_TO=support@novatrek.app
 ## Testing
 
 1. **Test Rate Limiting**:
+
    - Make rapid requests to chat API
    - Verify 429 responses after limit
    - Check rate limit headers
 
 2. **Test Waitlist Flow**:
+
    - Sign up at `/waitlist`
    - Check admin panel shows entry
    - Approve and invite user
