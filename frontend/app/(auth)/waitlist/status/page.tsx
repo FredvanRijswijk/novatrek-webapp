@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Search, Clock, CheckCircle, Mail, UserCheck } from 'lucide-react';
 
-export default function WaitlistStatusPage() {
+function WaitlistStatusForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
@@ -18,6 +19,21 @@ export default function WaitlistStatusPage() {
     joinedAt?: string;
   } | null>(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Pre-fill email from URL parameter
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
+      // Auto-check status if email is provided
+      setTimeout(() => {
+        const form = document.querySelector('form') as HTMLFormElement;
+        if (form) {
+          form.requestSubmit();
+        }
+      }, 100);
+    }
+  }, [searchParams]);
 
   const checkStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +122,7 @@ export default function WaitlistStatusPage() {
           <CardHeader>
             <CardTitle>Status Lookup</CardTitle>
             <CardDescription>
-              We&apos;ll check if you&apos;re on the waitlist and show your current status
+              We'll check if you're on the waitlist and show your current status
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -211,5 +227,20 @@ export default function WaitlistStatusPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WaitlistStatusPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <WaitlistStatusForm />
+    </Suspense>
   );
 }
