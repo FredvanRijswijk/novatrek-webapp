@@ -81,7 +81,7 @@ export async function sendWaitlistWelcomeEmail(data: WaitlistEmailData) {
             
             <p>In the meantime, follow us for updates:</p>
             <ul>
-              <li>Check your position anytime at <a href="${process.env.NEXT_PUBLIC_APP_URL}/waitlist/status">novatrek.com/waitlist/status</a></li>
+              <li>Check your position anytime at <a href="${process.env.NEXT_PUBLIC_APP_URL}/waitlist/status">${process.env.NEXT_PUBLIC_APP_URL}/waitlist/status</a></li>
               <li>Join our community discussions</li>
               <li>Share NovaTrek with friends who love to travel</li>
             </ul>
@@ -90,7 +90,7 @@ export async function sendWaitlistWelcomeEmail(data: WaitlistEmailData) {
               <p>Questions? Reply to this email and we'll be happy to help!</p>
               <p>
                 NovaTrek - Plan Smarter, Travel Better<br>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}">novatrek.com</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}">${process.env.NEXT_PUBLIC_APP_URL?.replace('https://', '').replace('http://', '')}</a>
               </p>
             </div>
           </div>
@@ -234,7 +234,7 @@ export async function sendWaitlistInvitationEmail(data: WaitlistEmailData) {
               <p>Reply to this email or visit our help center.</p>
               <p>
                 Welcome to the NovaTrek family! 🌍<br>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}">novatrek.com</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}">${process.env.NEXT_PUBLIC_APP_URL?.replace('https://', '').replace('http://', '')}</a>
               </p>
             </div>
           </div>
