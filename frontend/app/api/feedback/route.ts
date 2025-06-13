@@ -48,11 +48,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Collect metadata
-    const metadata = {
-      url: request.headers.get('referer') || undefined,
-      userAgent: request.headers.get('user-agent') || undefined,
+    const metadata: any = {
       appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     };
+    
+    const referer = request.headers.get('referer');
+    if (referer) metadata.url = referer;
+    
+    const userAgent = request.headers.get('user-agent');
+    if (userAgent) metadata.userAgent = userAgent;
 
     const feedbackModel = new FeedbackModelAdmin();
     const feedback = await feedbackModel.createFeedback({

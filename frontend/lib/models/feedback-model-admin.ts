@@ -1,3 +1,4 @@
+// Force rebuild - Firebase Admin model for feedback
 import { getAdminDb } from '@/lib/firebase/admin';
 import { 
   FeedbackCategory, 
@@ -29,11 +30,27 @@ export class FeedbackModelAdmin {
   }): Promise<FeedbackEntry> {
     const docRef = this.getDb().collection(this.collectionName).doc();
     
-    const entry = {
-      ...data,
+    // Build entry object without undefined values
+    const entry: any = {
+      userId: data.userId,
+      userEmail: data.userEmail,
+      category: data.category,
+      title: data.title,
+      description: data.description,
       status: 'new' as FeedbackStatus,
       createdAt: new Date(),
     };
+
+    // Only add optional fields if they have values
+    if (data.userName !== undefined) {
+      entry.userName = data.userName;
+    }
+    if (data.rating !== undefined) {
+      entry.rating = data.rating;
+    }
+    if (data.metadata !== undefined) {
+      entry.metadata = data.metadata;
+    }
 
     await docRef.set(entry);
 
