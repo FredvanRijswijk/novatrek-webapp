@@ -15,11 +15,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const photoName = searchParams.get('name');
+    const placeId = searchParams.get('placeId');
     const maxWidth = searchParams.get('maxWidth') || '800';
     const maxHeight = searchParams.get('maxHeight') || '600';
 
-    if (!photoName) {
-      return NextResponse.json({ error: 'Photo name is required' }, { status: 400 });
+    if (!photoName && !placeId) {
+      return NextResponse.json({ error: 'Photo name or place ID is required' }, { status: 400 });
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -27,16 +28,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // The photo name from the new API is in format: places/{place_id}/photos/{photo_id}
-    // We need to use the new Photos API endpoint
-    const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?key=${apiKey}&maxWidthPx=${maxWidth}&maxHeightPx=${maxHeight}`;
+    let photoUrl: string;
+    let response: Response;
 
-    // Fetch the photo
-    const response = await fetch(photoUrl, {
-      headers: {
-        'X-Goog-Api-Key': apiKey,
-      },
-    });
+    // If we have a place ID, get the first photo from place details
+    if (placeId && !photoName) {
+      // First, get place details to find photo references
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos&key=${apiKey}`;
+      const detailsResponse = await fetch(detailsUrl);
+      const detailsData = await detailsResponse.json();
+
+      if (detailsData.status !== 'OK' || !detailsData.result?.photos?.[0]) {
+        return NextResponse.json({ error: 'No photos found for this place' }, { status: 404 });
+      }
+
+      // Use the first photo reference
+      const photoRef = detailsData.result.photos[0].photo_reference;
+      photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoRef}&key=${apiKey}`;
+      response = await fetch(photoUrl);
+    } else if (photoName) {
+      // The photo name from the new API is in format: places/{place_id}/photos/{photo_id}
+      // We need to use the new Photos API endpoint
+      photoUrl = `https://places.googleapis.com/v1/${photoName}/media?key=${apiKey}&maxWidthPx=${maxWidth}&maxHeightPx=${maxHeight}`;
+
+      // Fetch the photo
+      response = await fetch(photoUrl, {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+        },
+      });
+    } else {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
 
     if (!response.ok) {
       console.error('Places API photo fetch failed:', {

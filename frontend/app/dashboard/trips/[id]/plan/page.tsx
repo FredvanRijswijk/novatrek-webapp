@@ -38,6 +38,15 @@ const ItineraryBuilder = dynamic(
   }
 );
 
+// Import the new map integration component
+const TripPlanningMapIntegration = dynamic(
+  () => import('@/components/trips/planning/TripPlanningMapIntegration').then(mod => ({ default: mod.TripPlanningMapIntegration })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
 const BudgetTracker = dynamic(
   () => import('@/components/trips/planning/BudgetTracker').then(mod => ({ default: mod.BudgetTracker })),
   { 
@@ -393,27 +402,16 @@ export default function TripPlanningPage() {
               </TabsList>
 
               <TabsContent value="itinerary" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Day-by-Day Itinerary</CardTitle>
-                    <CardDescription>
-                      Plan your activities for each day of your trip
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {activeTab === 'itinerary' && fullTripData && (
-                      <ItineraryBuilder 
-                        key={`itinerary-${fullTripData.days.reduce((sum, d) => sum + d.activities.length, 0)}`}
-                        fullTripData={fullTripData} 
-                        onUpdate={async () => {
-                          // Reload trip data after update
-                          const updated = await tripService.getFullTrip(tripId);
-                          if (updated) setFullTripData(updated);
-                        }} 
-                      />
-                    )}
-                  </CardContent>
-                </Card>
+                {activeTab === 'itinerary' && fullTripData && (
+                  <TripPlanningMapIntegration
+                    fullTripData={fullTripData}
+                    onUpdate={async () => {
+                      // Reload trip data after update
+                      const updated = await tripService.getFullTrip(tripId);
+                      if (updated) setFullTripData(updated);
+                    }}
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="transport" className="mt-6">

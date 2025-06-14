@@ -20,12 +20,11 @@ export async function sendSlackNotification(
   data: SlackNotificationData
 ): Promise<boolean> {
   try {
-    // Only send notifications in production or if explicitly enabled
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Check if notifications are enabled (always check server-side env var)
     const isEnabled = process.env.SLACK_NOTIFICATIONS_ENABLED === 'true';
     
-    if (!isProduction && !isEnabled) {
-      console.log('Slack notification (dev mode):', { type, data });
+    if (!isEnabled) {
+      console.log('Slack notifications disabled:', { type, data });
       return true;
     }
 
