@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Map, List, Calendar, LayoutGrid, Camera } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Map, List, Calendar, LayoutGrid, Camera, Clock, Star } from 'lucide-react';
 import { TripMapView } from './TripMapView';
 import { ItineraryBuilderV2 } from './ItineraryBuilderV2';
 import { FullTripData } from '@/lib/services/trip-service-v2';
@@ -162,10 +163,28 @@ function PhotoGridView({ fullTripData }: { fullTripData: FullTripData }) {
               }}
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h3 className="text-white font-semibold">{activity.name}</h3>
-              <p className="text-white/80 text-sm">{activity.startTime}</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-lg">
+            <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+              <h3 className="text-white font-semibold text-lg mb-1">{activity.name}</h3>
+              <div className="flex items-center gap-3 text-sm">
+                {activity.startTime && (
+                  <div className="flex items-center gap-1 text-white/90">
+                    <Clock className="w-3 h-3" />
+                    <span>{activity.startTime}</span>
+                  </div>
+                )}
+                {activity.rating && (
+                  <div className="flex items-center gap-1 text-white/90">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <span>{activity.rating}</span>
+                  </div>
+                )}
+                {activity.type && (
+                  <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
+                    {activity.type}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -118,13 +118,13 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
   useEffect(() => {
     if (!map || typeof google === 'undefined') return;
     
-    if (activities.length > 0 && activities.some(a => a.location?.coordinates)) {
+    if (activities.length > 0 && activities.some(a => a.location?.lat && a.location?.lng)) {
       const bounds = new google.maps.LatLngBounds();
       activities.forEach(activity => {
-        if (activity.location?.coordinates) {
+        if (activity.location?.lat && activity.location?.lng) {
           bounds.extend({
-            lat: activity.location.coordinates.lat,
-            lng: activity.location.coordinates.lng
+            lat: activity.location.lat,
+            lng: activity.location.lng
           });
         }
       });
@@ -367,13 +367,14 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
                 >
                   <Card 
                     className={cn(
-                      "w-64 cursor-pointer transition-all",
+                      "w-64 cursor-pointer transition-all group overflow-hidden",
                       currentActivityIndex === index && "ring-2 ring-primary"
                     )}
                   >
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-3">
-                        {(activity.photos?.[0] || activity.location?.placeId) && (
+                    <CardContent className="p-0 relative">
+                      {/* Full card image background */}
+                      {(activity.photos?.[0] || activity.location?.placeId) && (
+                        <div className="relative h-32 overflow-hidden">
                           <img
                             src={(() => {
                               // Handle different photo data structures
@@ -400,18 +401,43 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
                               return `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=80&h=80&fit=crop`;
                             })()}
                             alt={activity.name}
-                            className="w-20 h-20 rounded-lg object-cover"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             onError={(e) => {
                               const img = e.target as HTMLImageElement;
                               // Only fallback once to prevent infinite loop
                               if (!img.dataset.fallbackAttempted) {
                                 img.dataset.fallbackAttempted = 'true';
-                                img.src = `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=80&h=80&fit=crop`; // Generic travel photo
+                                img.src = `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=150&fit=crop`; // Generic travel photo
                               }
                             }}
                           />
-                        )}
-                        <div className="flex-1">
+                          {/* Hover overlay with details */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                              <h4 className="font-semibold text-white text-sm mb-1">{activity.name}</h4>
+                              <div className="flex items-center gap-3 text-xs">
+                                <div className="flex items-center gap-1 text-white/90">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{activity.startTime} - {activity.endTime}</span>
+                                </div>
+                                {activity.rating && (
+                                  <div className="flex items-center gap-1 text-white/90">
+                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                    <span>{activity.rating}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <Badge variant="secondary" className="text-xs mt-2 bg-white/20 text-white border-white/30">
+                                {activity.type}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Fallback when no image */}
+                      {!activity.photos?.[0] && !activity.location?.placeId && (
+                        <div className="p-3">
                           <h4 className="font-medium text-sm line-clamp-1">{activity.name}</h4>
                           <p className="text-xs text-muted-foreground mt-1">
                             {activity.startTime} - {activity.endTime}
@@ -428,7 +454,7 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
                             )}
                           </div>
                         </div>
-                      </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -472,14 +498,14 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
             <>
               {/* Activity markers */}
               {activities.map((activity, index) => {
-            if (!activity.location?.coordinates) return null;
+            if (!activity.location?.lat || !activity.location?.lng) return null;
             
             return (
               <OverlayView
                 key={activity.id}
                 position={{
-                  lat: activity.location.coordinates.lat,
-                  lng: activity.location.coordinates.lng
+                  lat: activity.location.lat,
+                  lng: activity.location.lng
                 }}
                 mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
               >
@@ -520,10 +546,10 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
               {activities.length > 1 && (
                 <Polyline
               path={activities
-                .filter(a => a.location?.coordinates)
+                .filter(a => a.location?.lat && a.location?.lng)
                 .map(a => ({
-                  lat: a.location!.coordinates!.lat,
-                  lng: a.location!.coordinates!.lng
+                  lat: a.location!.lat,
+                  lng: a.location!.lng
                 }))}
               options={{
                 strokeColor: '#3B82F6',
@@ -544,11 +570,11 @@ export function TripMapView({ fullTripData, onActivityClick, className }: TripMa
           )}
 
               {/* Selected activity info window */}
-              {selectedActivity && selectedActivity.location?.coordinates && (
+              {selectedActivity && selectedActivity.location?.lat && selectedActivity.location?.lng && (
                 <InfoWindow
                   position={{
-                    lat: selectedActivity.location.coordinates.lat,
-                    lng: selectedActivity.location.coordinates.lng
+                    lat: selectedActivity.location.lat,
+                    lng: selectedActivity.location.lng
                   }}
                   onCloseClick={() => setSelectedActivity(null)}
                 >
