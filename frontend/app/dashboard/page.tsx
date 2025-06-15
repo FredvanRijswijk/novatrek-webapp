@@ -131,7 +131,7 @@ export default function DashboardPage() {
               <MessageCircle className="w-4 h-4 mr-2" />
               AI Assistant
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => window.location.href = '/dashboard/trips/new'}>
               <Plus className="w-4 h-4 mr-2" />
               New Trip
             </Button>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-800 border rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer">
+          <div className="bg-white dark:bg-gray-800 border rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/dashboard/trips/new'}>
             <div className="flex items-center gap-3">
               <Plus className="w-8 h-8 text-primary" />
               <div>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No trips yet</h3>
               <p className="text-muted-foreground mb-4">Start planning your first adventure!</p>
-              <Button>
+              <Button onClick={() => window.location.href = '/dashboard/trips/new'}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Trip
               </Button>

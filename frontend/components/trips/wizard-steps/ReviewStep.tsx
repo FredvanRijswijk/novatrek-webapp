@@ -10,7 +10,10 @@ import {
   Heart, 
   Home,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  User,
+  UsersRound,
+  Briefcase
 } from 'lucide-react';
 
 interface ReviewStepProps {
@@ -51,6 +54,28 @@ export function ReviewStep({ formData }: ReviewStepProps) {
       case 'resort': return 'Resorts';
       case 'any': return 'Any Type';
       default: return type;
+    }
+  };
+
+  const getTravelModeLabel = (mode: string) => {
+    switch (mode) {
+      case 'solo': return 'Solo Travel';
+      case 'couple': return 'Couple/Partner';
+      case 'family': return 'Family Travel';
+      case 'group': return 'Group Travel';
+      case 'business': return 'Business Travel';
+      default: return mode;
+    }
+  };
+
+  const getTravelModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'solo': return User;
+      case 'couple': return Heart;
+      case 'family': return UsersRound;
+      case 'group': return Users;
+      case 'business': return Briefcase;
+      default: return Users;
     }
   };
 
@@ -174,7 +199,7 @@ export function ReviewStep({ formData }: ReviewStepProps) {
           )}
 
           {/* Trip Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-4 border-t">
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5 text-blue-500" />
               <div>
@@ -214,6 +239,21 @@ export function ReviewStep({ formData }: ReviewStepProps) {
                 </div>
               </div>
             </div>
+            
+            {formData.travelMode && (
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const Icon = getTravelModeIcon(formData.travelMode);
+                  return <Icon className="h-5 w-5 text-purple-500" />;
+                })()}
+                <div>
+                  <div className="font-medium">Mode</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {getTravelModeLabel(formData.travelMode)}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

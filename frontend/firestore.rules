@@ -12,6 +12,23 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/admin_users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.isActive == true;
     }
+    
+    // Helper function to check if user is a trip member
+    function isTripMember(tripId, userId) {
+      return exists(/databases/$(database)/documents/tripMembers/$(tripId + '_' + userId)) &&
+             get(/databases/$(database)/documents/tripMembers/$(tripId + '_' + userId)).data.status == 'active';
+    }
+    
+    // Helper function to get user's role in a trip
+    function getTripMemberRole(tripId, userId) {
+      return get(/databases/$(database)/documents/tripMembers/$(tripId + '_' + userId)).data.role;
+    }
+    
+    // Helper function to check if user has permission for trip
+    function hasTripPermission(tripId, userId, permission) {
+      return exists(/databases/$(database)/documents/tripMembers/$(tripId + '_' + userId)) &&
+             get(/databases/$(database)/documents/tripMembers/$(tripId + '_' + userId)).data.permissions[permission] == true;
+    }
 
     // Users collection - supports both patterns
     match /users/{userId} {
@@ -80,6 +97,8 @@ service cloud.firestore {
         (request.auth != null && resource.data.userId == request.auth.uid) ||
         // Authenticated users can read their own trips (new userRef)
         (request.auth != null && resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)) ||
+        // Group members can read trips they belong to
+        (request.auth != null && isTripMember(tripId, request.auth.uid)) ||
         // Anyone can read if a share document exists (public share link)
         exists(/databases/$(database)/documents/tripShares/$(tripId)) ||
         // Admin access
@@ -91,13 +110,19 @@ service cloud.firestore {
       );
       
       allow update: if request.auth != null && (
+        // Owner can update
         resource.data.userId == request.auth.uid ||
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Members with edit permission can update
+        hasTripPermission(tripId, request.auth.uid, 'canEdit')
       );
       
       allow delete: if request.auth != null && (
+        // Owner can delete
         resource.data.userId == request.auth.uid ||
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid)
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+        // Members with delete permission can delete
+        hasTripPermission(tripId, request.auth.uid, 'canDelete')
       );
     }
     
@@ -823,6 +848,54 @@ service cloud.firestore {
       
       // No one can delete feedback
       allow delete: if false;
+    }
+    
+    // Trip Members Collection
+    match /tripMembers/{membershipId} {
+      // Allow read if user is the member or has access to the trip
+      allow read: if request.auth != null && (
+        // User can read their own membership
+        resource.data.userId == request.auth.uid ||
+        // Trip owner can read all members
+        (exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Other members can read if they have permission
+        hasTripPermission(resource.data.tripId, request.auth.uid, 'canManageMembers') ||
+        // Admin access
+        isAdmin()
+      );
+      
+      // Allow create if user owns the trip or has invite permission
+      allow create: if request.auth != null && (
+        // Trip owner can add members
+        (exists(/databases/$(database)/documents/trips/$(request.resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(request.resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Members with invite permission can add members
+        hasTripPermission(request.resource.data.tripId, request.auth.uid, 'canInvite')
+      );
+      
+      // Allow update if user has manage members permission
+      allow update: if request.auth != null && (
+        // Trip owner can update members
+        (exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Members with manage permission can update
+        hasTripPermission(resource.data.tripId, request.auth.uid, 'canManageMembers') ||
+        // Members can update their own status (accept/decline invitation)
+        (resource.data.userId == request.auth.uid && 
+         request.resource.data.status != resource.data.status)
+      );
+      
+      // Allow delete if user has manage members permission
+      allow delete: if request.auth != null && (
+        // Trip owner can remove members
+        (exists(/databases/$(database)/documents/trips/$(resource.data.tripId)) &&
+         get(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.userId == request.auth.uid) ||
+        // Members with manage permission can remove members
+        hasTripPermission(resource.data.tripId, request.auth.uid, 'canManageMembers') ||
+        // Members can remove themselves
+        resource.data.userId == request.auth.uid
+      );
     }
   }
 }

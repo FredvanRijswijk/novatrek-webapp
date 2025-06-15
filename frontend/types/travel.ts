@@ -68,6 +68,28 @@ export interface TripPhoto {
   }
 }
 
+export type TravelMode = 'solo' | 'couple' | 'family' | 'group' | 'business'
+
+export type MemberRole = 'owner' | 'organizer' | 'member' | 'viewer'
+
+export interface TripMember {
+  userId: string
+  email: string
+  displayName: string
+  photoURL?: string
+  role: MemberRole
+  joinedAt: Date
+  invitedBy: string
+  status: 'active' | 'invited' | 'removed'
+  permissions: {
+    canEdit: boolean
+    canInvite: boolean
+    canDelete: boolean
+    canManageMembers: boolean
+    canManageBudget: boolean
+  }
+}
+
 export interface Trip {
   id: string
   userId: string
@@ -89,6 +111,15 @@ export interface Trip {
   photos?: TripPhoto[]
   coverImage?: string
   packingListId?: string // Reference to associated packing list
+  // New fields for travel mode and group management
+  travelMode?: TravelMode
+  members?: TripMember[]
+  groupSettings?: {
+    allowMemberInvites: boolean
+    requireApproval: boolean
+    votingEnabled: boolean
+    budgetVisibility: 'all' | 'organizers' | 'owner'
+  }
   createdAt: Date
   updatedAt: Date
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical, Share2, Plane, Package, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Edit, MoreVertical, Share2, Plane, Package, Trash2, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -108,6 +108,15 @@ const PackingChecklist = dynamic(
 
 const TransportPlanner = dynamic(
   () => import('@/components/trips/TransportPlanner').then(mod => ({ default: mod.TransportPlanner })),
+  { 
+    loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
+    ssr: false 
+  }
+);
+
+// Import member management component
+const TripMembers = dynamic(
+  () => import('@/components/trips/TripMembers').then(mod => ({ default: mod.TripMembers })),
   { 
     loading: () => <div className="animate-pulse bg-muted h-96 rounded-lg" />,
     ssr: false 
@@ -398,6 +407,9 @@ export default function TripPlanningPage() {
                 <TabsTrigger value="budget">Budget</TabsTrigger>
                 <TabsTrigger value="packing">Packing</TabsTrigger>
                 <TabsTrigger value="photos">Photos</TabsTrigger>
+                {trip.travelMode && !['solo', 'couple'].includes(trip.travelMode) && (
+                  <TabsTrigger value="members">Members</TabsTrigger>
+                )}
                 <TabsTrigger value="chat">✨ AI Assistant</TabsTrigger>
               </TabsList>
 
@@ -479,6 +491,20 @@ export default function TripPlanningPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {trip.travelMode && !['solo', 'couple'].includes(trip.travelMode) && (
+                <TabsContent value="members" className="mt-6">
+                  {activeTab === 'members' && fullTripData && (
+                    <TripMembers 
+                      trip={fullTripData.trip} 
+                      onUpdate={async () => {
+                        const updated = await tripService.getFullTrip(tripId);
+                        if (updated) setFullTripData(updated);
+                      }}
+                    />
+                  )}
+                </TabsContent>
+              )}
 
               <TabsContent value="chat" className="mt-6 h-[calc(100vh-20rem)]">
                 {activeTab === 'chat' && fullTripData && (

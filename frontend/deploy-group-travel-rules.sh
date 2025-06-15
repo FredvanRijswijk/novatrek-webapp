@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "🚀 Deploying Firestore rules for group travel features..."
+echo ""
+echo "The rules have been updated to support:"
+echo "- Travel mode selection (solo, couple, family, group, business)"
+echo "- Group member management with role-based permissions"
+echo "- Trip access control for group members"
+echo ""
+echo "Please run the following command to deploy:"
+echo ""
+echo "firebase deploy --only firestore:rules"
+echo ""
+echo "If you get an authentication error, first run:"
+echo "firebase login --reauth"

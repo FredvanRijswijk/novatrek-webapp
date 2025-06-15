@@ -8,13 +8,14 @@ import { useFirebase } from '@/lib/firebase/context';
 import { useRouter } from 'next/navigation';
 import { TripModelEnhanced as TripModel } from '@/lib/models/trip-enhanced';
 import { UserModel } from '@/lib/models/user';
-import { User, Trip, Destination, Budget, ActivityType } from '@/types/travel';
+import { User, Trip, Destination, Budget, ActivityType, TravelMode } from '@/types/travel';
 import { dateValidation } from '@/lib/utils/validation';
 import { useTravelPreferences } from '@/hooks/use-travel-preferences';
 import { notifyTripCreated } from '@/lib/notifications/slack';
 
 // Step Components
 import { DestinationDateStep } from './wizard-steps/DestinationDateStep';
+import { TravelModeStep } from './wizard-steps/TravelModeStep';
 import { TravelStyleStep } from './wizard-steps/TravelStyleStep';
 import { AIKickstartStep } from './wizard-steps/AIKickstartStep';
 import { ReviewStep } from './wizard-steps/ReviewStep';
@@ -36,7 +37,10 @@ interface TripFormData {
     age?: number;
   }>;
 
-  // Step 2: Travel Style & Preferences
+  // Step 2: Travel Mode
+  travelMode: TravelMode | null;
+
+  // Step 3: Travel Style & Preferences
   travelStyle: 'budget' | 'mid-range' | 'luxury';
   accommodationType: 'hotel' | 'airbnb' | 'hostel' | 'resort' | 'any';
   activityTypes: ActivityType[];
@@ -46,7 +50,7 @@ interface TripFormData {
     currency: string;
   };
 
-  // Step 3: AI Kickstart
+  // Step 4: AI Kickstart
   aiSuggestions: any[];
   selectedSuggestions: string[];
   customRequests: string;
@@ -54,9 +58,10 @@ interface TripFormData {
 
 const STEPS = [
   { id: 1, title: 'Destination & Dates', description: 'Where and when are you going?' },
-  { id: 2, title: 'Travel Style', description: 'Tell us about your preferences' },
-  { id: 3, title: 'AI Kickstart', description: 'Get personalized recommendations' },
-  { id: 4, title: 'Review & Create', description: 'Review and create your trip' }
+  { id: 2, title: 'Travel Mode', description: 'How are you traveling?' },
+  { id: 3, title: 'Travel Style', description: 'Tell us about your preferences' },
+  { id: 4, title: 'AI Kickstart', description: 'Get personalized recommendations' },
+  { id: 5, title: 'Review & Create', description: 'Review and create your trip' }
 ];
 
 export function TripCreationWizard() {
@@ -74,6 +79,7 @@ export function TripCreationWizard() {
     startDate: null,
     endDate: null,
     travelers: [{ name: user?.displayName || '', relationship: 'self' }],
+    travelMode: null,
     travelStyle: 'mid-range',
     accommodationType: 'any',
     activityTypes: [],
@@ -185,6 +191,13 @@ export function TripCreationWizard() {
         break;
 
       case 2:
+        // Validate travel mode
+        if (!formData.travelMode) {
+          newErrors.travelMode = 'Please select how you are traveling';
+        }
+        break;
+
+      case 3:
         // Validate activity types
         if (formData.activityTypes.length === 0) {
           newErrors.activityTypes = 'Please select at least one activity type';
@@ -235,10 +248,12 @@ export function TripCreationWizard() {
         
         return hasValidDestination && hasStartDate && hasEndDate && hasTravelers && hasCompleteDates;
       case 2:
-        return formData.activityTypes.length > 0;
+        return formData.travelMode !== null;
       case 3:
-        return true; // AI step is optional
+        return formData.activityTypes.length > 0;
       case 4:
+        return true; // AI step is optional
+      case 5:
         return true;
       default:
         return false;
@@ -386,6 +401,15 @@ export function TripCreationWizard() {
         }),
         itinerary: [],
         status: 'planning',
+        // Add travel mode
+        travelMode: formData.travelMode || 'solo',
+        // Initialize group settings based on travel mode
+        groupSettings: formData.travelMode === 'group' || formData.travelMode === 'family' ? {
+          allowMemberInvites: true,
+          requireApproval: false,
+          votingEnabled: formData.travelMode === 'group',
+          budgetVisibility: 'all'
+        } : undefined,
         // Add AI suggestions to trip metadata
         metadata: {
           aiSuggestions: formData.aiSuggestions || [],
@@ -545,6 +569,14 @@ export function TripCreationWizard() {
         )}
         
         {currentStep === 2 && (
+          <TravelModeStep 
+            formData={formData} 
+            onUpdate={updateFormData}
+            errors={errors}
+          />
+        )}
+        
+        {currentStep === 3 && (
           <TravelStyleStep 
             formData={formData} 
             updateFormData={updateFormData}
@@ -552,14 +584,14 @@ export function TripCreationWizard() {
           />
         )}
         
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <AIKickstartStep 
             formData={formData} 
             updateFormData={updateFormData} 
           />
         )}
         
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <ReviewStep 
             formData={formData} 
             updateFormData={updateFormData} 
@@ -609,6 +641,18 @@ export function TripCreationWizard() {
                         Enter traveler name
                       </li>
                     )}
+                  </ul>
+                </div>
+              )}
+              
+              {currentStep === 2 && !canProceed() && (
+                <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2 text-sm">To continue, please:</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full" />
+                      Select your travel mode
+                    </li>
                   </ul>
                 </div>
               )}

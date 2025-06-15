@@ -18,7 +18,7 @@ interface TripPlanningMapIntegrationProps {
 }
 
 export function TripPlanningMapIntegration({ fullTripData, onUpdate }: TripPlanningMapIntegrationProps) {
-  const [view, setView] = useState<'map' | 'list' | 'calendar' | 'grid'>('map');
+  const [view, setView] = useState<'map' | 'list' | 'calendar' | 'grid'>('list');
   const [selectedActivity, setSelectedActivity] = useState<ActivityV2 | null>(null);
 
   const handleActivityClick = (activity: ActivityV2) => {

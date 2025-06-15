@@ -42,6 +42,15 @@ export interface TripV2 {
   shareToken?: string;
   isPublic?: boolean;
   
+  // Travel Mode and Group Settings
+  travelMode?: 'solo' | 'couple' | 'family' | 'group' | 'business';
+  groupSettings?: {
+    allowMemberInvites: boolean;
+    requireApproval: boolean;
+    votingEnabled: boolean;
+    budgetVisibility: 'all' | 'organizers' | 'owner';
+  };
+  
   // Statistics (denormalized for quick access)
   stats?: {
     totalDays: number;

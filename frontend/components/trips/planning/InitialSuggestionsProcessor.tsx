@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Sparkles, 
   MapPin, 
@@ -13,11 +14,14 @@ import {
   Plus,
   X,
   CheckCircle,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react';
 import { DayModelV2 } from '@/lib/models/v2/day-model-v2';
 import { ActivityModelV2 } from '@/lib/models/v2/activity-model-v2';
 import { format, addDays } from 'date-fns';
+import { DayV2 } from '@/types/travel-v2';
+import { toast } from 'sonner';
 
 interface AISuggestion {
   id: string;
@@ -51,6 +55,8 @@ export function InitialSuggestionsProcessor({
   const [processedCount, setProcessedCount] = useState(0);
   const [showProcessor, setShowProcessor] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [days, setDays] = useState<DayV2[]>([]);
+  const [suggestionDayMap, setSuggestionDayMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Check for stored suggestions
@@ -71,6 +77,28 @@ export function InitialSuggestionsProcessor({
     }
   }, [tripId]);
 
+  // Load trip days when processor shows
+  useEffect(() => {
+    if (showProcessor && tripId) {
+      const loadDays = async () => {
+        const dayModel = new DayModelV2();
+        const tripDays = await dayModel.getTripDays(tripId);
+        setDays(tripDays);
+        
+        // Initialize day mapping - distribute suggestions across days
+        const dayMap: Record<string, string> = {};
+        suggestions.forEach((suggestion, index) => {
+          const dayIndex = index % tripDays.length;
+          if (tripDays[dayIndex]) {
+            dayMap[suggestion.id] = tripDays[dayIndex].id;
+          }
+        });
+        setSuggestionDayMap(dayMap);
+      };
+      loadDays();
+    }
+  }, [showProcessor, tripId, suggestions]);
+
   const toggleSuggestion = (suggestionId: string) => {
     setSelectedSuggestions(prev => 
       prev.includes(suggestionId) 
@@ -84,62 +112,85 @@ export function InitialSuggestionsProcessor({
     setProcessedCount(0);
 
     try {
-      const dayModel = new DayModelV2();
       const activityModel = new ActivityModelV2();
-
-      // Get or create days for the trip
-      const days = await dayModel.getDaysForTrip(tripId);
       
       // Filter selected suggestions
       const suggestionsToProcess = suggestions.filter(s => 
         selectedSuggestions.includes(s.id)
       );
 
-      // Process each selected suggestion
-      for (let i = 0; i < suggestionsToProcess.length; i++) {
-        const suggestion = suggestionsToProcess[i];
-        
-        // Determine which day to add the activity to
-        // For now, distribute evenly across days
-        const dayIndex = i % days.length;
-        const targetDay = days[dayIndex];
-        
-        if (targetDay) {
+      // Group suggestions by day
+      const suggestionsByDay = new Map<string, AISuggestion[]>();
+      suggestionsToProcess.forEach(suggestion => {
+        const dayId = suggestionDayMap[suggestion.id];
+        if (dayId) {
+          if (!suggestionsByDay.has(dayId)) {
+            suggestionsByDay.set(dayId, []);
+          }
+          suggestionsByDay.get(dayId)!.push(suggestion);
+        }
+      });
+
+      // Process each day's suggestions
+      for (const [dayId, daySuggestions] of suggestionsByDay) {
+        const day = days.find(d => d.id === dayId);
+        if (!day) continue;
+
+        for (const suggestion of daySuggestions) {
           // Convert suggestion to activity format
           const activityData = {
             name: suggestion.title,
             description: suggestion.description,
+            type: suggestion.type as 'sightseeing' | 'dining' | 'activity' | 'transport' | 'accommodation' | 'other',
+            category: suggestion.category,
             location: {
               address: suggestion.location,
-              coordinates: null, // Would need to geocode in production
+              lat: 0, // Would need to geocode in production
+              lng: 0, // Would need to geocode in production
             },
-            category: suggestion.type,
             duration: parseDuration(suggestion.duration),
-            cost: suggestion.estimatedCost,
-            notes: `AI Recommendation: ${suggestion.reasoning}`,
+            cost: {
+              amount: suggestion.estimatedCost,
+              currency: 'USD',
+              perPerson: true
+            },
             tags: [suggestion.category, suggestion.type, 'ai-suggested'],
-            bookingStatus: 'not_required' as const,
-            visitStatus: 'planned' as const,
+            status: 'planned' as const,
+            aiSuggested: true,
+            confidence: suggestion.confidence,
+            priority: 'nice-to-have' as const,
           };
 
           // Add activity to the day
-          await activityModel.addActivity(tripId, targetDay.id, activityData);
+          await activityModel.createActivity(tripId, dayId, activityData);
           
           setProcessedCount(prev => prev + 1);
         }
       }
 
+      // Show success message
+      toast.success(
+        `Added ${suggestionsToProcess.length} activities to your itinerary!`,
+        {
+          description: 'Refreshing to show your new activities...',
+          duration: 5000
+        }
+      );
+
       // Clear the stored suggestions
       localStorage.removeItem(`trip_${tripId}_initial_suggestions`);
       
-      // Hide the processor after a short delay
+      // Hide the processor and trigger refresh after a short delay
       setTimeout(() => {
         setShowProcessor(false);
         onSuggestionsProcessed?.();
-      }, 1500);
+        // Force page refresh to show new activities
+        window.location.reload();
+      }, 2000);
       
     } catch (error) {
       console.error('Error processing suggestions:', error);
+      toast.error('Failed to add some activities. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -179,53 +230,81 @@ export function InitialSuggestionsProcessor({
           </p>
 
           {/* Suggestions List */}
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {suggestions.map((suggestion) => (
-              <div
-                key={suggestion.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
-                  selectedSuggestions.includes(suggestion.id)
-                    ? 'bg-white dark:bg-gray-800 border-blue-300'
-                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200'
-                }`}
-                onClick={() => toggleSuggestion(suggestion.id)}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedSuggestions.includes(suggestion.id)}
-                  onChange={() => toggleSuggestion(suggestion.id)}
-                  className="mt-1"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium">{suggestion.title}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {suggestion.description}
-                      </p>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {suggestions.map((suggestion) => {
+              const targetDay = days.find(d => d.id === suggestionDayMap[suggestion.id]);
+              return (
+                <div
+                  key={suggestion.id}
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                    selectedSuggestions.includes(suggestion.id)
+                      ? 'bg-white dark:bg-gray-800 border-blue-300'
+                      : 'bg-gray-50 dark:bg-gray-900 border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSuggestions.includes(suggestion.id)}
+                    onChange={() => toggleSuggestion(suggestion.id)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{suggestion.title}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {suggestion.description}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="ml-2">
+                        {suggestion.type}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="ml-2">
-                      {suggestion.type}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {suggestion.location}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {suggestion.duration}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      ${suggestion.estimatedCost}
-                    </span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {suggestion.location}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {suggestion.duration}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          ${suggestion.estimatedCost}
+                        </span>
+                      </div>
+                      {selectedSuggestions.includes(suggestion.id) && days.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <Select
+                            value={suggestionDayMap[suggestion.id] || ''}
+                            onValueChange={(value) => {
+                              setSuggestionDayMap(prev => ({
+                                ...prev,
+                                [suggestion.id]: value
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-32 text-xs">
+                              <SelectValue placeholder="Select day" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {days.map((day) => (
+                                <SelectItem key={day.id} value={day.id}>
+                                  Day {day.dayNumber} - {format(new Date(day.date), 'MMM d')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {customRequests && (

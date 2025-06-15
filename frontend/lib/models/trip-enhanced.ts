@@ -17,9 +17,10 @@ import {
   limit
 } from '@/lib/firebase'
 import { db } from '@/lib/firebase'
-import { Trip, DayItinerary, Activity, Expense } from '@/types/travel'
+import { Trip, DayItinerary, Activity, Expense, TripMember } from '@/types/travel'
 import { User } from './user'
 import { cleanFirestoreData, convertTimestampsToDates } from '@/lib/utils/firebase-helpers'
+import { TripMembersModel } from './trip-members'
 
 // Enhanced Trip type with reference field
 export interface TripEnhanced extends Trip {
@@ -48,6 +49,29 @@ export class TripModelEnhanced {
     // Clean the data to remove undefined values
     const cleanedData = cleanFirestoreData(enhancedData)
     const docRef = await createDocument(this.COLLECTION, cleanedData)
+    
+    // If this is a group or family trip, initialize the creator as owner
+    if (tripData.travelMode && ['group', 'family', 'business'].includes(tripData.travelMode)) {
+      try {
+        // Get user details for the creator
+        const userDoc = await getDocument<User>('users', tripData.userId)
+        if (userDoc) {
+          await TripMembersModel.addMember(docRef.id, {
+            userId: tripData.userId,
+            email: userDoc.email,
+            displayName: userDoc.displayName || userDoc.email,
+            photoURL: userDoc.photoURL,
+            role: 'owner',
+            invitedBy: tripData.userId,
+            status: 'active'
+          })
+        }
+      } catch (error) {
+        console.error('Error adding creator as owner:', error)
+        // Don't fail trip creation if member addition fails
+      }
+    }
+    
     return docRef.id
   }
 
