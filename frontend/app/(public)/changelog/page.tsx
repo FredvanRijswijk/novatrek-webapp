@@ -31,6 +31,58 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    date: 'January 15, 2025',
+    version: 'Week 3',
+    title: 'Interactive Maps & User Feedback',
+    description: 'Enhanced map experience with photo integration and improved user feedback collection.',
+    changes: [
+      {
+        type: 'feature',
+        title: 'Interactive Map View',
+        description: 'Explore destinations with our new interactive map featuring Google Places photos.',
+        highlights: [
+          'Interactive map with destination markers',
+          'Google Places photo integration for visual exploration',
+          'Hover effects for better user interaction',
+          'Direct coordinate access for precise location planning'
+        ]
+      },
+      {
+        type: 'feature',
+        title: 'Enhanced Feedback System',
+        description: 'Improved feedback collection with Firebase Admin SDK integration.',
+        highlights: [
+          'Seamless feedback submission process',
+          'Firebase Admin SDK for secure server-side operations',
+          'Better error handling for feedback creation',
+          'Improved data validation and storage'
+        ]
+      },
+      {
+        type: 'improvement',
+        title: 'Map Component Updates',
+        description: 'Refined map components for better performance and user experience.',
+        highlights: [
+          'Optimized hover effects on map markers',
+          'Improved coordinate handling',
+          'Better responsive design for mobile devices',
+          'Enhanced visual feedback for user interactions'
+        ]
+      },
+      {
+        type: 'fix',
+        title: 'Firebase Integration Fixes',
+        description: 'Resolved issues with Firebase Admin SDK and Firestore operations.',
+        highlights: [
+          'Fixed undefined values in Firestore feedback creation',
+          'Corrected Firebase Admin SDK imports',
+          'Improved error handling for database operations',
+          'Enhanced data validation before storage'
+        ]
+      }
+    ]
+  },
+  {
     date: 'January 13, 2025',
     version: 'Week 2',
     title: 'V2 Architecture & Weather Integration',
