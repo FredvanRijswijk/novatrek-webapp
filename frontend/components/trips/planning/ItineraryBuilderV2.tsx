@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Clock, MapPin, MoreVertical, GripVertical, Edit2, Trash2, Copy, CalendarPlus, Star } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, MoreVertical, GripVertical, Edit2, Trash2, Copy, CalendarPlus, Star, Package } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActivitySearchModal } from './ActivitySearchModal';
+import { ViatorActivitySearch } from '@/components/viator/ActivitySearch';
 import { WeatherDisplay } from '../WeatherDisplay';
 import { normalizeDate, parseDate, formatDate, isSameDateAny } from '@/lib/utils/date-helpers';
 import { FullTripData, DayWithActivities } from '@/lib/services/trip-service-v2';
@@ -42,6 +43,7 @@ import { ActivityModelV2 } from '@/lib/models/v2/activity-model-v2';
 import { DayModelV2 } from '@/lib/models/v2/day-model-v2';
 import { TripServiceV2 } from '@/lib/services/trip-service-v2';
 import { toast } from 'sonner';
+import { validateViatorConfig } from '@/lib/viator/config';
 
 interface ItineraryBuilderV2Props {
   fullTripData: FullTripData;
@@ -186,6 +188,7 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
   const { trip, days } = fullTripData;
   const [selectedDay, setSelectedDay] = useState<DayWithActivities | null>(null);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [showViatorSearch, setShowViatorSearch] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ActivityV2 | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -485,10 +488,29 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
                 </div>
               )}
               
-              <Button onClick={handleAddActivity} disabled={loading}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Activity
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={loading}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Activity
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleAddActivity}>
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Search Places
+                  </DropdownMenuItem>
+                  {validateViatorConfig() && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowViatorSearch(true)}>
+                        <Package className="mr-2 h-4 w-4" />
+                        Browse Tours & Activities
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardHeader>
           <CardContent>
@@ -543,6 +565,12 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
                                   AI Enhanced
                                 </Badge>
                               )}
+                              {activity.metadata?.source === 'viator' && (
+                                <Badge variant="default" className="text-xs bg-purple-600">
+                                  <Package className="mr-1 h-3 w-3" />
+                                  Viator
+                                </Badge>
+                              )}
                             </div>
                             <h4 className="font-semibold">{activity.name}</h4>
                             {activity.description && (
@@ -577,6 +605,18 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {activity.bookingUrl && activity.metadata?.source === 'viator' && (
+                                <>
+                                  <DropdownMenuItem 
+                                    onClick={() => window.open(activity.bookingUrl, '_blank')}
+                                    className="text-green-600 font-medium"
+                                  >
+                                    <Package className="mr-2 h-4 w-4" />
+                                    Book on Viator
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
                               <DropdownMenuItem onClick={() => handleEditActivity(activity)}>
                                 <Edit2 className="mr-2 h-4 w-4" />
                                 Edit
@@ -621,6 +661,21 @@ export function ItineraryBuilderV2({ fullTripData, onUpdate }: ItineraryBuilderV
         tripId={trip.id}
         date={parseDate(selectedDay.date)}
       />
+
+      {/* Viator Activity Search */}
+      {selectedDay && (
+        <ViatorActivitySearch
+          open={showViatorSearch}
+          onClose={() => setShowViatorSearch(false)}
+          destination={trip.destinationName || trip.destinations?.[0]?.destination?.name || 'Unknown'}
+          destId={trip.destinations?.[0]?.destination?.id}
+          startDate={parseDate(selectedDay.date)}
+          endDate={parseDate(selectedDay.date)}
+          onSelectActivity={handleSelectActivity}
+          dayId={selectedDay.id}
+          tripId={trip.id}
+        />
+      )}
 
       {/* Edit Activity Dialog */}
       <EditActivityDialog
